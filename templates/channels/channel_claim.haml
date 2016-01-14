@@ -177,7 +177,6 @@
                   and get a dedicated phone number.
 
 
-
     -else
       .claim-row.twilio-channel{class:"{% if recommended_channel == 'twilio' %}recommended{% endif %}"}
         .recommendation.hide
@@ -443,19 +442,34 @@
       %h3
         -trans "Social Network Channels"
 
+      -if org_perms.channels.channel_claim_twitter
+        .claim-row.twitter-channel
+          .row
+            .span3
+              %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_twitter' %}"}
+                .claim-glyph.icon-twitter
+                %p.claim-text
+                  -trans "Twitter"
+
+            .span9
+              .claim-description
+                %div
+                  -blocktrans
+                    Add a <a href="http://twitter.com">Twitter</a> account to send messages as direct messages.
+
       .claim-row.twitter-channel
         .row
           .span3
-            %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_twitter' %}"}
-              .claim-glyph.icon-twitter
+            %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_whatsapp' %}"}
+              .claim-glyph.icon-whatsapp
               %p.claim-text
-                -trans "Twitter"
+                -trans "WhatsApp"
 
           .span9
             .claim-description
               %div
                 -blocktrans
-                  Add a <a href="http://twitter.com">Twitter</a> account to send messages as direct messages.
+                  Add a <a href="https://www.whatsapp.com">WhatsApp</a> account to send messages for users.
 
 -block form-buttons
 
