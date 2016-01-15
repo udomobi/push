@@ -1566,7 +1566,7 @@ class ChannelCRUDL(SmartCRUDL):
             country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"),
                                         help_text=_("The country this phone number is used in"))
             number = forms.CharField(max_length=14, min_length=1, label=_("Number"),
-                                     help_text=_("The phone number with code location (Ex.: 829990000)"))
+                                     help_text=_("The phone number with code location (Ex.: 8299990000)"))
 
         title = _("Connect WhatsApp")
         fields = ('country', 'number',)
@@ -1580,12 +1580,26 @@ class ChannelCRUDL(SmartCRUDL):
                 raise Exception(_("No org for this user, cannot claim"))
 
             data = form.cleaned_data
-            self.object = Channel.add_zenvia_channel(org, self.request.user,
-                                                     phone=data['shortcode'], account=data['account'],
-                                                     code=data['code'])
+            number = phonenumbers.parse(data['number'], data['country'])
+            cc = str(number.country_code)
+            phone = str(number.national_number)
 
-            # make sure all contacts added before the channel are normalized
-            self.object.ensure_normalized_contacts()
+            from yowsup.registration import WACodeRequest
+            codeReq = WACodeRequest(cc, phone, '000', '000', '000', '000', 'sms')
+            result = codeReq.send()
+
+            password = None
+            login = None
+            if 'pw' in result and 'login' in result:
+                password = result['pw']
+                login = result['login']
+
+            if password and login:
+                self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=login,
+                                                           password=password)
+
+                # make sure all contacts added before the channel are normalized
+                self.object.ensure_normalized_contacts()
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
 
