@@ -1562,44 +1562,85 @@ class ChannelCRUDL(SmartCRUDL):
             return context
 
     class ClaimWhatsapp(OrgPermsMixin, SmartFormView):
+
         class WhatsappClaimForm(forms.Form):
             country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"),
                                         help_text=_("The country this phone number is used in"))
             number = forms.CharField(max_length=14, min_length=1, label=_("Number"),
                                      help_text=_("The phone number with code location (Ex.: 8299990000)"))
 
+        class WhatsappClaimConfirmationForm(forms.Form):
+            code = forms.CharField(max_length=6, min_length=6, label=_("Code"),
+                                   help_text=_("Code confirmation sent to your cell phone"))
+
         title = _("Connect WhatsApp")
-        fields = ('country', 'number',)
-        form_class = WhatsappClaimForm
         success_url = "id@channels.channel_configuration"
 
+        def get_form_class(self):
+            if self.request.REQUEST.get('whatsapp_confirmation') and self.request.session.get(
+                    'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+                return ChannelCRUDL.ClaimWhatsapp.WhatsappClaimConfirmationForm
+            else:
+                return ChannelCRUDL.ClaimWhatsapp.WhatsappClaimForm
+
+        def get_success_url(self):
+            if self.request.session.get('whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+                return "%s?whatsapp_confirmation" % self.request.META.get('HTTP_REFERER')
+
+            last_channel_wa = Channel.objects.filter(channel_type=WHATSAPP, org=self.request.user.get_org()).last()
+            return reverse('channels.channel_configuration', args=[last_channel_wa.id])
+
         def form_valid(self, form):
+            from yowsup.registration import WACodeRequest, WARegRequest
             org = self.request.user.get_org()
 
             if not org:  # pragma: no cover
                 raise Exception(_("No org for this user, cannot claim"))
 
             data = form.cleaned_data
-            number = phonenumbers.parse(data['number'], data['country'])
-            cc = str(number.country_code)
-            phone = str(number.national_number)
+            if self.request.session.get('whatsapp_confirmation') and self.request.session.get(
+                    'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+                cc = self.request.session.get('whatsapp_cc')
+                phone = self.request.session.get('whatsapp_phone')
+                if data.get('code'):
+                    codeReg = WARegRequest(cc, phone, data['code'])
+                    result = codeReg.send()
 
-            from yowsup.registration import WACodeRequest
-            codeReq = WACodeRequest(cc, phone, '000', '000', '000', '000', 'sms')
-            result = codeReq.send()
+                    self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=result['login'],
+                                                               password=result['pw'])
+                    self.object.ensure_normalized_contacts()
+                else:
+                    self.object = None
+                    messages.error(self.request, _('Please, login again before adding the new channel of WhatsApp.'))
+            else:
+                number = phonenumbers.parse(data['number'], data['country'])
+                cc = str(number.country_code)
+                phone = str(number.national_number)
 
-            password = None
-            login = None
-            if 'pw' in result and 'login' in result:
-                password = result['pw']
-                login = result['login']
+                codeReq = WACodeRequest(cc, phone, '000', '000', '000', '000', 'sms')
+                result = codeReq.send()
 
-            if password and login:
-                self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=login,
-                                                           password=password)
+                if result['status'] == 'ok':
+                    password = result['pw']
+                    login = result['login']
 
-                # make sure all contacts added before the channel are normalized
-                self.object.ensure_normalized_contacts()
+                    self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=login,
+                                                               password=password)
+                    self.object.ensure_normalized_contacts()
+                    self.request.session['whatsapp_cc'] = None
+                    self.request.session['whatsapp_phone'] = None
+                    self.request.session['whatsapp_confirmation'] = None
+
+                elif result['status'] == 'sent':
+                    self.request.session['whatsapp_cc'] = cc
+                    self.request.session['whatsapp_phone'] = phone
+                    self.request.session['whatsapp_confirmation'] = True
+                    return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation')
+
+                else:
+                    messages.error(self.request,
+                                   _('Send failed! reason: {0}. Try again later'.format(result['reason'])))
+                    return redirect(self.request.META.get('HTTP_REFERER'))
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
 
