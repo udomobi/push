@@ -31,6 +31,7 @@ END_TEST_CONTACT_PATH = 12065550199
 
 TEL_SCHEME = 'tel'
 TWITTER_SCHEME = 'twitter'
+WHATSAPP_SCHEME = 'whatsapp'
 TWILIO_SCHEME = 'twilio'
 FACEBOOK_SCHEME = 'facebook'
 EMAIL_SCHEME = 'mailto'
@@ -39,6 +40,7 @@ EXTERNAL_SCHEME = 'ext'
 # schemes that we actually support
 URN_SCHEME_CHOICES = ((TEL_SCHEME, _("Phone number")),
                       (TWITTER_SCHEME, _("Twitter handle")),
+                      (WHATSAPP_SCHEME, _("WhatsApp number")),
                       (EXTERNAL_SCHEME, _("External identifier")))
 
 
@@ -157,6 +159,7 @@ class ContactField(models.Model):
     def __unicode__(self):
         return "%s" % self.label
 
+
 NEW_CONTACT_VARIABLE = "@new_contact"
 
 
@@ -227,11 +230,11 @@ class Contact(TembaModel, SmartModel):
     @classmethod
     def set_simulation(cls, simulation):
         cls.simulation = simulation
-        
+
     @classmethod
     def get_simulation(cls):
         return cls.simulation
-                
+
     @classmethod
     def all(cls):
         simulation = cls.get_simulation()
@@ -349,7 +352,8 @@ class Contact(TembaModel, SmartModel):
             else:
                 category = loc_value.name if loc_value else None
                 existing = Value.objects.create(contact=self, contact_field=field, org=self.org,
-                                                string_value=str_value, decimal_value=dec_value, datetime_value=dt_value,
+                                                string_value=str_value, decimal_value=dec_value,
+                                                datetime_value=dt_value,
                                                 location_value=loc_value, category=category)
 
         # cache
@@ -385,7 +389,6 @@ class Contact(TembaModel, SmartModel):
 
         self.save(update_fields=('modified_on',))
 
-
     @classmethod
     def from_urn(cls, org, scheme, path, country=None):
         if not scheme or not path:
@@ -398,7 +401,8 @@ class Contact(TembaModel, SmartModel):
         return existing[0].contact if existing else None
 
     @classmethod
-    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False):
+    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None,
+                      is_test=False):
         """
         Gets or creates a contact with the given URNs
         """
@@ -509,7 +513,8 @@ class Contact(TembaModel, SmartModel):
 
             # add all new URNs
             for raw, normalized in urns_to_create.iteritems():
-                urn = ContactURN.create(org, contact, normalized['scheme'], normalized['path'], channel=incoming_channel)
+                urn = ContactURN.create(org, contact, normalized['scheme'], normalized['path'],
+                                        channel=incoming_channel)
                 urn_objects[raw] = urn
 
             # save which urns were updated
@@ -673,7 +678,7 @@ class Contact(TembaModel, SmartModel):
             contact.set_field(key, value)
 
         return contact
-                
+
     @classmethod
     def prepare_fields(cls, field_dict, import_params=None, user=None):
         if not import_params or not 'org_id' in import_params or not 'extra_fields' in import_params:
@@ -755,7 +760,7 @@ class Contact(TembaModel, SmartModel):
         if not header_urn_fields:
             raise Exception(ugettext('The file you provided is missing a required header. At least one of "%s" '
                                      'should be included.' % possible_urn_fields_text))
-    
+
     @classmethod
     def import_csv(cls, task, log=None):
         from xlrd import XLRDError
@@ -987,7 +992,9 @@ class Contact(TembaModel, SmartModel):
             contact_dict[scheme] = urn_value if not urn_value is None else ''
 
         # get all the values for this contact
-        contact_values = {v.contact_field.key: v for v in Value.objects.filter(contact=self).exclude(contact_field=None).select_related('contact_field')}
+        contact_values = {v.contact_field.key: v for v in
+                          Value.objects.filter(contact=self).exclude(contact_field=None).select_related(
+                              'contact_field')}
 
         # add all fields
         for field in ContactField.objects.filter(org_id=self.org_id).select_related('org'):
@@ -1165,7 +1172,7 @@ STANDARD_PRIORITY = 50
 HIGHEST_PRIORITY = 99
 
 URN_SCHEME_PRIORITIES = {TEL_SCHEME: STANDARD_PRIORITY,
-                         TWITTER_SCHEME: 90}
+                         TWITTER_SCHEME: 90, WHATSAPP_SCHEME: 95}
 
 URN_ANON_MASK = '*' * 8  # returned instead of URN values
 
@@ -1234,7 +1241,8 @@ class ContactURN(models.Model):
 
         # URN isn't valid without a scheme and path
         if not parsed.scheme or not parsed.path:
-            raise ValueError("URNs must define a scheme (%s) and path (%s), none found in: %s" % (parsed.scheme, parsed.path, urn))
+            raise ValueError(
+                "URNs must define a scheme (%s) and path (%s), none found in: %s" % (parsed.scheme, parsed.path, urn))
 
         return parsed
 
@@ -1253,7 +1261,7 @@ class ContactURN(models.Model):
         if not scheme or not path:
             return False
 
-        if scheme == TEL_SCHEME:
+        if scheme == TEL_SCHEME or scheme == WHATSAPP_SCHEME:
             if country_code:
                 try:
                     normalized = phonenumbers.parse(path, country_code)
@@ -1287,6 +1295,8 @@ class ContactURN(models.Model):
         elif norm_scheme == TWITTER_SCHEME:
             if norm_path[0:1] == '@':  # strip @ prefix if provided
                 norm_path = norm_path[1:]
+        elif norm_scheme == WHATSAPP_SCHEME:
+            norm_path, valid = cls.normalize_number(norm_path, country_code)
 
         return norm_scheme, norm_path
 
@@ -1361,7 +1371,7 @@ class ContactURN(models.Model):
                 if self.path and self.path[0] == '+':
                     return phonenumbers.format_number(phonenumbers.parse(self.path, None),
                                                       phonenumbers.PhoneNumberFormat.NATIONAL)
-            except Exception: # pragma: no cover
+            except Exception:  # pragma: no cover
                 pass
 
         return self.path
@@ -1401,7 +1411,8 @@ class ContactGroup(TembaModel, SmartModel):
                             help_text=_("The name of this contact group"))
 
     group_type = models.CharField(max_length=1, choices=TYPE_CHOICES, default=TYPE_USER_DEFINED,
-                                  help_text=_("What type of group it is, either user defined or one of our system groups"))
+                                  help_text=_(
+                                      "What type of group it is, either user defined or one of our system groups"))
 
     contacts = models.ManyToManyField(Contact, verbose_name=_("Contacts"), related_name='all_groups')
 
@@ -1537,7 +1548,7 @@ class ContactGroup(TembaModel, SmartModel):
 
         for group in ContactGroup.user_groups.filter(**qs_args).exclude(query=None):
             qs, is_complex = Contact.search(group.org, group.query)  # re-run group query
-            qualifies = qs.filter(pk=contact.id).count() == 1        # should contact now be in group?
+            qualifies = qs.filter(pk=contact.id).count() == 1  # should contact now be in group?
             changed = group.update_contacts([contact], qualifies)
 
             if changed:
@@ -1596,9 +1607,9 @@ class ContactGroup(TembaModel, SmartModel):
 
 
 class ExportContactsTask(SmartModel):
-
     org = models.ForeignKey(Org, related_name='contacts_exports', help_text=_("The Organization of the user."))
-    group = models.ForeignKey(ContactGroup, null=True, related_name='exports', help_text=_("The unique group to export"))
+    group = models.ForeignKey(ContactGroup, null=True, related_name='exports',
+                              help_text=_("The unique group to export"))
     host = models.CharField(max_length=32, help_text=_("The host this export task was created on"))
     task_id = models.CharField(null=True, max_length=64)
     is_finished = models.BooleanField(default=False,
@@ -1655,7 +1666,7 @@ class ExportContactsTask(SmartModel):
                 batch_contacts = Contact.objects.filter(id__in=batch_ids).select_related('org')
 
                 # to maintain our sort, we need to lookup by id, create a map of our id->contact to aid in that
-                contact_by_id = {c.id:c for c in batch_contacts}
+                contact_by_id = {c.id: c for c in batch_contacts}
 
                 # bulk initialize them
                 Contact.bulk_cache_initialize(self.org, batch_contacts)
@@ -1693,9 +1704,9 @@ class ExportContactsTask(SmartModel):
                         predicted = int(elapsed / (current_contact / (len(contact_ids) * 1.0)))
 
                         print "Export of %s contacts - %d%% (%s/%s) complete in %0.2fs (predicted %0.0fs)" % \
-                            (self.org.name, current_contact * 100 / len(contact_ids),
-                             "{:,}".format(current_contact), "{:,}".format(len(contact_ids)),
-                             time.time() - start, predicted)
+                              (self.org.name, current_contact * 100 / len(contact_ids),
+                               "{:,}".format(current_contact), "{:,}".format(len(contact_ids)),
+                               time.time() - start, predicted)
 
         # save as file asset associated with this task
         from temba.assets.models import AssetType
