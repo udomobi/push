@@ -1577,14 +1577,15 @@ class ChannelCRUDL(SmartCRUDL):
         success_url = "id@channels.channel_configuration"
 
         def get_form_class(self):
-            if self.request.REQUEST.get('whatsapp_confirmation') and self.request.session.get(
+            if self.request.session.get('whatsapp_confirmation') and self.request.session.get(
                     'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
                 return ChannelCRUDL.ClaimWhatsapp.WhatsappClaimConfirmationForm
             else:
                 return ChannelCRUDL.ClaimWhatsapp.WhatsappClaimForm
 
         def get_success_url(self):
-            if self.request.session.get('whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+            if self.request.session.get('whatsapp_cc') and self.request.session.get(
+                    'whatsapp_phone') and self.request.session.get('whatsapp_confirmation'):
                 return "%s?whatsapp_confirmation" % self.request.META.get('HTTP_REFERER')
 
             last_channel_wa = Channel.objects.filter(channel_type=WHATSAPP, org=self.request.user.get_org()).last()
@@ -1597,50 +1598,59 @@ class ChannelCRUDL(SmartCRUDL):
             if not org:  # pragma: no cover
                 raise Exception(_("No org for this user, cannot claim"))
 
-            data = form.cleaned_data
-            if self.request.session.get('whatsapp_confirmation') and self.request.session.get(
-                    'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
-                cc = self.request.session.get('whatsapp_cc')
-                phone = self.request.session.get('whatsapp_phone')
-                if data.get('code'):
-                    codeReg = WARegRequest(cc, phone, data['code'])
-                    result = codeReg.send()
+            try:
+                data = form.cleaned_data
+                if self.request.session.get('whatsapp_confirmation') and self.request.session.get(
+                        'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+                    cc = self.request.session.get('whatsapp_cc')
+                    phone = self.request.session.get('whatsapp_phone')
+                    if data.get('code'):
+                        codeReg = WARegRequest(cc, phone, data['code'])
+                        result = codeReg.send()
 
-                    self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=result['login'],
-                                                               password=result['pw'])
-                    self.object.ensure_normalized_contacts()
+                        self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=result['login'],
+                                                                   password=result['pw'])
+                        self.object.ensure_normalized_contacts()
+
+                        self.request.session['whatsapp_cc'] = None
+                        self.request.session['whatsapp_phone'] = None
+                        self.request.session['whatsapp_confirmation'] = None
+
+                    else:
+                        self.object = None
+                        messages.error(self.request,
+                                       _('Please, login again before adding the new channel of WhatsApp.'))
                 else:
-                    self.object = None
-                    messages.error(self.request, _('Please, login again before adding the new channel of WhatsApp.'))
-            else:
-                number = phonenumbers.parse(data['number'], data['country'])
-                cc = str(number.country_code)
-                phone = str(number.national_number)
+                    number = phonenumbers.parse(data['number'], data['country'])
+                    cc = str(number.country_code)
+                    phone = str(number.national_number)
 
-                codeReq = WACodeRequest(cc, phone, '000', '000', '000', '000', 'sms')
-                result = codeReq.send()
+                    codeReq = WACodeRequest(cc, phone, '000', '000', '000', '000', 'sms')
+                    result = codeReq.send()
 
-                if result['status'] == 'ok':
-                    password = result['pw']
-                    login = result['login']
+                    if result['status'] == 'ok':
+                        password = result['pw']
+                        login = result['login']
 
-                    self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=login,
-                                                               password=password)
-                    self.object.ensure_normalized_contacts()
-                    self.request.session['whatsapp_cc'] = None
-                    self.request.session['whatsapp_phone'] = None
-                    self.request.session['whatsapp_confirmation'] = None
+                        self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=login,
+                                                                   password=password)
+                        self.object.ensure_normalized_contacts()
 
-                elif result['status'] == 'sent':
-                    self.request.session['whatsapp_cc'] = cc
-                    self.request.session['whatsapp_phone'] = phone
-                    self.request.session['whatsapp_confirmation'] = True
-                    return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation')
+                    elif result['status'] == 'sent':
+                        self.request.session['whatsapp_cc'] = cc
+                        self.request.session['whatsapp_phone'] = phone
+                        self.request.session['whatsapp_confirmation'] = True
+                        return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation')
 
-                else:
-                    messages.error(self.request,
-                                   _('Send failed! reason: {0}. Try again later'.format(result['reason'])))
-                    return redirect(self.request.META.get('HTTP_REFERER'))
+                    else:
+                        messages.error(self.request,
+                                       _('Send failed! reason: {0}. Try again later'.format(result['reason'])))
+                        return redirect(self.request.META.get('HTTP_REFERER'))
+            except:
+                import traceback
+                traceback.print_exc()
+                messages.error(self.request, _('Send failed! reason: {0}. Try again later'))
+                return redirect(self.request.META.get('HTTP_REFERER'))
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
 
