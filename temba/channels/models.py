@@ -493,7 +493,7 @@ class Channel(SmartModel):
             channel.save()
         else:
             channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
-                                     config=config)
+                                     config=config, address=config['phone'])
 
         return channel
 
@@ -1701,7 +1701,16 @@ class Channel(SmartModel):
 
     @classmethod
     def send_whatsapp_message(cls, channel, msg, text):
-        ChannelLog.log_success(msg, "Successfully delivered message")
+        from temba.msgs.models import Msg, WIRED
+        from yowsup.layers.protocol_messages.protocolentities import message_text
+        start = time.time()
+        try:
+            message_text.TextMessageProtocolEntity(body=text, to=msg.urn_path, _from=channel.config['phone'],
+                                                   _id=msg.id)
+            ChannelLog.log_success(msg, "Successfully delivered message")
+            Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start)
+        except Exception as e:
+            ChannelLog.log_error(msg, e)
 
     @classmethod
     def send_clickatell_message(cls, channel, msg, text):
