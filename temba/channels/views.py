@@ -1577,8 +1577,10 @@ class ChannelCRUDL(SmartCRUDL):
         success_url = "id@channels.channel_configuration"
 
         def get_form_class(self):
-            if self.request.session.get('whatsapp_confirmation') and self.request.session.get(
-                    'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+            if self.request.session.get('whatsapp_confirmation') \
+                    and self.request.session.get('whatsapp_cc') \
+                    and self.request.session.get('whatsapp_phone') \
+                    and self.request.REQUEST.get('whatsapp_confirmation'):
                 return ChannelCRUDL.ClaimWhatsapp.WhatsappClaimConfirmationForm
             else:
                 return ChannelCRUDL.ClaimWhatsapp.WhatsappClaimForm
@@ -1601,25 +1603,23 @@ class ChannelCRUDL(SmartCRUDL):
             try:
                 data = form.cleaned_data
                 if self.request.session.get('whatsapp_confirmation') and self.request.session.get(
-                        'whatsapp_cc') and self.request.session.get('whatsapp_phone'):
+                        'whatsapp_cc') and self.request.session.get('whatsapp_phone') and data.get('code'):
                     cc = self.request.session.get('whatsapp_cc')
                     phone = self.request.session.get('whatsapp_phone')
-                    if data.get('code'):
-                        codeReg = WARegRequest(cc, phone, data['code'])
-                        result = codeReg.send()
 
-                        self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=result['login'],
+                    codeReg = WARegRequest(cc, phone, data['code'])
+                    result = codeReg.send()
+
+                    if result['status'] == 'ok':
+                        self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc,
+                                                                   phone=result['login'],
                                                                    password=result['pw'])
                         self.object.ensure_normalized_contacts()
-
-                        self.request.session['whatsapp_cc'] = None
-                        self.request.session['whatsapp_phone'] = None
-                        self.request.session['whatsapp_confirmation'] = None
 
                     else:
                         self.object = None
                         messages.error(self.request,
-                                       _('Please, login again before adding the new channel of WhatsApp.'))
+                                       _('Incorrect code, try again.'))
                 else:
                     number = phonenumbers.parse(data['number'], data['country'])
                     cc = str(number.country_code)
@@ -1640,7 +1640,7 @@ class ChannelCRUDL(SmartCRUDL):
                         self.request.session['whatsapp_cc'] = cc
                         self.request.session['whatsapp_phone'] = phone
                         self.request.session['whatsapp_confirmation'] = True
-                        return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation')
+                        return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation=True')
 
                     else:
                         messages.error(self.request,
@@ -1649,8 +1649,12 @@ class ChannelCRUDL(SmartCRUDL):
             except:
                 import traceback
                 traceback.print_exc()
-                messages.error(self.request, _('Send failed! reason: {0}. Try again later'))
+                messages.error(self.request, _('Send failed! Reason: {0}. Try again later.'))
                 return redirect(self.request.META.get('HTTP_REFERER'))
+
+            del self.request.session['whatsapp_cc']
+            del self.request.session['whatsapp_phone']
+            del self.request.session['whatsapp_confirmation']
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
 
