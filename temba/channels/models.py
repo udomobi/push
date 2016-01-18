@@ -485,12 +485,14 @@ class Channel(SmartModel):
                       phone=phone,
                       cc=cc)
 
-        channel = Channel.objects.filter(org=org, channel_type=WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
-                                         is_active=True).first()
+        channel = Channel.objects.filter(org=org, channel_type=WHATSAPP, is_active=True).first()
         if channel:
             channel.config = json.dumps(config)
             channel.modified_by = user
+            channel.name = "%s@s.whatsapp.net" % config['phone']
+            channel.address = config['phone']
             channel.save()
+
         else:
             channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
                                      config=config, address=config['phone'])
@@ -1702,13 +1704,13 @@ class Channel(SmartModel):
     @classmethod
     def send_whatsapp_message(cls, channel, msg, text):
         from temba.msgs.models import Msg, WIRED
-        from yowsup.layers.protocol_messages.protocolentities import message_text
+        from yowsup.layers.protocol_messages.protocolentities import TextMessageProtocolEntity
         start = time.time()
         try:
-            message_text.TextMessageProtocolEntity(body=text, to=msg.urn_path, _from=channel.config['phone'],
-                                                   _id=msg.id)
+            result = TextMessageProtocolEntity(body=text, to='{0}@s.whatsapp.net'.format(msg.urn_path.replace('+', '')))
             ChannelLog.log_success(msg, "Successfully delivered message")
             Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start)
+            return result
         except Exception as e:
             ChannelLog.log_error(msg, e)
 
