@@ -1704,13 +1704,17 @@ class Channel(SmartModel):
     @classmethod
     def send_whatsapp_message(cls, channel, msg, text):
         from temba.msgs.models import Msg, WIRED
-        from yowsup.layers.protocol_messages.protocolentities import TextMessageProtocolEntity
+        from temba.utils.yowsup_layer import YowsupSendStack
         start = time.time()
         try:
-            result = TextMessageProtocolEntity(body=text, to='{0}@s.whatsapp.net'.format(msg.urn_path.replace('+', '')))
+            credentials = (channel.config['phone'], channel.config['password'])
+            result = YowsupSendStack(credentials, [(msg.urn_path, text)])
+            try:
+                result.start()
+            except KeyboardInterrupt:
+                pass
             ChannelLog.log_success(msg, "Successfully delivered message")
             Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start)
-            return result
         except Exception as e:
             ChannelLog.log_error(msg, e)
 
