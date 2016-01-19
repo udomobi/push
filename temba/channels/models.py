@@ -1708,6 +1708,7 @@ class Channel(SmartModel):
         start = time.time()
         try:
             credentials = (channel.config['phone'], channel.config['password'])
+            text = ("{0}".format(text)).encode('utf-8', 'ignore')
             result = YowsupSendStack(credentials, [(msg.urn_path, text)])
             try:
                 result.start()
