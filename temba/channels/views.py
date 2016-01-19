@@ -1606,8 +1606,9 @@ class ChannelCRUDL(SmartCRUDL):
                         'whatsapp_cc') and self.request.session.get('whatsapp_phone') and data.get('code'):
                     cc = self.request.session.get('whatsapp_cc')
                     phone = self.request.session.get('whatsapp_phone')
+                    code = data['code'].replace('-', '')
 
-                    codeReg = WARegRequest(cc, phone, data['code'])
+                    codeReg = WARegRequest(cc, phone, code)
                     result = codeReg.send()
 
                     if result['status'] == 'ok':
@@ -1620,6 +1621,8 @@ class ChannelCRUDL(SmartCRUDL):
                         self.object = None
                         messages.error(self.request,
                                        _('Incorrect code, try again.'))
+                        return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation=True')
+
                 else:
                     number = phonenumbers.parse(data['number'], data['country'])
                     cc = str(number.country_code)
@@ -1646,15 +1649,16 @@ class ChannelCRUDL(SmartCRUDL):
                         messages.error(self.request,
                                        _('Send failed! reason: {0}. Try again later'.format(result['reason'])))
                         return redirect(self.request.META.get('HTTP_REFERER'))
-            except:
+
+            except Exception as e:
                 import traceback
                 traceback.print_exc()
-                messages.error(self.request, _('Send failed! Reason: {0}. Try again later.'))
+                messages.error(self.request, _('Error! Reason: {0}. Try again later.'.format(e)))
                 return redirect(self.request.META.get('HTTP_REFERER'))
 
-            del self.request.session['whatsapp_cc']
-            del self.request.session['whatsapp_phone']
-            del self.request.session['whatsapp_confirmation']
+            self.request.session['whatsapp_cc'] = None
+            self.request.session['whatsapp_phone'] = None
+            self.request.session['whatsapp_confirmation'] = None
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
 
