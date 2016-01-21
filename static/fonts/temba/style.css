@@ -119,6 +119,9 @@
 .icon-twitter:before {
 	content: "\e007";
 }
+.icon-whatsapp:before {
+	content: "\ea93";
+}
 .icon-github:before {
 	content: "\e009";
 }

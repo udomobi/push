@@ -124,15 +124,21 @@
 
     %hr
 
+  -elif object.channel_type == 'WA'
     %h4
-      -trans "Receive URL"
+      -trans "You finished to configure your WhatsApp channel."
 
-    %p
-      -trans "To receive incoming messages, you need to set the receive URL for your Zenvia account."
+    .clearfix
+      .config-value
+        .name
+          -trans "Name:"
+        .value {{ object.name }}
+      .config-value
+        .name
+          -trans "Phone:"
+        .value {{ object.config_json.phone }}
 
-    %code
-      https://{{ domain }}{% url 'api.zenvia_handler' 'receive' object.uuid %}
-
+    .clearfix
     %hr
 
   -elif object.channel_type == 'NX'
