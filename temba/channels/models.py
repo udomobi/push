@@ -475,8 +475,8 @@ class Channel(SmartModel):
                                          config=config)
 
                 # notify Mage so that it activates this channel
-                from .tasks import MageStreamAction, notify_mage_task
-                notify_mage_task.delay(channel.uuid, MageStreamAction.activate)
+                from .tasks import MageStreamAction, notify_twitter_mage_task
+                notify_twitter_mage_task.delay(channel.uuid, MageStreamAction.activate)
 
         return channel
 
@@ -497,6 +497,10 @@ class Channel(SmartModel):
         else:
             channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
                                      config=config, address=config['phone'])
+
+            # notify Mage so that it activates this channel
+            from .tasks import MageStreamAction, notify_whatsapp_mage_task
+            notify_whatsapp_mage_task.delay(channel.uuid, MageStreamAction.activate)
 
         return channel
 
@@ -844,8 +848,13 @@ class Channel(SmartModel):
 
         if notify_mage and self.channel_type == TWITTER:
             # notify Mage so that it deactivates this channel
-            from .tasks import MageStreamAction, notify_mage_task
-            notify_mage_task.delay(self.uuid, MageStreamAction.deactivate)
+            from .tasks import MageStreamAction, notify_twitter_mage_task
+            notify_twitter_mage_task.delay(self.uuid, MageStreamAction.deactivate)
+
+        if notify_mage and self.channel_type == WHATSAPP:
+            # notify Mage so that it deactivates this channel
+            from .tasks import MageStreamAction, notify_whatsapp_mage_task
+            notify_whatsapp_mage_task.delay(self.uuid, MageStreamAction.deactivate)
 
         # if we just lost calling capabilities archive our voice flows
         if CALL in self.role:
