@@ -11,6 +11,12 @@
     });
 
 -block title
+
+  -if whatsapp_request_confirmation
+    .pull-right
+      %a.btn{href:"javascript:history.back(-1);"}
+        -trans "Back"
+
   .medium-help.icon-whatsapp.float-left
 
   %h2.font_normalize.header-margin
@@ -21,6 +27,17 @@
     %p
       -blocktrans
         After entering your data, you will to received a message in your cell phone with activation code. This code should will to be inserted again here.
+
+  -if whatsapp_cc and whatsapp_phone and whatsapp_confirmation and not whatsapp_request_confirmation
+    .info
+      %p
+        -blocktrans
+          Your current data in session: CC ({{ whatsapp_cc }}) and Phone ({{ whatsapp_phone }})
+
+      %a.btn{href:"{% url 'channels.channel_claim_whatsapp' %}?whatsapp_confirmation=True"}
+        -trans "Insert confirmation code"
+
+    .divider
 
 -block extra-style
   {{ block.super }}
@@ -51,4 +68,11 @@
 
     .form-group {
       margin-bottom:15px;
+    }
+
+    .divider{
+      width: 100%;
+      height: 1px;
+      background-color: #CCC;
+      margin: 40px 0;
     }
