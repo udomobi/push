@@ -824,8 +824,8 @@ class ChannelCRUDL(SmartCRUDL):
 
             if obj.channel_type == TWITTER:
                 # notify Mage so that it refreshes this channel
-                from .tasks import MageStreamAction, notify_mage_task
-                notify_mage_task.delay(obj.uuid, MageStreamAction.refresh)
+                from .tasks import MageStreamAction, notify_twitter_mage_task
+                notify_twitter_mage_task.delay(obj.uuid, MageStreamAction.refresh)
 
             return obj
 
