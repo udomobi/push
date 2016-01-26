@@ -7,7 +7,28 @@
   :javascript
     $(function(){
       $("#id_country").select2();
+      $("#id_operator").select2({
+        placeholder: "Select an operator",
+        allowClear: true
+      });
       $("#id_method").select2({ minimumResultsForSearch: -1 });
+    });
+
+    $(document).ready(function(){
+      var select_ = $("select#id_country");
+      select_.change(function(){
+        var value = select_[0][select_[0].selectedIndex].value;
+        $.ajax({
+          type: 'get',
+          data: 'country=' + value,
+          url: '/channels/utils/carriers/',
+          success: function (result) {
+            $("#id_operator").select2({
+            data: result
+            });
+          }
+        });
+      });
     });
 
 -block title

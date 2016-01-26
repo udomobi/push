@@ -1566,6 +1566,7 @@ class ChannelCRUDL(SmartCRUDL):
         class WhatsappClaimForm(forms.Form):
             country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"),
                                         help_text=_("The country this phone number is used in"))
+            operator = forms.ChoiceField(choices=(), label=_('Operators'))
             number = forms.CharField(max_length=14, min_length=1, label=_("Number"),
                                      help_text=_("The phone number with code location (Ex.: 82900000000)"))
 
@@ -1583,6 +1584,7 @@ class ChannelCRUDL(SmartCRUDL):
             context['whatsapp_confirmation'] = self.request.session.get('whatsapp_confirmation')
             context['whatsapp_request_confirmation'] = True if self.request.REQUEST.get(
                 'whatsapp_confirmation') else False
+
             return context
 
         def get_form_class(self):
@@ -1627,7 +1629,6 @@ class ChannelCRUDL(SmartCRUDL):
                         self.object.ensure_normalized_contacts()
 
                     else:
-                        self.object = None
                         messages.error(self.request,
                                        _('Incorrect code, try again.'))
                         return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation=True')
@@ -1649,7 +1650,7 @@ class ChannelCRUDL(SmartCRUDL):
                         self.object.ensure_normalized_contacts()
 
                     elif (result['status'] == 'sent') or (
-                            result['status'] == 'fail' and result['reason'] == 'too_recent'):
+                                    result['status'] == 'fail' and result['reason'] == 'too_recent'):
                         self.request.session['whatsapp_cc'] = cc
                         self.request.session['whatsapp_phone'] = phone
                         self.request.session['whatsapp_confirmation'] = True
