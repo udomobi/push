@@ -107,7 +107,7 @@ CHANNEL_SETTINGS = {
     SMSCENTRAL: dict(scheme='tel', max_length=1600),
     M3TECH: dict(scheme='tel', max_length=160),
     YO: dict(scheme='tel', max_length=1600),
-    WHATSAPP: dict(scheme='whatsapp', max_length=150),
+    WHATSAPP: dict(scheme='whatsapp', max_length=10000),
 }
 
 TEMBA_HEADERS = {'User-agent': 'RapidPro'}
