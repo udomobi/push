@@ -10,6 +10,7 @@ import pycountry
 import pytz
 import time
 
+from carrier import Carrier
 from datetime import datetime, timedelta
 from django import forms
 from django.conf import settings
@@ -1564,9 +1565,13 @@ class ChannelCRUDL(SmartCRUDL):
     class ClaimWhatsapp(OrgPermsMixin, SmartFormView):
 
         class WhatsappClaimForm(forms.Form):
+            c = Carrier()
+            first_country = str(ALL_COUNTRIES[0][0])
+            initial_operators = [(o['mnc'], "{0} - {1}".format(o['network'], o['mnc'])) for o in
+                                 json.loads(c.get_search(str('iso'), first_country))]
             country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"),
                                         help_text=_("The country this phone number is used in"))
-            operator = forms.ChoiceField(choices=(), label=_('Operators'))
+            carrier = forms.CharField(label=_('Carrier'), widget=forms.Select(choices=initial_operators))
             number = forms.CharField(max_length=14, min_length=1, label=_("Number"),
                                      help_text=_("The phone number with code location (Ex.: 82900000000)"))
 
@@ -1599,7 +1604,7 @@ class ChannelCRUDL(SmartCRUDL):
         def get_success_url(self):
             if self.request.session.get('whatsapp_cc') and self.request.session.get(
                     'whatsapp_phone') and self.request.session.get('whatsapp_confirmation'):
-                return "%s?whatsapp_confirmation" % self.request.META.get('HTTP_REFERER')
+                return redirect(reverse('channels.channel_claim_whatsapp') + '?whatsapp_confirmation=True')
 
             last_channel_wa = Channel.objects.filter(channel_type=WHATSAPP, org=self.request.user.get_org()).last()
             return reverse('channels.channel_configuration', args=[last_channel_wa.id])
@@ -1607,6 +1612,7 @@ class ChannelCRUDL(SmartCRUDL):
         def form_valid(self, form):
             from yowsup.registration import WACodeRequest, WARegRequest
             org = self.request.user.get_org()
+            c = Carrier()
 
             if not org:  # pragma: no cover
                 raise Exception(_("No org for this user, cannot claim"))
@@ -1622,24 +1628,36 @@ class ChannelCRUDL(SmartCRUDL):
                     codeReg = WARegRequest(cc, phone, code)
                     result = codeReg.send()
 
+                    print "WhatsApp registration log: {0}".format(result)
+
                     if result['status'] == 'ok':
                         self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc,
                                                                    phone=result['login'],
                                                                    password=result['pw'])
                         self.object.ensure_normalized_contacts()
 
+                        self.request.session['whatsapp_cc'] = None
+                        self.request.session['whatsapp_phone'] = None
+                        self.request.session['whatsapp_confirmation'] = None
+
                     else:
                         messages.error(self.request,
-                                       _('Incorrect code, try again.'))
-                        return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation=True')
+                                       _('Send failed! Reason: {0}. Try again later'.format(result['reason'])))
+                        return redirect(reverse('channels.channel_claim_whatsapp') + '?whatsapp_confirmation=True')
 
                 else:
                     number = phonenumbers.parse(data['number'], data['country'])
                     cc = str(number.country_code)
                     phone = str(number.national_number)
 
-                    codeReq = WACodeRequest(cc, phone, '724', '06', '724', '06', 'sms')
+                    mcc = json.loads(c.get_search(str('iso'), str(data['country'])))
+                    if len(mcc) > 0:
+                        mcc = str(mcc[0]['mcc'])
+
+                    codeReq = WACodeRequest(cc, phone, mcc, data['carrier'], mcc, data['carrier'], 'sms')
                     result = codeReq.send()
+
+                    print "WhatsApp code request log: {0}".format(result)
 
                     if result['status'] == 'ok':
                         password = result['pw']
@@ -1649,27 +1667,27 @@ class ChannelCRUDL(SmartCRUDL):
                                                                    password=password)
                         self.object.ensure_normalized_contacts()
 
-                    elif (result['status'] == 'sent') or (
-                                    result['status'] == 'fail' and result['reason'] == 'too_recent'):
+                        self.request.session['whatsapp_cc'] = None
+                        self.request.session['whatsapp_phone'] = None
+                        self.request.session['whatsapp_confirmation'] = None
+
+                    elif (result['status'] == 'sent') or \
+                            (result['status'] == 'fail' and result['reason'] == 'too_recent'):
                         self.request.session['whatsapp_cc'] = cc
                         self.request.session['whatsapp_phone'] = phone
                         self.request.session['whatsapp_confirmation'] = True
-                        return redirect(self.request.META.get('HTTP_REFERER') + '?whatsapp_confirmation=True')
+                        return redirect(reverse('channels.channel_claim_whatsapp') + '?whatsapp_confirmation=True')
 
                     else:
                         messages.error(self.request,
                                        _('Send failed! Reason: {0}. Try again later'.format(result['reason'])))
-                        return redirect(self.request.META.get('HTTP_REFERER'))
+                        return redirect(reverse('channels.channel_claim_whatsapp'))
 
             except Exception as e:
                 import traceback
                 traceback.print_exc()
                 messages.error(self.request, _('Error! Reason: {0}. Try again later.'.format(e)))
                 return redirect(self.request.META.get('HTTP_REFERER'))
-
-            self.request.session['whatsapp_cc'] = None
-            self.request.session['whatsapp_phone'] = None
-            self.request.session['whatsapp_confirmation'] = None
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
 
