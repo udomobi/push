@@ -43,7 +43,7 @@ class SendLayer(YowInterfaceLayer):
         for target in self.getProp(self.__class__.PROP_MESSAGES, []):
             # getProp() is trying to retreive the list of (jid, message) tuples, if none exist, use the default []
             phone, message = target
-            location_expression = re.compile('((.+).(\d+)(\s*,\s*)(.+).(\d+))$')
+            location_expression = re.compile('^(\-?\d+(\.\d+)?),\s*(\-?\d+(\.\d+)?)$')
             image_expression = re.compile('(https?:\/\/.*\.(?:png|jpg|jpeg))')
             if location_expression.match(message):
                 messageEntity = LocationMediaMessageProtocolEntity(message.split(',')[0], message.split(',')[1],
