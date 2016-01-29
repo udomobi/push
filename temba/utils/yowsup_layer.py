@@ -135,16 +135,16 @@ class SendLayer(YowInterfaceLayer):
 
         from django.core.files.temp import NamedTemporaryFile
 
-        r = requests.get(url)
+        request = requests.get(url)
 
-        if r.status_code == 200:
-            file_url, file_ext = os.path.splitext(r.url)
+        if request.status_code == 200:
+            file_url, file_ext = os.path.splitext(request.url)
             img_temp = NamedTemporaryFile(prefix='whatsapp_file_', suffix=file_ext, dir='/tmp', delete=False)
-            img_temp.write(r.content)
+            img_temp.write(request.content)
             img_temp.flush()
 
             with open(img_temp.name, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=1024):
+                for chunk in request.iter_content(chunk_size=1024):
                     if chunk:
                         f.write(chunk)
                         f.flush()
