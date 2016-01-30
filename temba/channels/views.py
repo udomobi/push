@@ -1679,7 +1679,7 @@ class ChannelCRUDL(SmartCRUDL):
                         self.request.session['whatsapp_confirmation'] = True
                         return redirect(reverse('channels.channel_claim_whatsapp') + '?whatsapp_confirmation=True')
 
-                    elif 'reason' in result and result['reason'] == 'too_recent':
+                    elif 'reason' in result and (result['reason'] == 'too_recent' or result['reason'] == 'temporarily_unavailable'):
                         messages.error(
                             self.request,
                             _("Send failed! You made a request recently. WhatsApp doesn't allow many requests. Wait {0} minutes to try again.".format(
