@@ -1625,6 +1625,8 @@ class ChannelCRUDL(SmartCRUDL):
                     phone = self.request.session.get('whatsapp_phone')
                     code = data['code'].replace('-', '')
 
+                    print "CC: {0} - Phone: {1} - Code: {2}".format(cc, phone, code)
+
                     codeReg = WARegRequest(cc, phone, code)
                     result = codeReg.send()
 
@@ -1671,13 +1673,18 @@ class ChannelCRUDL(SmartCRUDL):
                         self.request.session['whatsapp_phone'] = None
                         self.request.session['whatsapp_confirmation'] = None
 
-                    elif (result['status'] == 'sent') or \
-                            (result['status'] == 'fail' and result['reason'] == 'too_recent'):
+                    elif result['status'] == 'sent':
                         self.request.session['whatsapp_cc'] = cc
                         self.request.session['whatsapp_phone'] = phone
                         self.request.session['whatsapp_confirmation'] = True
                         return redirect(reverse('channels.channel_claim_whatsapp') + '?whatsapp_confirmation=True')
 
+                    elif 'reason' in result and result['reason'] == 'too_recent':
+                        messages.error(
+                            self.request,
+                            _("Send failed! You made a request recently. WhatsApp doesn't allow many requests. Wait {0} minutes to try again.".format(
+                                               int(result['retry_after'] / 60)))
+                        )
                     else:
                         messages.error(self.request,
                                        _('Send failed! Reason: {0}. Try again later'.format(result['reason'])))
