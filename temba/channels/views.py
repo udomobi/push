@@ -1685,6 +1685,7 @@ class ChannelCRUDL(SmartCRUDL):
                             _("Send failed! You made a request recently. WhatsApp doesn't allow many requests. Wait {0} minutes to try again.".format(
                                                int(result['retry_after'] / 60)))
                         )
+                        return redirect(reverse('channels.channel_claim_whatsapp'))
                     else:
                         messages.error(self.request,
                                        _('Send failed! Reason: {0}. Try again later'.format(result['reason'])))
