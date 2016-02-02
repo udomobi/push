@@ -192,9 +192,10 @@ def channel_status_processor(request):
 
         # twitter is a suitable sender
         if not send_channel:
-            send_channel = org.get_send_channel(scheme=WHATSAPP_SCHEME)
-        elif not send_channel:
             send_channel = org.get_send_channel(scheme=TWITTER_SCHEME)
+
+        if not send_channel:
+            send_channel = org.get_send_channel(scheme=WHATSAPP_SCHEME)
 
         status['send_channel'] = send_channel
         status['call_channel'] = call_channel
