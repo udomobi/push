@@ -27,7 +27,7 @@ from phonenumbers.phonenumberutil import region_code_for_number
 from smartmin.views import SmartCRUDL, SmartReadView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
 from temba.channels.models import WHATSAPP
-from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, URN_SCHEME_CHOICES
+from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, URN_SCHEME_CHOICES, WHATSAPP_SCHEME
 from temba.msgs.models import Broadcast, Call, Msg, QUEUED, PENDING
 from temba.orgs.models import Org, ACCOUNT_SID
 from temba.orgs.views import OrgPermsMixin, OrgObjPermsMixin, ModalMixin
@@ -192,6 +192,8 @@ def channel_status_processor(request):
 
         # twitter is a suitable sender
         if not send_channel:
+            send_channel = org.get_send_channel(scheme=WHATSAPP_SCHEME)
+        elif not send_channel:
             send_channel = org.get_send_channel(scheme=TWITTER_SCHEME)
 
         status['send_channel'] = send_channel
