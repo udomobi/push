@@ -485,21 +485,22 @@ class Channel(SmartModel):
                       phone=phone,
                       cc=cc)
 
-        channel = Channel.objects.filter(org=org, channel_type=WHATSAPP, is_active=True).first()
-        if channel:
-            channel.config = json.dumps(config)
-            channel.modified_by = user
-            channel.name = "%s@s.whatsapp.net" % config['phone']
-            channel.address = config['phone']
-            channel.save()
+        with org.lock_on(OrgLock.channels):
+            channel = Channel.objects.filter(org=org, channel_type=WHATSAPP, address=config['phone'], is_active=True).first()
+            if channel:
+                channel.config = json.dumps(config)
+                channel.modified_by = user
+                channel.name = "%s@s.whatsapp.net" % config['phone']
+                channel.address = config['phone']
+                channel.save()
 
-        else:
-            channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
+            else:
+                channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
                                      config=config, address=config['phone'])
 
-            # notify Mage so that it activates this channel
-            from .tasks import MageStreamAction, notify_whatsapp_mage_task
-            notify_whatsapp_mage_task.delay(channel.uuid, MageStreamAction.activate)
+                # notify Mage so that it activates this channel
+                from .tasks import MageStreamAction, notify_whatsapp_mage_task
+                notify_whatsapp_mage_task.delay(channel.uuid, MageStreamAction.activate)
 
         return channel
 
