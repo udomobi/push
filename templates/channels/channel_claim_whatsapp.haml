@@ -17,21 +17,45 @@
       var select_ = $("select#id_country");
       select_.change(function(){
         var value = select_[0][select_[0].selectedIndex].value;
-          $("#id_carrier").select2("val", null);
-            $.ajax({
-              type: 'get',
-              dataType: 'json',
-              data: 'country=' + value,
-              url: '/channels/utils/carriers/',
-              success: function(result){
-                var options = "";
-                for (var i = 0; i < result.length; i++) {
-                  options += "<option value=" + result[i]['id'] + ">" + result[i]['text'] + "<br>";
-                }
-                $("select#id_carrier").html(options);
-              }
-            });
+        $("#id_carrier").select2("val", null);
+        $.ajax({
+          type: 'get',
+          dataType: 'json',
+          data: 'country=' + value,
+          url: '/channels/utils/carriers/',
+          success: function(result){
+            var options = "";
+            for (var i = 0; i < result.length; i++) {
+              options += "<option value=" + result[i]['id'] + ">" + result[i]['text'] + "<br>";
+            }
+            $("select#id_carrier").html(options);
+          }
         });
+      });
+
+      function sendCode(){
+
+        var _cc = {{ whatsapp_cc }};
+        var _phone = {{ whatsapp_phone }};
+        var _id = {{ whatsapp_request_id }};
+        var _code = $('input#id_code').val();
+
+        $.ajax({
+          type: 'get',
+          dataType: 'json',
+          url: 'https://v.whatsapp.net/v2/register',
+          data: 'cc='+_cc+'&in='+_phone+'&id='+_id+'&code='+_code,
+          headers: {
+            'Accept': 'text/json',
+            'User-Agent': 'WhatsApp/2.13.21 S40Version/14.26 Device/Nokia302'
+          },
+          success: function(result){
+            console.log(result);
+          }
+        });
+
+      }
+
     });
 
 -block title
@@ -45,6 +69,11 @@
 
   %h2.font_normalize.header-margin
     -trans "Connect WhatsApp"
+
+-if whatsapp_cc and whatsapp_phone and whatsapp_confirmation and whatsapp_request_confirmation and whatsapp_request_id
+  -block form-buttons
+    %div.form-actions
+      %input.btn.btn-primary{value:"Submit", type:"button", onclick:"sendCode()"}
 
 -block pre-form
   .info
