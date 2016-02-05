@@ -1587,13 +1587,11 @@ class ChannelCRUDL(SmartCRUDL):
 
         def get_context_data(self, **kwargs):
             context = super(ChannelCRUDL.ClaimWhatsapp, self).get_context_data(**kwargs)
-            context['whatsapp_request_id'] = self.request.session.get('whatsapp_request_id')
             context['whatsapp_cc'] = self.request.session.get('whatsapp_cc')
             context['whatsapp_phone'] = self.request.session.get('whatsapp_phone')
             context['whatsapp_confirmation'] = self.request.session.get('whatsapp_confirmation')
             context['whatsapp_request_confirmation'] = True if self.request.REQUEST.get(
                 'whatsapp_confirmation') else False
-
             return context
 
         def get_form_class(self):
@@ -1615,6 +1613,7 @@ class ChannelCRUDL(SmartCRUDL):
 
         def form_valid(self, form):
             from yowsup.registration import WACodeRequest, WARegRequest
+
             org = self.request.user.get_org()
             c = Carrier()
 
@@ -1645,7 +1644,6 @@ class ChannelCRUDL(SmartCRUDL):
                         self.request.session['whatsapp_cc'] = None
                         self.request.session['whatsapp_phone'] = None
                         self.request.session['whatsapp_confirmation'] = None
-                        self.request.session['whatsapp_request_id'] = None
 
                     else:
                         messages.error(self.request,
@@ -1662,7 +1660,6 @@ class ChannelCRUDL(SmartCRUDL):
                         mcc = str(mcc[0]['mcc'])
 
                     codeReq = WACodeRequest(cc, phone, mcc, data['carrier'], mcc, data['carrier'], 'sms')
-                    # id = codeReq.idx
                     result = codeReq.send()
 
                     print "WhatsApp code request log: {0}".format(result)
@@ -1678,13 +1675,11 @@ class ChannelCRUDL(SmartCRUDL):
                         self.request.session['whatsapp_cc'] = None
                         self.request.session['whatsapp_phone'] = None
                         self.request.session['whatsapp_confirmation'] = None
-                        self.request.session['whatsapp_request_id'] = None
 
                     elif result['status'] == 'sent':
                         self.request.session['whatsapp_cc'] = cc
                         self.request.session['whatsapp_phone'] = phone
                         self.request.session['whatsapp_confirmation'] = True
-                        self.request.session['whatsapp_request_id'] = result['id']
                         return redirect(reverse('channels.channel_claim_whatsapp') + '?whatsapp_confirmation=True')
 
                     elif 'reason' in result and (result['reason'] == 'too_recent' or result['reason'] == 'temporarily_unavailable'):
