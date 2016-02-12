@@ -63,6 +63,7 @@ ZENVIA = 'ZV'
 YO = 'YO'
 START = 'ST'
 TELEGRAM = 'TG'
+WHATSAPP = 'WA'
 
 SEND_URL = 'send_url'
 SEND_METHOD = 'method'
