@@ -44,9 +44,9 @@ EXTERNAL_SCHEME = 'ext'
 URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (TWITTER_SCHEME, _("Twitter handle"), 'twitter', 'twitter'),
                      (TELEGRAM_SCHEME, _("Telegram identifier"), 'telegram', 'telegram'),
-                     (WHATSAPP_SCHEME, _("WhatsApp number")),
                      (EMAIL_SCHEME, _("Email address"), 'email', 'email'),
-                     (EXTERNAL_SCHEME, _("External identifier"), 'external', 'external'))
+                     (EXTERNAL_SCHEME, _("External identifier"), 'external', 'external'),
+                     (WHATSAPP_SCHEME, _("WhatsApp number")))
 
 # schemes that we actually support
 URN_SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
