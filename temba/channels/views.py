@@ -196,8 +196,8 @@ def channel_status_processor(request):
         if not send_channel:
             send_channel = org.get_send_channel(scheme=TELEGRAM_SCHEME)
 
-		# as is whatsapp
-		if not send_channel:
+        # as is whatsapp
+        if not send_channel:
             send_channel = org.get_send_channel(scheme=WHATSAPP_SCHEME)
 
         status['send_channel'] = send_channel
