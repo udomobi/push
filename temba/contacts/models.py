@@ -46,7 +46,7 @@ URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (TELEGRAM_SCHEME, _("Telegram identifier"), 'telegram', 'telegram'),
                      (EMAIL_SCHEME, _("Email address"), 'email', 'email'),
                      (EXTERNAL_SCHEME, _("External identifier"), 'external', 'external'),
-                     (WHATSAPP_SCHEME, _("WhatsApp number")))
+                     (WHATSAPP_SCHEME, _("WhatsApp number"), 'whatsapp', 'whatsapp'))
 
 # schemes that we actually support
 URN_SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
