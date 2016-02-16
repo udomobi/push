@@ -1,106 +1,190 @@
--extends "smartmin/form.html"
+-extends "smartmin/create.html"
 -load i18n
+
+-block page-top
+
+-block content
+  .row
+    .span4
+      #claim
+        #big-phone
+          %img{ src:"{{ STATIC_URL }}/images/claim_phone.png" }
+
+        %form.claim-form{method:"post", action:"{% url 'channels.channel_claim_whatsapp' %}"}
+          -csrf_token
+          .claim-field
+            .claim-label
+              -trans "Country"
+            {{ form.country }}
+            {{ form.country.errors }}
+          .claim-field
+            .claim-label
+              -trans "Phone Number"
+            {{ form.phone_number }}
+            {{ form.phone_number.errors }}
+          .claim-field
+            .claim-label
+              -trans "Password"
+            {{ form.password }}
+            {{ form.password.errors }}
+          %input.btn.btn-primary{type:"submit", value:"{% trans 'Add channel' %}"}
+
+          %errors
+
+    .span8
+      %h2.help-title
+        %span.title-icon
+          .small-help.icon-whatsapp.float-left
+        %span.title-text
+          -trans "Connect your WhatsApp"
+
+      #little-help
+        %p
+          -blocktrans with brand.name as brand
+            Contact us to download the WhatsApp Channel authenticator.
 
 -block extra-script
   {{ block.super }}
-
   :javascript
     $(function(){
+      // get the top of your sidebar based on its default position
+      var topOfSidebar = $("#claim").offset().top;
+
+      // when the window scrolls check to see whether it is about to go off screen. If so then switch to fixed.
+      $(window).scroll(function() {
+        var topOfWindow = $(window).scrollTop();
+        if (topOfSidebar < topOfWindow) {
+          $("#claim").addClass("fixed");
+        } else {
+          $("#claim").removeClass("fixed");
+        }
+      });
+
       $("#id_country").select2({
         placeholder: "Select a country"
       });
-      $("#id_carrier").select2({
-        placeholder: "Select an operator"
-      });
       $("#id_method").select2({ minimumResultsForSearch: -1 });
-
-      var select_ = $("select#id_country");
-      select_.change(function(){
-        var value = select_[0][select_[0].selectedIndex].value;
-        $("#id_carrier").select2("val", null);
-        $.ajax({
-          type: 'get',
-          dataType: 'json',
-          data: 'country=' + value,
-          url: '/channels/utils/carriers/',
-          success: function(result){
-            var options = "";
-            for (var i = 0; i < result.length; i++) {
-              options += "<option value=" + result[i]['id'] + ">" + result[i]['text'] + "<br>";
-            }
-            $("select#id_carrier").html(options);
-          }
-        });
-      });
     });
-
--block title
-
-  -if whatsapp_request_confirmation
-    .pull-right
-      %a.btn{href:"javascript:history.back(-1);"}
-        -trans "Back"
-
-  .medium-help.icon-whatsapp.float-left
-
-  %h2.font_normalize.header-margin
-    -trans "Connect WhatsApp"
-
--block pre-form
-  .info
-    %p
-      -blocktrans
-        After entering your data, you will to received a message in your cell phone with activation code. This code should will to be inserted again here.
-
-  -if whatsapp_cc and whatsapp_phone and whatsapp_confirmation and not whatsapp_request_confirmation
-    .info
-      %p
-        -blocktrans
-          Your current data in session: CC ({{ whatsapp_cc }}) and Phone ({{ whatsapp_phone }})
-
-      %a.btn{href:"{% url 'channels.channel_claim_whatsapp' %}?whatsapp_confirmation=True"}
-        -trans "Insert confirmation code"
-
-    .divider
+  </script>
 
 -block extra-style
   {{ block.super }}
-
   :css
-    #s2id_id_country {
-      width: 370px;
+    #little-help {
+      margin-top: 15px;
+      font-size: 16px;
     }
 
-    .info {
-      width: 800px;
-      margin-bottom: 20px;
+    ul.errorlist {
+      margin-left: 0px;
     }
 
-    .medium-help {
-      font-size: 50px;
-      height: 50px;
+    ul.errorlist li {
+      list-style-type: none;
+      color: #855;
+      text-align: center;
     }
 
-    .header-margin {
-      margin-left: 60px;
+    #claim {
+      position: relative;
+      margin-top: 10px;
     }
 
-    .help-block {
-      margin-left:150px;
-      margin-bottom:20px;
+    @media (min-width: 480px) {
+      #claim.fixed {
+        position: fixed;
+        top: 0px;
+      }
     }
 
-    .form-group {
-      margin-bottom:15px;
+    .step {
+      padding-top: 30px;
+      clear: both;
     }
 
-    .divider{
+    .step-image {
+      width: 240px;
+      float: left;
+    }
+    .step-text {
+      margin-left: 250px;
+    }
+
+    @media (max-width: 480px) {
+      .step-image {
+        width: 240px;
+        display: block;
+        float: none;
+      }
+
+      .step-text {
+        margin-left: 0px;
+      }
+    }
+
+    .step-text h3 {
+      display: inline;
+    }
+
+    h3 {
+      clear: both;
+    }
+
+    h2.help-title {
+      margin-top: 5px;
+    }
+
+    .title-icon .icon-android {
+      font-size: 40px;
+      margin-top: 20px;
+    }
+
+    .title-icon + .title-text {
+      margin-left: 36px;
+    }
+
+    #big-phone {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      z-index: -1;
+    }
+
+    .claim-form {
+      position: absolute;
+      left: 50px;
+      top: 80px;
+      width: 182px;
+    }
+
+    .claim-label {
+      text-align: center;
+    }
+
+    .claim-field {
+      margin-bottom: 10px;
+    }
+
+    input[type="submit"] {
       width: 100%;
-      height: 1px;
-      background-color: #CCC;
-      margin: 40px 0;
     }
 
-    #s2id_id_carrier{
-      width: 370px;
+    #claim {
+      width: 285px;
+      height: 500px;
+    }
+
+    input[type="text"] {
+      height: 30px;
+      width: 100%;
+      padding-left: 0px;
+      padding-right: 0px;
+      line-height: 100%;
+      text-align:center;
+      font-size: 24px;
+      margin-bottom:0;
+    }
+
+    #s2id_id_country {
+      width: 100%;
     }
