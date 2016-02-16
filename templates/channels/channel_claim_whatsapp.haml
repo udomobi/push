@@ -6,8 +6,32 @@
 
   :javascript
     $(function(){
-      $("#id_country").select2();
+      $("#id_country").select2({
+        placeholder: "Select a country"
+      });
+      $("#id_carrier").select2({
+        placeholder: "Select an operator"
+      });
       $("#id_method").select2({ minimumResultsForSearch: -1 });
+
+      var select_ = $("select#id_country");
+      select_.change(function(){
+        var value = select_[0][select_[0].selectedIndex].value;
+        $("#id_carrier").select2("val", null);
+        $.ajax({
+          type: 'get',
+          dataType: 'json',
+          data: 'country=' + value,
+          url: '/channels/utils/carriers/',
+          success: function(result){
+            var options = "";
+            for (var i = 0; i < result.length; i++) {
+              options += "<option value=" + result[i]['id'] + ">" + result[i]['text'] + "<br>";
+            }
+            $("select#id_carrier").html(options);
+          }
+        });
+      });
     });
 
 -block title
@@ -75,4 +99,8 @@
       height: 1px;
       background-color: #CCC;
       margin: 40px 0;
+    }
+
+    #s2id_id_carrier{
+      width: 370px;
     }
