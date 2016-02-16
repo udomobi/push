@@ -11,7 +11,7 @@ from yowsup.stacks import YowStack
 from yowsup.layers import YowLayerEvent
 from yowsup.layers.auth import YowCryptLayer, YowAuthenticationProtocolLayer, AuthError
 from yowsup.layers.coder import YowCoderLayer
-from yowsup.layers.network import YowNetworkLayer, YowNetworkNoProxyLayer
+from yowsup.layers.network import YowNetworkLayer
 from yowsup.layers.protocol_messages import YowMessagesProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
 from yowsup.layers.protocol_receipts import YowReceiptProtocolLayer
@@ -182,8 +182,7 @@ class YowsupSendStack(object):
                 YowCoderLayer,
                 YowCryptLayer,
                 YowStanzaRegulator,
-                YowNetworkNoProxyLayer
-                # YowNetworkLayer
+                YowNetworkLayer
             )
         else:
             layers = (
@@ -194,8 +193,7 @@ class YowsupSendStack(object):
                 YowCoderLayer,
                 YowCryptLayer,
                 YowStanzaRegulator,
-                YowNetworkNoProxyLayer
-                # YowNetworkLayer
+                YowNetworkLayer
             )
 
         self.stack = YowStack(layers)
