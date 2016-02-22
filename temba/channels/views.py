@@ -1643,6 +1643,15 @@ class ChannelCRUDL(SmartCRUDL):
             return context
 
     class ClaimWhatsapp(OrgPermsMixin, SmartFormView):
+
+        @non_atomic_when_eager
+        def dispatch(self, *args, **kwargs):
+            """
+            Decorated with @non_atomic_when_eager so that channel object is always committed to database before Mage
+            tries to access it
+            """
+            return super(ChannelCRUDL.ClaimWhatsapp, self).dispatch(*args, **kwargs)
+
         title = _("Connect WhatsApp")
         fields = ('country', 'phone_number', 'password')
         success_url = "id@channels.channel_configuration"
