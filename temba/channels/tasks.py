@@ -78,8 +78,8 @@ def trim_channel_log_task():
     ChannelLog.objects.filter(created_on__lte=two_days_ago).delete()
 
 
-@task(track_started=True, name='notify_mage_task')
-def notify_mage_task(channel_uuid, action):
+@task(track_started=True, name='notify_twitter_mage_task')
+def notify_twitter_mage_task(channel_uuid, action):
     """
     Notifies Mage of a change to a Twitter channel. Having this in a djcelery_transactions task ensures that the channel
     db object is updated before Mage tries to fetch it
@@ -92,6 +92,21 @@ def notify_mage_task(channel_uuid, action):
         mage.refresh_twitter_stream(channel_uuid)
     elif action == MageStreamAction.deactivate:
         mage.deactivate_twitter_stream(channel_uuid)
+    else:
+        raise ValueError('Invalid action: %s' % action)
+
+@task(track_started=True, name='notify_whatsapp_mage_task')
+def notify_whatsapp_mage_task(channel_uuid, action):
+    """
+    Notifies Mage of a change to a WhatsApp channel. Having this in a djcelery_transactions task ensures that the channel
+    db object is updated before Mage tries to fetch it
+    """
+    mage = MageClient(settings.MAGE_API_URL, settings.MAGE_AUTH_TOKEN)
+
+    if action == MageStreamAction.activate:
+        mage.activate_whatsapp_stream(channel_uuid)
+    elif action == MageStreamAction.deactivate:
+        mage.deactivate_whatsapp_stream(channel_uuid)
     else:
         raise ValueError('Invalid action: %s' % action)
 

@@ -63,6 +63,7 @@ ZENVIA = 'ZV'
 YO = 'YO'
 START = 'ST'
 TELEGRAM = 'TG'
+WHATSAPP = 'WA'
 
 SEND_URL = 'send_url'
 SEND_METHOD = 'method'
@@ -114,6 +115,7 @@ CHANNEL_SETTINGS = {
     BLACKMYNA: dict(scheme='tel', max_length=1600),
     SMSCENTRAL: dict(scheme='tel', max_length=1600),
     M3TECH: dict(scheme='tel', max_length=160),
+    WHATSAPP: dict(scheme='whatsapp', max_length=10000),
     YO: dict(scheme='tel', max_length=1600),
     START: dict(scheme='tel', max_length=1600),
     TELEGRAM: dict(scheme='telegram', max_length=1600)
@@ -158,7 +160,8 @@ class Channel(TembaModel):
                     (START, "Start Mobile"),
                     (TELEGRAM, "Telegram"),
                     (YO, "Yo!"),
-                    (M3TECH, "M3 Tech"))
+                    (M3TECH, "M3 Tech"),
+                    (WHATSAPP, "WhatsApp"))
 
     channel_type = models.CharField(verbose_name=_("Channel Type"), max_length=3, choices=TYPE_CHOICES,
                                     default=ANDROID, help_text=_("Type of this channel, whether Android, Twilio or SMSC"))
@@ -320,7 +323,8 @@ class Channel(TembaModel):
             plivo_response_status, plivo_response = client.buy_phone_number(params=dict(number=plivo_number))
 
             if plivo_response_status != 201:
-                raise Exception(_("There was a problem claiming that number, please check the balance on your account."))
+                raise Exception(
+                    _("There was a problem claiming that number, please check the balance on your account."))
 
             plivo_response_status, plivo_response = client.get_number(params=dict(number=plivo_number))
 
@@ -491,12 +495,36 @@ class Channel(TembaModel):
                                          config=config)
 
                 # notify Mage so that it activates this channel
-                from .tasks import MageStreamAction, notify_mage_task
-                notify_mage_task.delay(channel.uuid, MageStreamAction.activate)
+                from .tasks import MageStreamAction, notify_twitter_mage_task
+                notify_twitter_mage_task.delay(channel.uuid, MageStreamAction.activate)
 
         return channel
 
     @classmethod
+    def add_whatsapp_channel(cls, org, user, cc, phone, password):
+        config = dict(password=password,
+                      phone=phone,
+                      cc=cc)
+
+        with org.lock_on(OrgLock.channels):
+            channel = Channel.objects.filter(org=org, channel_type=WHATSAPP, address=config['phone'], is_active=True).first()
+            if channel:
+                channel.config = json.dumps(config)
+                channel.modified_by = user
+                channel.name = "%s@s.whatsapp.net" % config['phone']
+                channel.address = config['phone']
+                channel.save()
+
+            else:
+                channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
+                                     config=config, address=config['phone'])
+
+                # notify Mage so that it activates this channel
+                from .tasks import MageStreamAction, notify_whatsapp_mage_task
+                notify_whatsapp_mage_task.delay(channel.uuid, MageStreamAction.activate)
+
+        return channel
+
     def get_or_create_android(cls, gcm, status):
         """
         Creates a new Android channel from the gcm and status commands sent during device registration
@@ -874,8 +902,13 @@ class Channel(TembaModel):
 
         if notify_mage and self.channel_type == TWITTER:
             # notify Mage so that it deactivates this channel
-            from .tasks import MageStreamAction, notify_mage_task
-            notify_mage_task.delay(self.uuid, MageStreamAction.deactivate)
+            from .tasks import MageStreamAction, notify_twitter_mage_task
+            notify_twitter_mage_task.delay(self.uuid, MageStreamAction.deactivate)
+
+        if notify_mage and self.channel_type == WHATSAPP:
+            # notify Mage so that it deactivates this channel
+            from .tasks import MageStreamAction, notify_whatsapp_mage_task
+            notify_whatsapp_mage_task.delay(self.uuid, MageStreamAction.deactivate)
 
         # if we just lost calling capabilities archive our voice flows
         if CALL in self.role:
@@ -1829,6 +1862,24 @@ class Channel(TembaModel):
         ChannelLog.log_success(msg, "Successfully delivered message")
 
     @classmethod
+    def send_whatsapp_message(cls, channel, msg, text):
+        from temba.msgs.models import Msg, WIRED
+        from temba.utils.yowsup_layer import YowsupSendStack
+        start = time.time()
+        try:
+            credentials = (channel.config['phone'], channel.config['password'])
+            text = ("{0}".format(text)).encode('utf-8', 'ignore')
+            result = YowsupSendStack(credentials, [(msg.urn_path, text)])
+            try:
+                result.start()
+            except KeyboardInterrupt:
+                pass
+            ChannelLog.log_success(msg, "Successfully delivered message")
+            Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start)
+        except Exception as e:
+            ChannelLog.log_error(msg, e)
+
+    @classmethod
     def send_clickatell_message(cls, channel, msg, text):
         """
         Sends a message to Clickatell, they expect a GET in the following format:
@@ -2064,6 +2115,7 @@ class Channel(TembaModel):
                       VUMI: Channel.send_vumi_message,
                       SHAQODOON: Channel.send_shaqodoon_message,
                       ZENVIA: Channel.send_zenvia_message,
+                      WHATSAPP: Channel.send_whatsapp_message,
                       PLIVO: Channel.send_plivo_message,
                       HIGH_CONNECTION: Channel.send_high_connection_message,
                       BLACKMYNA: Channel.send_blackmyna_message,

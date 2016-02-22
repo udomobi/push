@@ -451,7 +451,7 @@
             %div
               -trans "Use our pluggable API to connect an external service you already have."
 
-    -if org_perms.channels.channel_claim_twitter or org_perms.channels.channel_claim_telegram
+    -if org_perms.channels.channel_claim_twitter or org_perms.channels.channel_claim_telegram or org_perms.channels.channel_claim_whatsapp
       %h3
         -trans "Social Network Channels"
 
@@ -469,6 +469,21 @@
                 %div
                   -blocktrans
                     Add a <a href="http://twitter.com">Twitter</a> account to send messages as direct messages.
+
+      -if org_perms.channels.channel_claim_whatsapp
+        .claim-row.twitter-channel
+          .row
+            .span3
+              %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_whatsapp' %}"}
+                .claim-glyph.icon-whatsapp
+                %p.claim-text
+                  -trans "WhatsApp"
+
+            .span9
+              .claim-description
+                %div
+                  -blocktrans
+                    Add a <a href="https://www.whatsapp.com" target="_blank">WhatsApp</a> account to send and receive messages of contacts.
 
       -if org_perms.channels.channel_claim_telegram
         .claim-row.twitter-channel

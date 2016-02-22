@@ -1,0 +1,190 @@
+-extends "smartmin/create.html"
+-load i18n
+
+-block page-top
+
+-block content
+  .row
+    .span4
+      #claim
+        #big-phone
+          %img{ src:"{{ STATIC_URL }}/images/claim_phone.png" }
+
+        %form.claim-form{method:"post", action:"{% url 'channels.channel_claim_whatsapp' %}"}
+          -csrf_token
+          .claim-field
+            .claim-label
+              -trans "Country"
+            {{ form.country }}
+            {{ form.country.errors }}
+          .claim-field
+            .claim-label
+              -trans "Phone Number"
+            {{ form.phone_number }}
+            {{ form.phone_number.errors }}
+          .claim-field
+            .claim-label
+              -trans "Password"
+            {{ form.password }}
+            {{ form.password.errors }}
+          %input.btn.btn-primary{type:"submit", value:"{% trans 'Add channel' %}"}
+
+          %errors
+
+    .span8
+      %h2.help-title
+        %span.title-icon
+          .small-help.icon-whatsapp.float-left
+        %span.title-text
+          -trans "Connect your WhatsApp"
+
+      #little-help
+        %p
+          -blocktrans with brand.name as brand
+            Contact us to download the WhatsApp Channel authenticator.
+
+-block extra-script
+  {{ block.super }}
+  :javascript
+    $(function(){
+      // get the top of your sidebar based on its default position
+      var topOfSidebar = $("#claim").offset().top;
+
+      // when the window scrolls check to see whether it is about to go off screen. If so then switch to fixed.
+      $(window).scroll(function() {
+        var topOfWindow = $(window).scrollTop();
+        if (topOfSidebar < topOfWindow) {
+          $("#claim").addClass("fixed");
+        } else {
+          $("#claim").removeClass("fixed");
+        }
+      });
+
+      $("#id_country").select2({
+        placeholder: "Select a country"
+      });
+      $("#id_method").select2({ minimumResultsForSearch: -1 });
+    });
+  </script>
+
+-block extra-style
+  {{ block.super }}
+  :css
+    #little-help {
+      margin-top: 15px;
+      font-size: 16px;
+    }
+
+    ul.errorlist {
+      margin-left: 0px;
+    }
+
+    ul.errorlist li {
+      list-style-type: none;
+      color: #855;
+      text-align: center;
+    }
+
+    #claim {
+      position: relative;
+      margin-top: 10px;
+    }
+
+    @media (min-width: 480px) {
+      #claim.fixed {
+        position: fixed;
+        top: 0px;
+      }
+    }
+
+    .step {
+      padding-top: 30px;
+      clear: both;
+    }
+
+    .step-image {
+      width: 240px;
+      float: left;
+    }
+    .step-text {
+      margin-left: 250px;
+    }
+
+    @media (max-width: 480px) {
+      .step-image {
+        width: 240px;
+        display: block;
+        float: none;
+      }
+
+      .step-text {
+        margin-left: 0px;
+      }
+    }
+
+    .step-text h3 {
+      display: inline;
+    }
+
+    h3 {
+      clear: both;
+    }
+
+    h2.help-title {
+      margin-top: 5px;
+    }
+
+    .title-icon .icon-android {
+      font-size: 40px;
+      margin-top: 20px;
+    }
+
+    .title-icon + .title-text {
+      margin-left: 36px;
+    }
+
+    #big-phone {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      z-index: -1;
+    }
+
+    .claim-form {
+      position: absolute;
+      left: 50px;
+      top: 80px;
+      width: 182px;
+    }
+
+    .claim-label {
+      text-align: center;
+    }
+
+    .claim-field {
+      margin-bottom: 10px;
+    }
+
+    input[type="submit"] {
+      width: 100%;
+    }
+
+    #claim {
+      width: 285px;
+      height: 500px;
+    }
+
+    input[type="text"] {
+      height: 30px;
+      width: 100%;
+      padding-left: 0px;
+      padding-right: 0px;
+      line-height: 100%;
+      text-align:center;
+      font-size: 24px;
+      margin-bottom:0;
+    }
+
+    #s2id_id_country {
+      width: 100%;
+    }

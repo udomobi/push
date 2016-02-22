@@ -7,7 +7,7 @@ from django import template
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from temba.contacts.models import Contact, ContactURN, EMAIL_SCHEME, EXTERNAL_SCHEME, FACEBOOK_SCHEME
-from temba.contacts.models import TELEGRAM_SCHEME, TEL_SCHEME, TWITTER_SCHEME, TWILIO_SCHEME, URN_ANON_MASK
+from temba.contacts.models import TELEGRAM_SCHEME, TEL_SCHEME, TWITTER_SCHEME, TWILIO_SCHEME, URN_ANON_MASK, WHATSAPP_SCHEME
 from django.utils.translation import ugettext_lazy as _
 
 register = template.Library()
@@ -18,6 +18,7 @@ URN_SCHEME_ICONS = {TEL_SCHEME: 'icon-mobile-2',
                     EMAIL_SCHEME: 'icon-envelop',
                     FACEBOOK_SCHEME: 'icon-facebook',
                     TELEGRAM_SCHEME: 'icon-telegram',
+                    WHATSAPP_SCHEME: 'icon-whatsapp',
                     EXTERNAL_SCHEME: 'icon-channel-external'}
 
 ACTIVITY_ICONS = {

@@ -25,7 +25,8 @@ from django_countries.data import COUNTRIES
 from phonenumbers.phonenumberutil import region_code_for_number
 from smartmin.views import SmartCRUDL, SmartReadView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
-from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES
+from temba.channels.models import WHATSAPP
+from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, WHATSAPP_SCHEME
 from temba.msgs.models import Broadcast, Call, Msg, QUEUED, PENDING
 from temba.orgs.models import Org, ACCOUNT_SID
 from temba.orgs.views import OrgPermsMixin, OrgObjPermsMixin, ModalMixin
@@ -49,6 +50,7 @@ RELAYER_TYPE_ICONS = {ANDROID: "icon-channel-android",
                       PLIVO: "icon-channel-plivo",
                       CLICKATELL: "icon-channel-clickatell",
                       TWITTER: "icon-twitter",
+                      WHATSAPP: "icon-whatsapp",
                       TELEGRAM: "icon-telegram"}
 
 SESSION_TWITTER_TOKEN = 'twitter_oauth_token'
@@ -68,19 +70,19 @@ TWILIO_SUPPORTED_COUNTRIES = (('AU', _("Australia")),
                               ('AT', _("Austria")),
                               ('BE', _("Belgium")),
                               ('CA', _("Canada")),
-                              ('CL', _("Chile")), #Beta
-                              ('CZ', _("Czech Republic")), #Beta
-                              ('DK', _("Denmark")), #Beta
+                              ('CL', _("Chile")),  # Beta
+                              ('CZ', _("Czech Republic")),  # Beta
+                              ('DK', _("Denmark")),  # Beta
                               ('EE', _("Estonia")),
                               ('FI', _("Finland")),
-                              ('FR', _("France")), #Beta
+                              ('FR', _("France")),  # Beta
                               ('DE', _("Germany")),
                               ('HK', _("Hong Kong")),
-                              ('HU', _("Hungary")), #Beta
+                              ('HU', _("Hungary")),  # Beta
                               ('IE', _("Ireland")),
-                              ('IL', _("Israel")), #Beta
+                              ('IL', _("Israel")),  # Beta
                               ('LT', _("Lithuania")),
-                              ('MX', _("Mexico")), #Beta
+                              ('MX', _("Mexico")),  # Beta
                               ('NO', _("Norway")),
                               ('PL', _("Poland")),
                               ('ES', _("Spain")),
@@ -161,6 +163,7 @@ PLIVO_SUPPORTED_COUNTRY_CODES = [61, 32, 1, 420, 372, 358, 49, 852, 36, 972, 370
 # list of codes and countries sorted by country name
 ALL_COUNTRIES = sorted(((code, name) for code, name in COUNTRIES.items()), key=lambda x: x[1])
 
+
 def get_channel_icon(channel_type):
     return RELAYER_TYPE_ICONS.get(channel_type, "icon-channel-external")
 
@@ -193,6 +196,10 @@ def channel_status_processor(request):
         if not send_channel:
             send_channel = org.get_send_channel(scheme=TELEGRAM_SCHEME)
 
+        # as is whatsapp
+        if not send_channel:
+            send_channel = org.get_send_channel(scheme=WHATSAPP_SCHEME)
+
         status['send_channel'] = send_channel
         status['call_channel'] = call_channel
         status['has_outgoing_channel'] = send_channel or call_channel
@@ -220,7 +227,6 @@ def channel_status_processor(request):
 
 
 def get_commands(channel, commands, sync_event=None):
-
     # we want to find all queued messages
 
     # all outgoing messages for our channel that are queued up
@@ -252,6 +258,7 @@ def get_commands(channel, commands, sync_event=None):
 
     return commands
 
+
 @disable_middleware
 def sync(request, channel_id):
     start = time.time()
@@ -272,9 +279,9 @@ def sync(request, channel_id):
     if not channel.secret or not channel.org:
         return HttpResponse(json.dumps(dict(cmds=[channel.build_registration_command()])), content_type='application/javascript')
 
-    #print "\n\nSECRET: '%s'" % channel.secret
-    #print "TS: %s" % request_time
-    #print "BODY: '%s'\n\n" % request.body
+    # print "\n\nSECRET: '%s'" % channel.secret
+    # print "TS: %s" % request_time
+    # print "BODY: '%s'\n\n" % request.body
 
     # check that the request isn't too old (15 mins)
     now = time.time()
@@ -289,7 +296,7 @@ def sync(request, channel_id):
 
     if request_signature != signature:
         return HttpResponse(status=401,
-                            content='{ "error_id": 1, "error": "Invalid signature: \'%(request)s\'", "cmds":[] }' % {'request':request_signature})
+                            content='{ "error_id": 1, "error": "Invalid signature: \'%(request)s\'", "cmds":[] }' % {'request': request_signature})
 
     # update our last seen on our channel
     channel.last_seen = timezone.now()
@@ -319,7 +326,7 @@ def sync(request, channel_id):
                     # catchall for commands that deal with a single message
                     if 'msg_id' in cmd:
                         msg = Msg.all_messages.filter(pk=cmd['msg_id'],
-                                                 org=channel.org)
+                                                      org=channel.org)
                         if msg:
                             msg = msg[0]
                             handled = msg.update(cmd)
@@ -471,6 +478,16 @@ class ClaimAndroidForm(forms.Form):
         return number
 
 
+class WhatsappClaimForm(forms.Form):
+    country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"), help_text=_("The country this phone number is used in"))
+    phone_number = forms.CharField(max_length=14, min_length=1, label=_("Phone number"), help_text=_("The phone number with code location and without ninth digit (Ex.: 8200000000)"))
+    password = forms.CharField(label=_('Password'), help_text=_("Password genarate by App. Case sensitive."))
+
+    def __init__(self, *args, **kwargs):
+        self.org = kwargs.pop('org')
+        super(WhatsappClaimForm, self).__init__(*args, **kwargs)
+
+
 class UpdateChannelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.object = kwargs['object']
@@ -515,7 +532,7 @@ class ChannelCRUDL(SmartCRUDL):
     actions = ('list', 'claim', 'update', 'read', 'delete', 'search_numbers', 'claim_twilio',
                'claim_android', 'claim_africas_talking', 'claim_zenvia', 'configuration', 'claim_external',
                'search_nexmo', 'claim_nexmo', 'bulk_sender_options', 'create_bulk_sender', 'claim_infobip',
-               'claim_hub9', 'claim_vumi', 'create_caller', 'claim_kannel', 'claim_twitter', 'claim_shaqodoon',
+               'claim_hub9', 'claim_vumi', 'create_caller', 'claim_kannel', 'claim_twitter', 'claim_whatsapp', 'claim_shaqodoon',
                'claim_verboice', 'claim_clickatell', 'claim_plivo', 'search_plivo', 'claim_high_connection',
                'claim_blackmyna', 'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo')
     permissions = True
@@ -524,6 +541,7 @@ class ChannelCRUDL(SmartCRUDL):
         """
         Mixin that makes sure that anonymous orgs cannot add channels (have no permission if anon)
         """
+
         def has_permission(self, request, *args, **kwargs):
             org = self.derive_org()
             if not org or org.is_anon:
@@ -597,15 +615,15 @@ class ChannelCRUDL(SmartCRUDL):
             # power source stats data
             source_stats = [[event['power_source'], event['count']]
                             for event in sync_events.order_by('power_source')
-                                                    .values('power_source')
-                                                    .annotate(count=Count('power_source'))]
+                                .values('power_source')
+                                .annotate(count=Count('power_source'))]
             context['source_stats'] = source_stats
 
             # network connected to stats
             network_stats = [[event['network_type'], event['count']]
                              for event in sync_events.order_by('network_type')
-                                                     .values('network_type')
-                                                     .annotate(count=Count('network_type'))]
+                                 .values('network_type')
+                                 .annotate(count=Count('network_type'))]
             context['network_stats'] = network_stats
 
             total_network = 0
@@ -674,13 +692,13 @@ class ChannelCRUDL(SmartCRUDL):
 
             # get all our counts for that period
             daily_counts = list(ChannelCount.objects.filter(channel__in=channels, day__gte=start_date)
-                                                    .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
-                                                                            ChannelCount.OUTGOING_MSG_TYPE,
-                                                                            ChannelCount.INCOMING_IVR_TYPE,
-                                                                            ChannelCount.OUTGOING_IVR_TYPE])
-                                                    .values('day', 'count_type')
-                                                    .order_by('day', 'count_type')
-                                                    .annotate(count_sum=Sum('count')))
+                                .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
+                                                        ChannelCount.OUTGOING_MSG_TYPE,
+                                                        ChannelCount.INCOMING_IVR_TYPE,
+                                                        ChannelCount.OUTGOING_IVR_TYPE])
+                                .values('day', 'count_type')
+                                .order_by('day', 'count_type')
+                                .annotate(count_sum=Sum('count')))
 
             current = start_date
             while current <= end_date:
@@ -708,14 +726,14 @@ class ChannelCRUDL(SmartCRUDL):
 
             # get our totals grouped by month
             monthly_totals = list(ChannelCount.objects.filter(channel=channel, day__gte=month_start)
-                                                      .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
-                                                                              ChannelCount.OUTGOING_MSG_TYPE,
-                                                                              ChannelCount.INCOMING_IVR_TYPE,
-                                                                              ChannelCount.OUTGOING_IVR_TYPE])
-                                                      .extra({'month': "date_trunc('month', day)"})
-                                                      .values('month', 'count_type')
-                                                      .order_by('month', 'count_type')
-                                                      .annotate(count_sum=Sum('count')))
+                                  .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
+                                                          ChannelCount.OUTGOING_MSG_TYPE,
+                                                          ChannelCount.INCOMING_IVR_TYPE,
+                                                          ChannelCount.OUTGOING_IVR_TYPE])
+                                  .extra({'month': "date_trunc('month', day)"})
+                                  .values('month', 'count_type')
+                                  .order_by('month', 'count_type')
+                                  .annotate(count_sum=Sum('count')))
 
             # calculate our summary table for last 12 months
             now = timezone.now()
@@ -850,8 +868,8 @@ class ChannelCRUDL(SmartCRUDL):
 
             if obj.channel_type == TWITTER:
                 # notify Mage so that it refreshes this channel
-                from .tasks import MageStreamAction, notify_mage_task
-                notify_mage_task.delay(obj.uuid, MageStreamAction.refresh)
+                from .tasks import MageStreamAction, notify_twitter_mage_task
+                notify_twitter_mage_task.delay(obj.uuid, MageStreamAction.refresh)
 
             return obj
 
@@ -892,7 +910,7 @@ class ChannelCRUDL(SmartCRUDL):
                 return connection
 
         form_class = BulkSenderForm
-        fields = ('connection', )
+        fields = ('connection',)
 
         def get_form_kwargs(self, *args, **kwargs):
             form_kwargs = super(ChannelCRUDL.CreateBulkSender, self).get_form_kwargs(*args, **kwargs)
@@ -981,7 +999,7 @@ class ChannelCRUDL(SmartCRUDL):
         def form_valid(self, form):
             org = self.request.user.get_org()
 
-            if not org: # pragma: no cover
+            if not org:  # pragma: no cover
                 raise Exception(_("No org for this user, cannot claim"))
 
             data = form.cleaned_data
@@ -1281,7 +1299,7 @@ class ChannelCRUDL(SmartCRUDL):
             password = forms.CharField(label=_("Password"),
                                        help_text=_("The password provided by the provider to use their API"))
             channel = forms.CharField(label=_("Channel Name"),
-                                           help_text=_("The Verboice channel that will be handling your calls"))
+                                      help_text=_("The Verboice channel that will be handling your calls"))
 
         title = _("Connect Verboice")
         channel_type = VERBOICE
@@ -1300,7 +1318,7 @@ class ChannelCRUDL(SmartCRUDL):
                                                               dict(username=data['username'],
                                                                    password=data['password'],
                                                                    channel=data['channel']),
-                                                              role=CALL+ANSWER)
+                                                              role=CALL + ANSWER)
 
             # make sure all contacts added before the channel are normalized
             self.object.ensure_normalized_contacts()
@@ -1368,7 +1386,6 @@ class ChannelCRUDL(SmartCRUDL):
 
             return super(ChannelCRUDL.ClaimAuthenticatedExternal, self).form_valid(form)
 
-
     class ClaimVumi(ClaimAuthenticatedExternal):
         class VumiClaimForm(forms.Form):
             country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"),
@@ -1405,7 +1422,6 @@ class ChannelCRUDL(SmartCRUDL):
             self.object.ensure_normalized_contacts()
 
             return super(ChannelCRUDL.ClaimAuthenticatedExternal, self).form_valid(form)
-
 
     class ClaimClickatell(ClaimAuthenticatedExternal):
         class ClickatellForm(forms.Form):
@@ -1475,7 +1491,7 @@ class ChannelCRUDL(SmartCRUDL):
         def form_valid(self, form):
             org = self.request.user.get_org()
 
-            if not org: # pragma: no cover
+            if not org:  # pragma: no cover
                 raise Exception(_("No org for this user, cannot claim"))
 
             data = form.cleaned_data
@@ -1497,7 +1513,7 @@ class ChannelCRUDL(SmartCRUDL):
             # if this is an external channel, build an example URL
             if self.object.channel_type == EXTERNAL:
                 context['example_url'] = Channel.build_send_url(self.object.config_json()[SEND_URL],
-                          {'to': '+250788123123', 'text': "Love is patient. Love is kind", 'from': self.object.address, 'id': '1241244', 'channel': str(self.object.id)})
+                                                                {'to': '+250788123123', 'text': "Love is patient. Love is kind", 'from': self.object.address, 'id': '1241244', 'channel': str(self.object.id)})
 
             context['domain'] = settings.HOSTNAME
 
@@ -1626,6 +1642,49 @@ class ChannelCRUDL(SmartCRUDL):
             context['twitter_auth_url'] = auth['auth_url']
             return context
 
+    class ClaimWhatsapp(OrgPermsMixin, SmartFormView):
+
+        @non_atomic_when_eager
+        def dispatch(self, *args, **kwargs):
+            """
+            Decorated with @non_atomic_when_eager so that channel object is always committed to database before Mage
+            tries to access it
+            """
+            return super(ChannelCRUDL.ClaimWhatsapp, self).dispatch(*args, **kwargs)
+
+        title = _("Connect WhatsApp")
+        fields = ('country', 'phone_number', 'password')
+        success_url = "id@channels.channel_configuration"
+        form_class = WhatsappClaimForm
+
+        def get_form_kwargs(self):
+            kwargs = super(ChannelCRUDL.ClaimWhatsapp, self).get_form_kwargs()
+            kwargs['org'] = self.request.user.get_org()
+            return kwargs
+
+        def form_valid(self, form):
+
+            org = self.request.user.get_org()
+
+            if not org:  # pragma: no cover
+                raise Exception(_("No org for this user, cannot claim"))
+
+            try:
+                data = form.cleaned_data
+                number = phonenumbers.parse(data['phone_number'], data['country'])
+                cc = str(number.country_code)
+                phone = "{0}{1}".format(cc, str(number.national_number))
+                self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=phone, password=data['password'])
+                self.object.ensure_normalized_contacts()
+
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                messages.error(self.request, _('Error! Reason: {0}. Try again later.'.format(e)))
+                return redirect(self.request.META.get('HTTP_REFERER'))
+
+            return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
+
     class List(OrgPermsMixin, SmartListView):
         title = _("Channels")
         fields = ('name', 'address', 'last_seen')
@@ -1711,7 +1770,6 @@ class ChannelCRUDL(SmartCRUDL):
                                                           phonenumbers.PhoneNumberFormat.INTERNATIONAL))
 
             return HttpResponse(json.dumps(numbers))
-
 
     class BaseClaimNumber(OrgPermsMixin, SmartFormView):
         class ClaimNumberForm(forms.Form):
@@ -1922,15 +1980,15 @@ class ChannelCRUDL(SmartCRUDL):
             return country_code in TWILIO_SUPPORTED_COUNTRY_CODES
 
         def claim_number(self, user, phone_number, country):
-             analytics.track(user.username, 'temba.channel_claim_twilio', properties=dict(number=phone_number))
+            analytics.track(user.username, 'temba.channel_claim_twilio', properties=dict(number=phone_number))
 
-             # add this channel
-             channel = Channel.add_twilio_channel(user.get_org(),
-                                                  user,
-                                                  phone_number,
-                                                  country)
+            # add this channel
+            channel = Channel.add_twilio_channel(user.get_org(),
+                                                 user,
+                                                 phone_number,
+                                                 country)
 
-             return channel
+            return channel
 
     class ClaimNexmo(BaseClaimNumber):
         class ClaimNexmoForm(forms.Form):

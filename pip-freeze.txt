@@ -75,6 +75,7 @@ djorm-ext-hstore==0.5
 gnureadline==6.3.3
 google==1.07
 httplib2==0.9
+ilhasoft-carriers==0.1.6
 ipython==2.2.0
 iso639==0.1.1
 kombu==3.0.16
@@ -97,6 +98,7 @@ unittest2==0.5.1
 wsgiref==0.1.2
 xlrd==0.9.3
 xlwt==0.7.5
+yowsup2==2.4.48
 enum34==1.0.3
 plivo==0.10.1
 antlr4-python2-runtime==4.5.2
