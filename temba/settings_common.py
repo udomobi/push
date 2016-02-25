@@ -418,7 +418,7 @@ PERMISSIONS = {
                          'claim_telegram',
                          'claim_twilio',
                          'claim_twitter',
-                         'claim_whatsapp',
+			 'claim_whatsapp',
                          'claim_verboice',
                          'claim_vumi',
                          'claim_yo',
@@ -612,8 +612,8 @@ GROUP_PERMISSIONS = {
         'channels.channel_claim_telegram',
         'channels.channel_claim_twilio',
         'channels.channel_claim_twitter',
-        'channels.channel_claim_whatsapp',
         'channels.channel_claim_verboice',
+	'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
         'channels.channel_claim_yo',
         'channels.channel_claim_zenvia',
@@ -727,8 +727,8 @@ GROUP_PERMISSIONS = {
         'channels.channel_claim_telegram',
         'channels.channel_claim_twilio',
         'channels.channel_claim_twitter',
-        'channels.channel_claim_whatsapp',
         'channels.channel_claim_verboice',
+ 	'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
         'channels.channel_claim_yo',
         'channels.channel_claim_zenvia',
@@ -888,31 +888,31 @@ from celery.schedules import crontab
 CELERYBEAT_SCHEDULE = {
     "retry-webhook-events": {
         'task': 'retry_events_task',
-        'schedule': timedelta(seconds=300),
+        'schedule': timedelta(seconds=10),
     },
     "check-channels": {
         'task': 'check_channels_task',
-        'schedule': timedelta(seconds=300),
+        'schedule': timedelta(seconds=5),
     },
     "schedules": {
         'task': 'check_schedule_task',
-        'schedule': timedelta(seconds=60),
+        'schedule': timedelta(seconds=5),
     },
     "campaigns": {
         'task': 'check_campaigns_task',
-        'schedule': timedelta(seconds=60),
+        'schedule': timedelta(seconds=5),
     },
     "check-flows": {
         'task': 'check_flows_task',
-        'schedule': timedelta(seconds=60),
+        'schedule': timedelta(seconds=5),
     },
     "check-credits": {
         'task': 'check_credits_task',
-        'schedule': timedelta(seconds=900)
+        'schedule': timedelta(seconds=5)
     },
     "check-messages-task": {
         'task': 'check_messages_task',
-        'schedule': timedelta(seconds=300)
+        'schedule': timedelta(seconds=5)
     },
     "fail-old-messages": {
         'task': 'fail_old_messages',
@@ -928,19 +928,19 @@ CELERYBEAT_SCHEDULE = {
     },
     "squash-flowruncounts": {
         'task': 'squash_flowruncounts',
-        'schedule': timedelta(seconds=300),
+        'schedule': timedelta(seconds=7),
     },
     "squash-channelcounts": {
         'task': 'squash_channelcounts',
-        'schedule': timedelta(seconds=300),
+        'schedule': timedelta(seconds=5),
     },
     "squash-systemlabels": {
         'task': 'squash_systemlabels',
-        'schedule': timedelta(seconds=300),
+        'schedule': timedelta(seconds=5),
     },
     "squash-topupcredits": {
         'task': 'squash_topupcredits',
-        'schedule': timedelta(seconds=300),
+        'schedule': timedelta(seconds=5),
     },
 }
 
