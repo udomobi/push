@@ -39,12 +39,14 @@ FACEBOOK_SCHEME = 'facebook'
 TELEGRAM_SCHEME = 'telegram'
 EMAIL_SCHEME = 'mailto'
 EXTERNAL_SCHEME = 'ext'
+GCM_SCHEME = 'gcm'
 
 URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (TWITTER_SCHEME, _("Twitter handle"), 'twitter', 'twitter'),
                      (TELEGRAM_SCHEME, _("Telegram identifier"), 'telegram', 'telegram'),
                      (EMAIL_SCHEME, _("Email address"), 'email', 'email'),
-                     (EXTERNAL_SCHEME, _("External identifier"), 'external', 'external'))
+                     (EXTERNAL_SCHEME, _("External identifier"), 'external', 'external'),
+                     (GCM_SCHEME, _("GCM identifier"), 'gcm', 'gcm'))
 
 # schemes that we actually support
 URN_SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
@@ -249,11 +251,11 @@ class Contact(TembaModel):
     @classmethod
     def set_simulation(cls, simulation):
         cls.simulation = simulation
-        
+
     @classmethod
     def get_simulation(cls):
         return cls.simulation
-                
+
     @classmethod
     def all(cls):
         simulation = cls.get_simulation()
@@ -752,7 +754,7 @@ class Contact(TembaModel):
             contact.set_field(user, key, value)
 
         return contact
-                
+
     @classmethod
     def prepare_fields(cls, field_dict, import_params=None, user=None):
         if not import_params or 'org_id' not in import_params or 'extra_fields' not in import_params:
@@ -1275,7 +1277,8 @@ URN_SCHEMES_EXPORT_FIELDS = {
     TWITTER_SCHEME: dict(label='Twitter', key=None, id=0, field=None, urn_scheme=TWITTER_SCHEME),
     EXTERNAL_SCHEME: dict(label='External', key=None, id=0, field=None, urn_scheme=EXTERNAL_SCHEME),
     EMAIL_SCHEME: dict(label='Email', key=None, id=0, field=None, urn_scheme=EMAIL_SCHEME),
-    TELEGRAM_SCHEME: dict(label='Telegram', key=None, id=0, field=None, urn_scheme=TELEGRAM_SCHEME)
+    TELEGRAM_SCHEME: dict(label='Telegram', key=None, id=0, field=None, urn_scheme=TELEGRAM_SCHEME),
+    GCM_SCHEME: dict(label='GCM', key=None, id=0, field=None, urn_scheme=GCM_SCHEME)
 }
 
 
@@ -1395,6 +1398,9 @@ class ContactURN(models.Model):
                 return True
             except Exception:
                 return False
+
+        elif scheme == GCM_SCHEME:
+            return True
 
         else:
             return False  # only tel and twitter currently supported
@@ -1680,7 +1686,7 @@ class ContactGroup(TembaModel):
 
         for group in ContactGroup.user_groups.filter(**qs_args).exclude(query=None):
             qs, is_complex = Contact.search(group.org, group.query)  # re-run group query
-            qualifies = qs.filter(pk=contact.id).count() == 1        # should contact now be in group?
+            qualifies = qs.filter(pk=contact.id).count() == 1  # should contact now be in group?
             changed = group.update_contacts(user, [contact], qualifies)
 
             if changed:
@@ -1743,7 +1749,6 @@ class ContactGroup(TembaModel):
 
 
 class ExportContactsTask(SmartModel):
-
     org = models.ForeignKey(Org, related_name='contacts_exports', help_text=_("The Organization of the user."))
     group = models.ForeignKey(ContactGroup, null=True, related_name='exports', help_text=_("The unique group to export"))
     host = models.CharField(max_length=32, help_text=_("The host this export task was created on"))
@@ -1826,7 +1831,7 @@ class ExportContactsTask(SmartModel):
                 batch_contacts = Contact.objects.filter(id__in=batch_ids).select_related('org')
 
                 # to maintain our sort, we need to lookup by id, create a map of our id->contact to aid in that
-                contact_by_id = {c.id:c for c in batch_contacts}
+                contact_by_id = {c.id: c for c in batch_contacts}
 
                 # bulk initialize them
                 Contact.bulk_cache_initialize(self.org, batch_contacts)
@@ -1876,9 +1881,9 @@ class ExportContactsTask(SmartModel):
                         predicted = int(elapsed / (current_contact / (len(contact_ids) * 1.0)))
 
                         print "Export of %s contacts - %d%% (%s/%s) complete in %0.2fs (predicted %0.0fs)" % \
-                            (self.org.name, current_contact * 100 / len(contact_ids),
-                             "{:,}".format(current_contact), "{:,}".format(len(contact_ids)),
-                             time.time() - start, predicted)
+                              (self.org.name, current_contact * 100 / len(contact_ids),
+                               "{:,}".format(current_contact), "{:,}".format(len(contact_ids)),
+                               time.time() - start, predicted)
 
         # save as file asset associated with this task
         from temba.assets.models import AssetType

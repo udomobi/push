@@ -38,7 +38,7 @@
 
     %hr
 
-    %h4 
+    %h4
       -trans "Delivery URL"
 
     %p
@@ -372,6 +372,26 @@
 
     %code
       https://{{ domain }}{% url 'handlers.hub9_handler' 'delivered' object.uuid %}
+
+  -elif object.channel_type == 'GCM'
+    %h4
+      -trans "You finished to configure your Google Cloud Messaging channel."
+
+    .clearfix
+      .config-value
+        .name
+          -trans "Name:"
+        .value {{ object.name }}
+      .config-value
+        .name
+          -trans "Address:"
+        .value {{ object.address }}
+      .config-value
+        .name
+          -trans "API Key:"
+        .value {{ object.config_json.api_key }}
+
+    %hr
 
   -elif object.channel_type == 'VM'
     %h4
