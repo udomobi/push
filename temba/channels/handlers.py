@@ -16,7 +16,7 @@ from django.views.generic import View
 from redis_cache import get_redis_connection
 from temba.api.models import WebHookEvent, SMS_RECEIVED
 from temba.channels.models import Channel, PLIVO, SHAQODOON, YO
-from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME
+from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, GCM_SCHEME
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT
@@ -279,6 +279,40 @@ class ZenviaHandler(View):
             return HttpResponse("SMS Accepted: %d" % sms.id)
 
         else:
+            return HttpResponse("Not handled", status=400)
+
+class GCMHandler(View):
+
+    @disable_middleware
+    def dispatch(self, *args, **kwargs):
+        return super(GCMHandler, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.channels.models import _GCM
+
+        channel_uuid = kwargs['uuid']
+
+        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=_GCM).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+        # this is a callback for a message we sent
+        import pytz
+
+        if not 'date' in request.REQUEST or not 'from' in request.REQUEST or not 'msg' in request.REQUEST:
+            return HttpResponse("Missing parameters, requires 'from', 'date' and 'msg'", status=400)
+
+        try:
+            # dates come in the format 31/07/2013 14:45:00
+            sms_date = datetime.strptime(request.REQUEST['date'], "%d/%m/%Y %H:%M:%S")
+            brazil_date = pytz.timezone('America/Sao_Paulo').localize(sms_date)
+            sms = Msg.create_incoming(channel, (GCM_SCHEME, request.REQUEST['from']), request.REQUEST['msg'], date=brazil_date)
+            return HttpResponse("SMS Accepted: %d" % sms.id)
+        except:
             return HttpResponse("Not handled", status=400)
 
 

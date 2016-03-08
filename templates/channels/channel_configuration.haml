@@ -375,7 +375,7 @@
 
   -elif object.channel_type == 'GCM'
     %h4
-      -trans "You finished to configure your Google Cloud Messaging channel."
+      -trans "To finish configuring your Google Cloud Messaging connection you'll need to send the data to URL with parameters `date`, `from` and `msg`."
 
     .clearfix
       .config-value
@@ -390,6 +390,18 @@
         .name
           -trans "API Key:"
         .value {{ object.config_json.api_key }}
+
+    .clearfix
+    %hr
+
+    %h4
+      -trans "Receive URL"
+
+    %p
+      -trans "To receive incoming messages, you need to send the data to URL below on your App."
+
+    %code
+      https://{{ domain }}{% url 'handlers.gcm_handler' object.uuid %}
 
     %hr
 
