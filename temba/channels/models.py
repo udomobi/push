@@ -282,7 +282,7 @@ class Channel(TembaModel):
         from temba.contacts.models import GCM_SCHEME
         existing = Channel.objects.filter(is_active=True, org=org, channel_type=_GCM).first()
         if existing:
-            existing.config = {'api_key': api_key}
+            existing.config = json.dumps({'api_key': api_key})
             existing.save(update_fields=('config',))
             return existing
         else:
