@@ -55,7 +55,7 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-gcm{href:"{% url 'channels.channel_claim_gcm' %}"}
-              .claim-glyph.icon-channel-android
+              .claim-glyph.icon-channel-gcm
               %p.claim-text
                 -trans "Google Cloud Messaging"
 
@@ -63,9 +63,9 @@
             .claim-description
               %div
                 -blocktrans
-                  Works in any country and uses the cell phone plan
-                  you already have. You just need an Android phone
-                  to get started.
+                  Add a GCM Channel to send and receive messages.
+                  Your users will need an App to send and
+                  receive messages.
 
     -if user_org.timezone == 'America/Sao_Paulo'
       .claim-row.zenvia-channel
