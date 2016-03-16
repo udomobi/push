@@ -388,6 +388,10 @@
         .value {{ object.address }}
       .config-value
         .name
+          -trans "Notification title:"
+        .value {{ object.config_json.notification_title }}
+      .config-value
+        .name
           -trans "API Key:"
         .value {{ object.config_json.api_key }}
 

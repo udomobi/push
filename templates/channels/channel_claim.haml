@@ -51,22 +51,6 @@
                   you already have. You just need an Android phone
                   to get started.
 
-      .claim-row
-        .row
-          .span3
-            %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-gcm{href:"{% url 'channels.channel_claim_gcm' %}"}
-              .claim-glyph.icon-channel-gcm
-              %p.claim-text
-                -trans "Google Cloud Messaging"
-
-          .span9
-            .claim-description
-              %div
-                -blocktrans
-                  Add a GCM Channel to send and receive messages.
-                  Your users will need an App to send and
-                  receive messages.
-
     -if user_org.timezone == 'America/Sao_Paulo'
       .claim-row.zenvia-channel
         .row
@@ -503,6 +487,25 @@
                     Add a <a href="https://telegram.org">Telegram</a> bot to send and receive messages to Telegram users
                     for free. Your users will need an Android, Windows or iOS device and a Telegram account to send
                     and receive messages.
+
+    %h3
+      -trans "Mobile Channels"
+
+    .claim-row
+      .row
+        .span3
+          %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-gcm{href:"{% url 'channels.channel_claim_gcm' %}"}
+            .claim-glyph.icon-gcm
+            %p.claim-text
+              -trans "Google Cloud Messaging"
+
+        .span9
+          .claim-description
+            %div
+              -blocktrans
+                Add a GCM Channel to send and receive messages.
+                Your users will need an App to send and
+                receive messages.
 
 
 -block form-buttons
