@@ -735,4 +735,7 @@
 .icon-telegram:before {
     content: "\e900";
 }
+.icon-gcm:before {
+    content: "\e901";
+}
 
