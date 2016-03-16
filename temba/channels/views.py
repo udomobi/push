@@ -1635,13 +1635,14 @@ class ChannelCRUDL(SmartCRUDL):
 
     class ClaimGcm(OrgPermsMixin, SmartFormView):
         class ClaimGCMForm(forms.Form):
+            notification_title = forms.CharField(label=_('Notification title'), help_text=_("The title of the notification that reaches the device."))
             api_key = forms.CharField(label=_('API Key'), help_text=_("The API KEY generated on Google Console when a new app is created."))
 
             def __init__(self, *args, **kwargs):
                 super(ChannelCRUDL.ClaimGcm.ClaimGCMForm, self).__init__(*args, **kwargs)
 
         form_class = ClaimGCMForm
-        fields = ('api_key',)
+        fields = ('notification_title', 'api_key',)
         title = _("Connect Google Cloud Messaging")
         success_url = "id@channels.channel_configuration"
 
@@ -1652,7 +1653,11 @@ class ChannelCRUDL(SmartCRUDL):
                 raise Exception(_("No org for this user, cannot claim"))
 
             data = form.cleaned_data
-            self.object = Channel.add_gcm_channel(org=org, user=self.request.user, api_key=data['api_key'])
+            obj = {
+                'notification_title': data['notification_title'],
+                'api_key': data['api_key']
+            }
+            self.object = Channel.add_gcm_channel(org=org, user=self.request.user, data=obj)
 
             # make sure all contacts added before the channel are normalized
             self.object.ensure_normalized_contacts()

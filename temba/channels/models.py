@@ -275,18 +275,20 @@ class Channel(TembaModel):
         return channel
 
     @classmethod
-    def add_gcm_channel(cls, org, user, api_key):
+    def add_gcm_channel(cls, org, user, data):
         """
         Creates a new Google Cloud Messaging channel
         """
         from temba.contacts.models import GCM_SCHEME
         existing = Channel.objects.filter(is_active=True, org=org, channel_type=_GCM).first()
+        api_key = data['api_key']
+        notification_title = data['notification_title']
         if existing:
-            existing.config = json.dumps({'api_key': api_key})
+            existing.config = json.dumps({'api_key': api_key, 'notification_title': notification_title})
             existing.save(update_fields=('config',))
             return existing
         else:
-            return Channel.create(org, user, None, _GCM, name=org.name, address="gcm-%s" % org.slug, config={'api_key': api_key}, scheme=GCM_SCHEME)
+            return Channel.create(org, user, None, _GCM, name=org.name, address="gcm-%s" % org.slug, config={'api_key': api_key, 'notification_title': notification_title}, scheme=GCM_SCHEME)
 
     @classmethod
     def add_authenticated_external_channel(cls, org, user, country, phone_number, username, password, channel_type):
@@ -1857,9 +1859,10 @@ class Channel(TembaModel):
             dataMessage = {'type': 'Rapidpro', 'message': text}
             payload = json.dumps({
                 'data': dataMessage,
+                'content_available': True,
                 'to': msg.urn_path,
                 'notification': {
-                    "title": 'New uDo message',
+                    "title": channel.config['notification_title'],
                     'body': dataMessage['message']
                 },
                 'priority': 'high'
@@ -1876,7 +1879,7 @@ class Channel(TembaModel):
                     Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start, external_id=external_id)
                     ChannelLog.log_success(msg, "Successfully delivered message")
                 else:
-                    ChannelLog.log_error(msg, "Failure on sent message")
+                    ChannelLog.log_error(msg, "Failed to send message")
             except Exception as e:
                 ChannelLog.log_error(msg, e)
         else:
