@@ -23,10 +23,9 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django_countries.data import COUNTRIES
 from phonenumbers.phonenumberutil import region_code_for_number
-from smartmin.views import SmartCRUDL, SmartReadView
+from smartmin.views import SmartCRUDL, SmartReadView, SmartModelFormView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
-from temba.channels.models import WHATSAPP
-from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, WHATSAPP_SCHEME
+from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, WHATSAPP_SCHEME, GCM_SCHEME
 from temba.msgs.models import Broadcast, Call, Msg, QUEUED, PENDING
 from temba.orgs.models import Org, ACCOUNT_SID
 from temba.orgs.views import OrgPermsMixin, OrgObjPermsMixin, ModalMixin
@@ -39,7 +38,7 @@ from .models import Channel, SyncEvent, Alert, ChannelLog, ChannelCount, M3TECH
 from .models import PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN, PLIVO, BLACKMYNA, SMSCENTRAL, VERIFY_SSL
 from .models import PASSWORD, RECEIVE, SEND, CALL, ANSWER, SEND_METHOD, SEND_URL, USERNAME, CLICKATELL, HIGH_CONNECTION
 from .models import ANDROID, EXTERNAL, HUB9, INFOBIP, KANNEL, NEXMO, TWILIO, TWITTER, VUMI, VERBOICE, SHAQODOON
-from .models import ENCODING, ENCODING_CHOICES, DEFAULT_ENCODING, YO, USE_NATIONAL, START, TELEGRAM, AUTH_TOKEN
+from .models import ENCODING, ENCODING_CHOICES, DEFAULT_ENCODING, YO, USE_NATIONAL, START, TELEGRAM, AUTH_TOKEN, _GCM
 
 RELAYER_TYPE_ICONS = {ANDROID: "icon-channel-android",
                       EXTERNAL: "icon-channel-external",
@@ -51,7 +50,8 @@ RELAYER_TYPE_ICONS = {ANDROID: "icon-channel-android",
                       CLICKATELL: "icon-channel-clickatell",
                       TWITTER: "icon-twitter",
                       WHATSAPP: "icon-whatsapp",
-                      TELEGRAM: "icon-telegram"}
+                      TELEGRAM: "icon-telegram",
+                      _GCM: "icon-gcm"}
 
 SESSION_TWITTER_TOKEN = 'twitter_oauth_token'
 SESSION_TWITTER_SECRET = 'twitter_oauth_token_secret'
@@ -195,6 +195,10 @@ def channel_status_processor(request):
         # as is telegram
         if not send_channel:
             send_channel = org.get_send_channel(scheme=TELEGRAM_SCHEME)
+
+        # as is gcm
+        if not send_channel:
+            send_channel = org.get_send_channel(scheme=GCM_SCHEME)
 
         # as is whatsapp
         if not send_channel:
@@ -534,7 +538,7 @@ class ChannelCRUDL(SmartCRUDL):
                'search_nexmo', 'claim_nexmo', 'bulk_sender_options', 'create_bulk_sender', 'claim_infobip',
                'claim_hub9', 'claim_vumi', 'create_caller', 'claim_kannel', 'claim_twitter', 'claim_whatsapp', 'claim_shaqodoon',
                'claim_verboice', 'claim_clickatell', 'claim_plivo', 'search_plivo', 'claim_high_connection',
-               'claim_blackmyna', 'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo')
+               'claim_blackmyna', 'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo', 'claim_gcm')
     permissions = True
 
     class AnonMixin(OrgPermsMixin):
@@ -785,6 +789,8 @@ class ChannelCRUDL(SmartCRUDL):
 
                 if channel.channel_type == TWILIO and not channel.is_delegate_sender():
                     messages.info(request, _("We have disconnected your Twilio number. If you do not need this number you can delete it from the Twilio website."))
+                elif channel.channel_type == _GCM:
+                    messages.info(request, _("Your GCM channel has been removed."))
                 else:
                     messages.info(request, _("Your phone number has been removed."))
 
@@ -1684,6 +1690,37 @@ class ChannelCRUDL(SmartCRUDL):
                 return redirect(self.request.META.get('HTTP_REFERER'))
 
             return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
+
+    class ClaimGcm(OrgPermsMixin, SmartFormView):
+        class ClaimGCMForm(forms.Form):
+            notification_title = forms.CharField(label=_('Notification title'), help_text=_("The title of the notification that reaches the device."))
+            api_key = forms.CharField(label=_('API Key'), help_text=_("The API KEY generated on Google Console when a new app is created."))
+
+            def __init__(self, *args, **kwargs):
+                super(ChannelCRUDL.ClaimGcm.ClaimGCMForm, self).__init__(*args, **kwargs)
+
+        form_class = ClaimGCMForm
+        fields = ('notification_title', 'api_key',)
+        title = _("Connect Google Cloud Messaging")
+        success_url = "id@channels.channel_configuration"
+
+        def form_valid(self, form):
+            org = self.request.user.get_org()
+
+            if not org:  # pragma: no cover
+                raise Exception(_("No org for this user, cannot claim"))
+
+            data = form.cleaned_data
+            obj = {
+                'notification_title': data['notification_title'],
+                'api_key': data['api_key']
+            }
+            self.object = Channel.add_gcm_channel(org=org, user=self.request.user, data=obj)
+
+            # make sure all contacts added before the channel are normalized
+            self.object.ensure_normalized_contacts()
+
+            return super(ChannelCRUDL.ClaimGcm, self).form_valid(form)
 
     class List(OrgPermsMixin, SmartListView):
         title = _("Channels")

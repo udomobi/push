@@ -40,13 +40,15 @@ FACEBOOK_SCHEME = 'facebook'
 TELEGRAM_SCHEME = 'telegram'
 EMAIL_SCHEME = 'mailto'
 EXTERNAL_SCHEME = 'ext'
+GCM_SCHEME = 'gcm'
 
 URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (TWITTER_SCHEME, _("Twitter handle"), 'twitter', 'twitter'),
                      (TELEGRAM_SCHEME, _("Telegram identifier"), 'telegram', 'telegram'),
                      (EMAIL_SCHEME, _("Email address"), 'email', 'email'),
                      (EXTERNAL_SCHEME, _("External identifier"), 'external', 'external'),
-                     (WHATSAPP_SCHEME, _("WhatsApp number"), 'whatsapp', 'whatsapp'))
+                     (WHATSAPP_SCHEME, _("WhatsApp number"), 'whatsapp', 'whatsapp'),
+                     (GCM_SCHEME, _("GCM identifier"), 'gcm', 'gcm'))
 
 # schemes that we actually support
 URN_SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
@@ -1277,8 +1279,8 @@ URN_SCHEMES_EXPORT_FIELDS = {
     TWITTER_SCHEME: dict(label='Twitter', key=None, id=0, field=None, urn_scheme=TWITTER_SCHEME),
     EXTERNAL_SCHEME: dict(label='External', key=None, id=0, field=None, urn_scheme=EXTERNAL_SCHEME),
     EMAIL_SCHEME: dict(label='Email', key=None, id=0, field=None, urn_scheme=EMAIL_SCHEME),
-	WHATSAPP_SCHEME: dict(label='WhatsApp', key=None, id=0, field=None, urn_scheme=WHATSAPP_SCHEME),
-    TELEGRAM_SCHEME: dict(label='Telegram', key=None, id=0, field=None, urn_scheme=TELEGRAM_SCHEME)
+    TELEGRAM_SCHEME: dict(label='Telegram', key=None, id=0, field=None, urn_scheme=TELEGRAM_SCHEME),
+    GCM_SCHEME: dict(label='GCM', key=None, id=0, field=None, urn_scheme=GCM_SCHEME)
 }
 
 
@@ -1398,6 +1400,9 @@ class ContactURN(models.Model):
                 return True
             except Exception:
                 return False
+
+        elif scheme == GCM_SCHEME:
+            return True
 
         else:
             return False  # only tel and twitter currently supported

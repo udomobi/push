@@ -64,6 +64,7 @@ YO = 'YO'
 START = 'ST'
 TELEGRAM = 'TG'
 WHATSAPP = 'WA'
+_GCM = 'GCM'
 
 SEND_URL = 'send_url'
 SEND_METHOD = 'method'
@@ -118,7 +119,8 @@ CHANNEL_SETTINGS = {
     WHATSAPP: dict(scheme='whatsapp', max_length=10000),
     YO: dict(scheme='tel', max_length=1600),
     START: dict(scheme='tel', max_length=1600),
-    TELEGRAM: dict(scheme='telegram', max_length=1600)
+    TELEGRAM: dict(scheme='telegram', max_length=1600),
+    _GCM: dict(scheme='gcm', max_length=10000)
 }
 
 TEMBA_HEADERS = {'User-agent': 'RapidPro'}
@@ -161,7 +163,8 @@ class Channel(TembaModel):
                     (TELEGRAM, "Telegram"),
                     (YO, "Yo!"),
                     (M3TECH, "M3 Tech"),
-                    (WHATSAPP, "WhatsApp"))
+                    (WHATSAPP, "WhatsApp"),
+					(_GCM, "Google Cloud Messaging"))
 
     channel_type = models.CharField(verbose_name=_("Channel Type"), max_length=3, choices=TYPE_CHOICES,
                                     default=ANDROID, help_text=_("Type of this channel, whether Android, Twilio or SMSC"))
@@ -273,6 +276,22 @@ class Channel(TembaModel):
         bot.setWebhook("https://" + settings.TEMBA_HOST +
                        "%s" % reverse('handlers.telegram_handler', args=[channel.uuid]))
         return channel
+
+    @classmethod
+    def add_gcm_channel(cls, org, user, data):
+        """
+        Creates a new Google Cloud Messaging channel
+        """
+        from temba.contacts.models import GCM_SCHEME
+        existing = Channel.objects.filter(is_active=True, org=org, channel_type=_GCM).first()
+        api_key = data['api_key']
+        notification_title = data['notification_title']
+        if existing:
+            existing.config = json.dumps({'api_key': api_key, 'notification_title': notification_title})
+            existing.save(update_fields=('config',))
+            return existing
+        else:
+            return Channel.create(org, user, None, _GCM, name=org.name, address="gcm-%s" % org.slug, config={'api_key': api_key, 'notification_title': notification_title}, scheme=GCM_SCHEME)
 
     @classmethod
     def add_authenticated_external_channel(cls, org, user, country, phone_number, username, password, channel_type):
@@ -525,6 +544,7 @@ class Channel(TembaModel):
 
         return channel
 
+	@classmethod
     def get_or_create_android(cls, gcm, status):
         """
         Creates a new Android channel from the gcm and status commands sent during device registration
@@ -1880,6 +1900,47 @@ class Channel(TembaModel):
             ChannelLog.log_error(msg, e)
 
     @classmethod
+    def send_gcm_notify(cls, channel, msg, text):
+        from temba.msgs.models import Msg, WIRED
+        start = time.time()
+
+        try:
+            api_key = channel.config['api_key']
+        except:
+            api_key = None
+
+        if api_key:
+            url = 'https://gcm-http.googleapis.com/gcm/send'
+            dataMessage = {'type': 'Rapidpro', 'message': text, 'channel_uuid': channel.uuid, 'message_id': msg.id}
+            payload = json.dumps({
+                'data': dataMessage,
+                'content_available': True,
+                'to': msg.urn_path,
+                'notification': {
+                    "title": channel.config['notification_title'],
+                    'body': dataMessage['message']
+                },
+                'priority': 'high'
+            })
+            HEADERS = {
+                'Content-Type': 'application/json',
+                'Authorization': 'key={0}'.format(api_key)
+            }
+            try:
+                response = requests.post(url, data=payload, headers=HEADERS, timeout=5)
+                result = json.loads(response.content)
+                if response.status_code == 200 and 'success' in result and result['success'] == 1:
+                    external_id = result['multicast_id']
+                    Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start, external_id=external_id)
+                    ChannelLog.log_success(msg, "Successfully delivered message")
+                else:
+                    ChannelLog.log_error(msg, "Failed to send message")
+            except Exception as e:
+                ChannelLog.log_error(msg, e)
+        else:
+            ChannelLog.log_error(msg, "API Key not found.")
+
+    @classmethod
     def send_clickatell_message(cls, channel, msg, text):
         """
         Sends a message to Clickatell, they expect a GET in the following format:
@@ -2123,7 +2184,8 @@ class Channel(TembaModel):
                       START: Channel.send_start_message,
                       TELEGRAM: Channel.send_telegram_message,
                       M3TECH: Channel.send_m3tech_message,
-                      YO: Channel.send_yo_message}
+                      YO: Channel.send_yo_message,
+                      _GCM: Channel.send_gcm_notify}
 
         # Check whether we need to throttle ourselves
         # This isn't an ideal implementation, in that if there is only one Channel with tons of messages

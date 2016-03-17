@@ -34,20 +34,22 @@
           We recommend using an Android phone with a local sim card for your country. This phone
           will send and receive messages for you. You will only need one phone per country depending on
           message volume. Don't worry! The people you are texting with can still use basic phones.
-      .row
-        .span3
-          %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_android' %}"}
-            .claim-glyph.icon-channel-android
-            %p.claim-text
-              -trans "Android Phone"
 
-        .span9
-          .claim-description
-            %div
-              -blocktrans
-                Works in any country and uses the cell phone plan
-                you already have. You just need an Android phone
-                to get started.
+      .claim-row
+        .row
+          .span3
+            %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_android' %}"}
+              .claim-glyph.icon-channel-android
+              %p.claim-text
+                -trans "Android Phone"
+
+          .span9
+            .claim-description
+              %div
+                -blocktrans
+                  Works in any country and uses the cell phone plan
+                  you already have. You just need an Android phone
+                  to get started.
 
     -if user_org.timezone == 'America/Sao_Paulo'
       .claim-row.zenvia-channel
@@ -175,7 +177,6 @@
                   The easiest way to get started if you are in
                   {{ twilio_countries }}, connect a Twilio account
                   and get a dedicated phone number.
-
 
 
     -else
@@ -502,6 +503,24 @@
                     for free. Your users will need an Android, Windows or iOS device and a Telegram account to send
                     and receive messages.
 
+    %h3
+      -trans "Mobile Channels"
+
+    .claim-row
+      .row
+        .span3
+          %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-gcm{href:"{% url 'channels.channel_claim_gcm' %}"}
+            .claim-glyph.icon-gcm
+            %p.claim-text
+              -trans "Google Cloud Messaging"
+
+        .span9
+          .claim-description
+            %div
+              -blocktrans
+                Add a GCM Channel to send and receive messages.
+                Your users will need an App to send and
+                receive messages.
 
 
 -block form-buttons

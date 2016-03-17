@@ -738,4 +738,7 @@
 .icon-whatsapp:before {
     content: "\ea93";
 }
+.icon-gcm:before {
+    content: "\e901";
+}
 
