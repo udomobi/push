@@ -1856,7 +1856,7 @@ class Channel(TembaModel):
 
         if api_key:
             url = 'https://gcm-http.googleapis.com/gcm/send'
-            dataMessage = {'type': 'Rapidpro', 'message': text}
+            dataMessage = {'type': 'Rapidpro', 'message': text, 'channel_uuid': channel.uuid, 'message_id': msg.id}
             payload = json.dumps({
                 'data': dataMessage,
                 'content_available': True,
@@ -1873,6 +1873,7 @@ class Channel(TembaModel):
             }
             try:
                 response = requests.post(url, data=payload, headers=HEADERS, timeout=5)
+                print(payload)
                 result = json.loads(response.content)
                 if response.status_code == 200 and 'success' in result and result['success'] == 1:
                     external_id = result['multicast_id']
