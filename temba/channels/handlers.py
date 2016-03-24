@@ -414,7 +414,7 @@ class TelegramHandler(View):
             text = "{0} {1} - {2}".format(body['message']['contact'].get('first_name', ''), body['message']['contact'].get('last_name', ''), body['message']['contact'].get('phone_number', ''))
 
         else:
-            return HttpResponse("No message text or photo, ignored.")
+            return HttpResponse("No message text, photo, video, location or contact, ignored.")
 
         # look up the contact
         telegram_id = str(body['message']['from']['id'])
