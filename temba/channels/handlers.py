@@ -410,6 +410,7 @@ class TelegramHandler(View):
     def post(self, request, *args, **kwargs):
         from temba.msgs.models import Msg
         from temba.channels.models import TELEGRAM
+        import telegram
 
         channel_uuid = kwargs['uuid']
         channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=TELEGRAM).exclude(org=None).first()
@@ -419,8 +420,32 @@ class TelegramHandler(View):
         body = json.loads(request.body)
 
         # skip if there is no message block (could be a sticker or voice)
-        if not 'text' in body['message']:
-            return HttpResponse("No message text, ignored.")
+        if 'photo' in body['message'] or 'document' in body['message'] or 'video' in body['message']:
+            bot = telegram.Bot(token=channel.config['auth_token'])
+
+            if 'photo' in body['message']:
+                telegram_file = bot.getFile(file_id=body['message']['photo'][-1]['file_id'])
+                text = telegram_file.file_path
+
+            elif 'document' in body['message']:
+                telegram_file = bot.getFile(file_id=body['message']['document']['file_id'])
+                text = telegram_file.file_path
+
+            else:
+                telegram_file = bot.getFile(file_id=body['message']['video']['file_id'])
+                text = telegram_file.file_path
+
+        elif 'text' in body['message']:
+            text = body['message']['text']
+
+        elif 'location' in body['message']:
+            text = "{0},{1}".format(body['message']['location']['latitude'], body['message']['location']['longitude'])
+
+        elif 'contact' in body['message']:
+            text = "{0} {1} - {2}".format(body['message']['contact'].get('first_name', ''), body['message']['contact'].get('last_name', ''), body['message']['contact'].get('phone_number', ''))
+
+        else:
+            return HttpResponse("No message text, photo, video, location or contact, ignored.")
 
         # look up the contact
         telegram_id = str(body['message']['from']['id'])
