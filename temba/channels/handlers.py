@@ -421,7 +421,7 @@ class TelegramHandler(View):
 
         # skip if there is no message block (could be a sticker or voice)
         if 'photo' in body['message'] or 'document' in body['message'] or 'video' in body['message']:
-            bot = telegram.Bot(token=channel.config['auth_token'])
+            bot = telegram.Bot(token=str(channel.config_json()['auth_token']))
 
             if 'photo' in body['message']:
                 telegram_file = bot.getFile(file_id=body['message']['photo'][-1]['file_id'])
@@ -469,7 +469,7 @@ class TelegramHandler(View):
                 Contact.get_or_create(channel.org, channel.created_by, name, [(TELEGRAM_SCHEME, telegram_id)])
 
         msg_date = datetime.utcfromtimestamp(body['message']['date']).replace(tzinfo=pytz.utc)
-        sms = Msg.create_incoming(channel, (TELEGRAM_SCHEME, telegram_id), body['message']['text'],
+        sms = Msg.create_incoming(channel, (TELEGRAM_SCHEME, telegram_id), text,
                                   date=msg_date)
 
         return HttpResponse("SMS Accepted: %d" % sms.id)
