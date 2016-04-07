@@ -174,7 +174,7 @@ class Org(SmartModel):
                                    help_text=_("Whether day comes first or month comes first in dates"))
 
     webhook = models.TextField(null=True, verbose_name=_("Webhook"),
-                              help_text=_("Webhook endpoint and configuration"))
+                               help_text=_("Webhook endpoint and configuration"))
 
     webhook_events = models.IntegerField(default=0, verbose_name=_("Webhook Events"),
                                          help_text=_("Which type of actions will trigger webhook events."))
@@ -721,8 +721,8 @@ class Org(SmartModel):
 
                 if not boundary:
                     # still no boundary? try n-gram of 2
-                    for i in range(0, len(words)-1):
-                        bigram = " ".join(words[i:i+2])
+                    for i in range(0, len(words) - 1):
+                        bigram = " ".join(words[i:i + 2])
                         boundary = self.find_boundary_by_name(bigram, level, parent)
                         if boundary:
                             break
@@ -928,8 +928,8 @@ class Org(SmartModel):
         # these are the credits that have been used in expired topups
         expired_credits = TopUpCredits.objects.filter(topup__org=self,
                                                       topup__is_active=True,
-                                                      topup__expires_on__lte=timezone.now())\
-                                               .aggregate(Sum('used')).get('used__sum')
+                                                      topup__expires_on__lte=timezone.now()) \
+            .aggregate(Sum('used')).get('used__sum')
 
         expired_credits = expired_credits if expired_credits else 0
 
@@ -944,8 +944,8 @@ class Org(SmartModel):
 
     def _calculate_credits_used(self):
         used_credits_sum = TopUpCredits.objects.filter(topup__org=self,
-                                                       topup__is_active=True)\
-                                                .aggregate(Sum('used')).get('used__sum')
+                                                       topup__is_active=True) \
+            .aggregate(Sum('used')).get('used__sum')
         used_credits_sum = used_credits_sum if used_credits_sum else 0
 
         unassigned_sum = self.msgs.filter(contact__is_test=False, topup=None, purged=False).count()
@@ -1005,9 +1005,9 @@ class Org(SmartModel):
         Calculates the oldest non-expired topup that still has credits
         """
         non_expired_topups = self.topups.filter(is_active=True, expires_on__gte=timezone.now()).order_by('expires_on')
-        active_topups = non_expired_topups.annotate(used_credits=Sum('topupcredits__used'))\
-                                          .filter(credits__gt=0)\
-                                          .filter(Q(used_credits__lt=F('credits')) | Q(used_credits=None))
+        active_topups = non_expired_topups.annotate(used_credits=Sum('topupcredits__used')) \
+            .filter(credits__gt=0) \
+            .filter(Q(used_credits__lt=F('credits')) | Q(used_credits=None))
 
         return active_topups.first()
 
@@ -1407,7 +1407,6 @@ def set_role(obj, role):
 
 
 def get_role(obj):
-
     if not hasattr(obj, '_role'):
         obj._role = obj.get_org_group()
 
@@ -1448,7 +1447,6 @@ User.get_org_group = get_org_group
 User.get_role = get_role
 User.set_role = set_role
 User.has_org_perm = _user_has_org_perm
-
 
 USER_GROUPS = (('A', _("Administrator")),
                ('E', _("Editor")),
@@ -1541,7 +1539,7 @@ class Invitation(SmartModel):
         """
         Generates a [length] characters alpha numeric secret
         """
-        letters="23456789ABCDEFGHJKLMNPQRSTUVWXYZ" # avoid things that could be mistaken ex: 'I' and '1'
+        letters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # avoid things that could be mistaken ex: 'I' and '1'
         return ''.join([random.choice(letters) for _ in range(length)])
 
     def send_invitation(self):
@@ -1694,6 +1692,36 @@ class TopUpCredits(models.Model):
         print "Squashed topupcredits for %d pairs in %0.3fs" % (squash_count, time.time() - start)
 
 
+class OrderPayment(SmartModel):
+    """
+    Orders MoIP for payment.
+    """
+    org = models.ForeignKey(Org, related_name='payments', help_text="The organization that payment was requested")
+    value = models.IntegerField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
+    credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
+    moip_order_id = models.CharField(max_length=255, help_text=_("Order MoIP identifier"))
+
+    @classmethod
+    def create(cls, user, value, credits, moip_order_id, org=None):
+        """
+        Creates a new topup
+        """
+        if not org:
+            org = user.get_org()
+
+        topup = OrderPayment.objects.create(org=org, value=value, credits=credits, moip_order_id=moip_order_id, created_by=user, modified_by=user)
+        return topup
+
+    def value_in_real(self):
+        if self.value == 0:
+            return 0
+        else:
+            return Decimal(self.value) / Decimal(100)
+
+    def __unicode__(self):
+        return "%s" % self.moip_order_id
+
+
 class CreditAlert(SmartModel):
     """
     Tracks when we have sent alerts to organization admins about low credits.
@@ -1754,7 +1782,7 @@ class CreditAlert(SmartModel):
         from temba.msgs.models import Msg
 
         # all active orgs in the last hour
-        active_orgs = Msg.current_messages.filter(created_on__gte=timezone.now()-timedelta(hours=1)).order_by('org').distinct('org')
+        active_orgs = Msg.current_messages.filter(created_on__gte=timezone.now() - timedelta(hours=1)).order_by('org').distinct('org')
 
         for msg in active_orgs:
             org = msg.org
@@ -1769,6 +1797,4 @@ class CreditAlert(SmartModel):
             elif org_low_credits:
                 CreditAlert.trigger_credit_alert(org, ORG_CREDIT_LOW)
             elif org_credits_expiring > 0:
-               CreditAlert.trigger_credit_alert(org, ORG_CREDIT_EXPIRING)
-
-
+                CreditAlert.trigger_credit_alert(org, ORG_CREDIT_EXPIRING)
