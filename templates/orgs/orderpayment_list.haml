@@ -1,0 +1,112 @@
+-extends "smartmin/list.html"
+
+-load humanize
+-load smartmin
+-load i18n
+
+-block table-buttons
+
+-block extra-style
+  :css
+    #btn-save {
+      padding: 3px 10px;
+      margin-bottom: 10px;
+    }
+    label h3 {
+      margin-top: 0px;
+      margin-bottom: 0px;
+    }
+
+    .topup {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .topup.expired {
+      border-bottom: 1px solid rgb(178, 23, 26);
+    }
+
+    .topup.expiring {
+      border-bottom: 1px solid #e68628;
+    }
+
+    .topup-price {
+      float: right;
+      font-size: 20px;
+    }
+
+    .topup-credits {
+      font-size: 20px;
+    }
+
+    .topup-history {
+      margin-top: 5px;
+      font-style: italic;
+    }
+
+    .topup-expires {
+      margin-top: 5px;
+      float: right;
+      font-style: italic;
+    }
+
+    .topup.expired > .topup-expires {
+      color: rgb(178, 23, 26);
+    }
+
+    .topup.expiring > .topup-expires {
+      color: #e68628;
+    }
+
+    .title-icon + .title-text {
+      margin-left: 65px;
+    }
+
+    .topup-status {
+      padding: 10px;
+      margin-bottom: 30px;
+      border: 1px solid #ccc;
+    }
+
+    .topup-status.interrupted {
+      border: 1px solid rgb(178, 23, 26);
+      color: rgb(178, 23, 26);
+    }
+
+-block title-icon
+  .title-icon
+    %span.glyph.icon-coins
+
+-block title-text
+  .title-text
+    %h1
+      -trans "Payments"
+
+-block above-bar
+  %a.btn.btn-primary{ style:"float:right", href:"{% url 'orgs.topup_pricing' %}" } Add credits
+
+-block paginator
+
+-block table
+
+  -if object_list
+    -for payment in object_list
+      .topup
+        .topup-price
+          {{ payment.value }}
+
+        .topup-credits
+          {{ payment.credits|intcomma }}
+
+        .topup-expires
+          -trans "Order in "
+          {{ payment.created_on }}
+
+        .topup-history
+          -trans "Requested on"
+          {{ topup.created_on }}
+          -trans " by "
+          {{ payment.created_by.first_name }} {{ payment.created_by.last_name }}
+  -else
+    -trans "No request for payment made to date."
