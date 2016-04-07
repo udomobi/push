@@ -1,15 +1,15 @@
 import sys, os
 from hamlpy import templatize
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Default to debugging
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Sets TESTING to True if this configuration is read during a unit test
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 TESTING = sys.argv[1:2] == ['test']
 
 if TESTING:
@@ -25,10 +25,10 @@ MANAGERS = ADMINS
 # hardcode the postgis version so we can do reset db's from a blank database
 POSTGIS_VERSION = (2, 1)
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # set the mail settings, override these in your settings.py
 # if your site was at http://temba.io, it might look like this:
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = 'server@temba.io'
 DEFAULT_FROM_EMAIL = 'server@temba.io'
@@ -40,26 +40,26 @@ AWS_STORAGE_BUCKET_NAME = 'dl-temba-io'
 AWS_BUCKET_DOMAIN = AWS_STORAGE_BUCKET_NAME + '.s3.amazonaws.com'
 STORAGE_ROOT_DIR = 'test_orgs' if TESTING else 'orgs'
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # On Unix systems, a value of None will cause Django to use the same
 # timezone as the operating system.
 # If running in a Windows environment this must be set to the same as your
 # system time zone
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 USE_TZ = True
 TIME_ZONE = 'GMT'
 USER_TIME_ZONE = 'Africa/Kigali'
 
 MODELTRANSLATION_TRANSLATION_REGISTRY = "translation"
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Default language used for this installation
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 LANGUAGE_CODE = 'en-us'
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Available languages for translation
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 gettext = lambda s: s
 LANGUAGES = (
     ('en-us', gettext("English")),
@@ -151,7 +151,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 if TESTING:
-    TEMPLATE_CONTEXT_PROCESSORS += ('temba.tests.add_testing_flag_to_context', )
+    TEMPLATE_CONTEXT_PROCESSORS += ('temba.tests.add_testing_flag_to_context',)
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
@@ -278,10 +278,11 @@ LOGGING = {
     },
 }
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Branding Configuration
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 from django.utils.translation import ugettext_lazy as _
+
 BRANDING = {
     'rapidpro.io': {
         'slug': 'rapidpro',
@@ -306,24 +307,24 @@ BRANDING = {
 }
 DEFAULT_BRAND = 'rapidpro.io'
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Directory Configuration
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 PROJECT_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 LOCALE_PATHS = (os.path.join(PROJECT_DIR, '../locale'),)
 RESOURCES_DIR = os.path.join(PROJECT_DIR, '../resources')
 FIXTURE_DIRS = (os.path.join(PROJECT_DIR, '../fixtures'),)
 TESTFILES_DIR = os.path.join(PROJECT_DIR, '../testfiles')
 TEMPLATE_DIRS = (os.path.join(PROJECT_DIR, '../templates'),)
-STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'), )
+STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'),)
 STATIC_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
 COMPRESS_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
 MEDIA_ROOT = os.path.join(PROJECT_DIR, '../media')
 MEDIA_URL = "/media/"
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Permission Management
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 
 # this lets us easily create new permissions across our objects
 PERMISSIONS = {
@@ -338,7 +339,6 @@ PERMISSIONS = {
                            ),
 
     'campaigns.campaignevent': ('api',),
-
 
     'contacts.contact': ('api',
                          'block',
@@ -395,7 +395,6 @@ PERMISSIONS = {
                  ),
 
     'orgs.usersettings': ('phone',),
-
 
     'channels.channel': ('api',
                          'bulk_sender_options',
@@ -484,7 +483,9 @@ PERMISSIONS = {
 
     'msgs.label': ('api', 'create', 'create_folder'),
 
-    'orgs.topup': ('manage',),
+    'orgs.topup': ('manage', 'pricing',),
+
+    'orgs.orderpayment': ('list', 'create',),
 
     'triggers.trigger': ('archived',
                          'catchall',
@@ -532,6 +533,8 @@ GROUP_PERMISSIONS = {
         'orgs.topup_create',
         'orgs.topup_manage',
         'orgs.topup_update',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
     ),
     "Administrators": (
         'api.webhookevent_list',
@@ -587,6 +590,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_webhook',
         'orgs.topup_list',
         'orgs.topup_read',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -702,6 +707,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_webhook',
         'orgs.topup_list',
         'orgs.topup_read',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -792,6 +799,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_profile',
         'orgs.topup_list',
         'orgs.topup_read',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
 
         'channels.channel_list',
         'channels.channel_read',
@@ -831,17 +840,17 @@ GROUP_PERMISSIONS = {
     )
 }
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Login / Logout
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 LOGIN_URL = "/users/login/"
 LOGOUT_URL = "/users/logout/"
 LOGIN_REDIRECT_URL = "/org/choose/"
 LOGOUT_REDIRECT_URL = "/"
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Guardian Configuration
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 AUTHENTICATION_BACKENDS = (
     'smartmin.backends.CaseInsensitiveBackend',
     'guardian.backends.ObjectPermissionBackend',
@@ -849,21 +858,22 @@ AUTHENTICATION_BACKENDS = (
 
 ANONYMOUS_USER_ID = -1
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Async tasks with django-celery, for testing we use a memory test backend
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 BROKER_BACKEND = 'memory'
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Our test runner is standard but with ability to exclude apps
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 TEST_RUNNER = 'temba.tests.ExcludeTestRunner'
 TEST_EXCLUDE = ('smartmin',)
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Debug Toolbar
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 import iptools
+
 INTERNAL_IPS = iptools.IpRangeList(
     '127.0.0.1',
     '192.168.0.10',
@@ -875,9 +885,9 @@ DEBUG_TOOLBAR_CONFIG = {
     'INTERCEPT_REDIRECTS': False,  # disable redirect traps
 }
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Crontab Settings ..
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 
 from datetime import timedelta
 from celery.schedules import crontab
@@ -948,10 +958,11 @@ CELERY_TASK_MAP = {
     'handle_event_task': 'temba.msgs.tasks.handle_event_task',
 }
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Async tasks with django-celery
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 import djcelery
+
 djcelery.setup_loader()
 
 REDIS_HOST = 'localhost'
@@ -973,9 +984,9 @@ HOSTNAME = "localhost"
 # The URL and port of the proxy server to use when needed (if any, in requests format)
 OUTGOING_PROXIES = {}
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Cache to Redis
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 CACHES = {
     "default": {
         "BACKEND": "redis_cache.cache.RedisCache",
@@ -986,9 +997,9 @@ CACHES = {
     }
 }
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Django-rest-framework configuration
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -1014,17 +1025,17 @@ REST_FRAMEWORK = {
 }
 REST_HANDLE_EXCEPTIONS = not TESTING
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Aggregator settings
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 
 # Hub9 is an aggregator in Indonesia, set this to the endpoint for your service
 # and make sure you send from a whitelisted IP Address
 HUB9_ENDPOINT = 'http://175.103.48.29:28078/testing/smsmt.php'
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Django Compressor configuration
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 
 COMPRESS_PRECOMPILERS = (
     ('text/less', 'lessc --include-path="%s" {infile} {outfile}' % os.path.join(PROJECT_DIR, '../static', 'less')),
@@ -1038,9 +1049,9 @@ COMPRESS_URL = '/sitestatic/'
 MAGE_API_URL = 'http://localhost:8026/api/v1'
 MAGE_AUTH_TOKEN = '___MAGE_TOKEN_YOU_PICK__'
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # RapidPro configuration settings
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 
 ######
 # DANGER: only turn this on if you know what you are doing!
@@ -1061,15 +1072,15 @@ MESSAGE_HANDLERS = ['temba.triggers.handlers.TriggerHandler',
                     'temba.flows.handlers.FlowHandler',
                     'temba.triggers.handlers.CatchAllHandler']
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # Store sessions in our cache
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "default"
 
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # 3rd Party Integration Keys
-#-----------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 TWITTER_API_KEY = os.environ.get('TWITTER_API_KEY', 'MISSING_TWITTER_API_KEY')
 TWITTER_API_SECRET = os.environ.get('TWITTER_API_SECRET', 'MISSING_TWITTER_API_SECRET')
 
