@@ -2,5 +2,7 @@
   -for section in formax.sections
     %li{id:'id-{{section.name}}', data-button:'{{section.button}}', data-fetched:'true', data-href:'{{section.url}}', data-action:'{{section.action}}', class:'action-{{section.action}}'}
       .formax-icon{class:'{{section.icon}}'}
-      .formax-container
+      .formax-container{style:"position: relative"}
         {{ section.response|safe }}
+        -if section.name == 'topups'
+          %a.btn.btn-primary{ style:"position:absolute; top: 0; right: 0", href:"{% url 'orgs.topup_pricing' %}" } Add credits
