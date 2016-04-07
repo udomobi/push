@@ -40,7 +40,7 @@ from timezones.forms import TimeZoneField
 from twilio import TwilioRestException
 from twilio.rest import TwilioRestClient
 from .bundles import WELCOME_TOPUP_SIZE
-from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings
+from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, OrderPayment
 from .models import MT_SMS_EVENTS, MO_SMS_EVENTS, MT_CALL_EVENTS, MO_CALL_EVENTS, ALARM_EVENTS
 
 
@@ -63,6 +63,7 @@ class OrgPermsMixin(object):
     Get the organisation and the user within the inheriting view so that it be come easy to decide
     whether this user has a certain permission for that particular organization to perform the view's actions
     """
+
     def get_user(self):
         return self.request.user
 
@@ -115,7 +116,6 @@ class OrgPermsMixin(object):
 
 
 class OrgObjPermsMixin(OrgPermsMixin):
-
     def get_object_org(self):
         return self.get_object().org
 
@@ -144,7 +144,6 @@ class OrgObjPermsMixin(OrgPermsMixin):
 
 
 class ModalMixin(SmartFormView):
-
     def get_context_data(self, **kwargs):
         context = super(ModalMixin, self).get_context_data(**kwargs)
 
@@ -407,7 +406,6 @@ class UserSettingsCRUDL(SmartCRUDL):
     model = UserSettings
 
     class Phone(ModalMixin, OrgPermsMixin, SmartUpdateView):
-
         @classmethod
         def derive_url_pattern(cls, path, action):
             return r'^%s/%s/$' % (path, action)
@@ -524,6 +522,7 @@ class OrgCRUDL(SmartCRUDL):
                         see(node)
                         nodes |= neighbors[node] - seen
                         yield node
+
                 for node in neighbors:
                     if node not in seen:
                         yield sorted(component(node))
@@ -618,8 +617,8 @@ class OrgCRUDL(SmartCRUDL):
             org.save()
 
             response = self.render_to_response(self.get_context_data(form=form,
-                                               success_url=self.get_success_url(),
-                                               success_script=getattr(self, 'success_script', None)))
+                                                                     success_url=self.get_success_url(),
+                                                                     success_script=getattr(self, 'success_script', None)))
 
             response['Temba-Success'] = self.get_success_url()
             return response
@@ -679,8 +678,8 @@ class OrgCRUDL(SmartCRUDL):
             org.save()
 
             response = self.render_to_response(self.get_context_data(form=form,
-                                               success_url=self.get_success_url(),
-                                               success_script=getattr(self, 'success_script', None)))
+                                                                     success_url=self.get_success_url(),
+                                                                     success_script=getattr(self, 'success_script', None)))
 
             response['Temba-Success'] = self.get_success_url()
             return response
@@ -724,12 +723,11 @@ class OrgCRUDL(SmartCRUDL):
             self.request.session[PLIVO_AUTH_TOKEN] = auth_token
 
             response = self.render_to_response(self.get_context_data(form=form,
-                                               success_url=self.get_success_url(),
-                                               success_script=getattr(self, 'success_script', None)))
+                                                                     success_url=self.get_success_url(),
+                                                                     success_script=getattr(self, 'success_script', None)))
 
             response['Temba-Success'] = self.get_success_url()
             return response
-
 
     class Manage(SmartListView):
         fields = ('credits', 'used', 'name', 'owner', 'created_on')
@@ -838,7 +836,7 @@ class OrgCRUDL(SmartCRUDL):
         GROUP_LEVELS = ('administrators', 'editors', 'viewers', 'surveyors')
 
         def derive_title(self):
-            return _("Manage %(name)s Accounts") % {'name':self.get_object().name}
+            return _("Manage %(name)s Accounts") % {'name': self.get_object().name}
 
         def add_check_fields(self, form, objects, org_id, field_dict):
             for obj in objects:
@@ -1121,7 +1119,7 @@ class OrgCRUDL(SmartCRUDL):
 
         def derive_title(self):
             org = self.get_object()
-            return _("Join %(name)s") % {'name':org.name}
+            return _("Join %(name)s") % {'name': org.name}
 
         def get_context_data(self, **kwargs):
             context = super(OrgCRUDL.CreateLogin, self).get_context_data(**kwargs)
@@ -1158,7 +1156,7 @@ class OrgCRUDL(SmartCRUDL):
 
         def derive_title(self):
             org = self.get_object()
-            return _("Join %(name)s") % {'name':org.name}
+            return _("Join %(name)s") % {'name': org.name}
 
         def save(self, org):
             org = self.get_object()
@@ -1537,8 +1535,8 @@ class OrgCRUDL(SmartCRUDL):
 
         class CountryForm(forms.ModelForm):
             country = forms.ModelChoiceField(Org.get_possible_countries(), required=False,
-                                      label=_("The country used for location values. (optional)"),
-                                      help_text="State and district names will be searched against this country.")
+                                             label=_("The country used for location values. (optional)"),
+                                             help_text="State and district names will be searched against this country.")
 
             class Meta:
                 model = Org
@@ -1656,7 +1654,7 @@ class OrgCRUDL(SmartCRUDL):
             self.org = self.derive_org()
             return self.request.user.has_perm('orgs.org_country') or self.has_org_perm('orgs.org_country')
 
-    class ClearCache(SmartUpdateView): # pragma: no cover
+    class ClearCache(SmartUpdateView):  # pragma: no cover
         fields = ('id',)
         success_message = None
         success_url = 'id@orgs.org_update'
@@ -1670,6 +1668,7 @@ class OrgCRUDL(SmartCRUDL):
         """
         For backwards compatibility, redirect old org/download style requests to the assets app
         """
+
         @classmethod
         def derive_url_pattern(cls, path, action):
             return r'%s/%s/(?P<task_type>\w+)/(?P<pk>\d+)/$' % (path, action)
@@ -1690,7 +1689,7 @@ class OrgCRUDL(SmartCRUDL):
 
 
 class TopUpCRUDL(SmartCRUDL):
-    actions = ('list', 'create', 'read', 'manage', 'update')
+    actions = ('list', 'create', 'read', 'manage', 'update', 'pricing',)
     model = TopUp
 
     class Read(OrgPermsMixin, SmartReadView):
@@ -1772,12 +1771,41 @@ class TopUpCRUDL(SmartCRUDL):
             self.org = Org.objects.get(pk=self.request.REQUEST['org'])
             return self.org.topups.all()
 
+    class Pricing(OrgPermsMixin, SmartTemplateView):
+        """
+        This is only for root to be able to pricing topups on an account
+        """
+        template_name = 'orgs/topup_pricing.haml'
+
+        def get_context_data(self, **kwargs):
+            context = super(TopUpCRUDL.Pricing, self).get_context_data(**kwargs)
+            context['org'] = self.request.user.get_org()
+            return context
+
+
+class OrderPaymentCRUDL(SmartCRUDL):
+    actions = ('list', 'create',)
+    model = OrderPayment
+
+    class List(OrgPermsMixin, SmartListView):
+        def derive_queryset(self, **kwargs):
+            return OrderPayment.objects.filter(is_active=True, org=self.request.user.get_org()).order_by('-created_on')
+
+        def get_context_data(self, **kwargs):
+            context = super(OrderPaymentCRUDL.List, self).get_context_data(**kwargs)
+            context['org'] = self.request.user.get_org()
+            return context
+
+        def get_template_names(self):
+            return super(OrderPaymentCRUDL.List, self).get_template_names()
+
 
 class StripeHandler(View):  # pragma: no cover
     """
     Handles WebHook events from Stripe.  We are interested as to when invoices are
     charged by Stripe so we can send the user an invoice email.
     """
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(StripeHandler, self).dispatch(*args, **kwargs)
