@@ -1764,6 +1764,19 @@ class TopUpCRUDL(SmartCRUDL):
             context['org'] = self.request.user.get_org()
             return context
 
+        def post(self, request, *args, **kwargs):
+            PLANS_PERM = {
+                'basic': 1000,
+                'master': 3000,
+                'premium': 10000
+            }
+            plan = self.request.POST.get('plan')
+            if plan in PLANS_PERM:
+                return HttpResponseRedirect(reverse('orgs.orderpayment_create') + '?moip_order_id={0}'.format(plan))
+
+            messages.error(request, _('Select a valid plan'))
+            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+
 
 class OrderPaymentCRUDL(SmartCRUDL):
     actions = ('list', 'create',)
@@ -1784,22 +1797,20 @@ class OrderPaymentCRUDL(SmartCRUDL):
     class Create(OrgPermsMixin, SmartFormView):
 
         class CreateOrderPaymentForm(Form):
-            moip_order_id = forms.CharField(help_text=_('MoIP order identifier'), widget=forms.HiddenInput)
             card_customer_name = forms.CharField(help_text=_('Customer name exactly as on card'), label=_('Customer name'))
             card_expiration_month = forms.IntegerField(help_text=_('Month expiration card'), max_value=12, min_value=1, )
             card_expiration_year = forms.IntegerField(help_text=_('Year expiration card'), max_value=int(datetime.today().year) + 20, min_value=int(datetime.today().year), )
+            card_number = forms.IntegerField(label=_('Number card'))
+            card_cvc = forms.IntegerField(label=_('Security code'), help_text=_('Security code localized on card reverse'))
 
             def __init__(self, *args, **kwargs):
                 self.org = kwargs['org']
-                self.moip_order_id = kwargs['moip_order_id']
                 del kwargs['org']
-                del kwargs['moip_order_id']
-                # self.fields['moip_order_id'].initial = self.moip_order_id
                 super(OrderPaymentCRUDL.Create.CreateOrderPaymentForm, self).__init__(*args, **kwargs)
 
-        success_message = _("Payment requested, wait for approval.")
+        success_message = _("Subscribe requested, wait for approval.")
         form_class = CreateOrderPaymentForm
-        fields = ('moip_order_id', 'card_expiration_month', 'card_expiration_year', 'card_customer_name',)
+        fields = ('card_customer_name', 'card_expiration_month', 'card_expiration_year', 'card_number', 'card_cvc',)
 
         def get_success_url(self):
             return reverse('orgs.orderpayment_list')
@@ -1807,12 +1818,12 @@ class OrderPaymentCRUDL(SmartCRUDL):
         def get_form_kwargs(self):
             kwargs = super(OrderPaymentCRUDL.Create, self).get_form_kwargs()
             kwargs['org'] = self.request.user.get_org()
-            kwargs['moip_order_id'] = self.request.GET.get('moip_order_id')
             return kwargs
 
         def form_valid(self, form):
             try:
                 org = self.request.user.get_org()
+                moip_order_id = self.request.GET.get('moip_order_id')
             except Exception as e:
                 # this is an unexpected error, report it to sentry
                 logger = logging.getLogger(__name__)
