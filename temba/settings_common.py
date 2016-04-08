@@ -535,6 +535,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_update',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
+        'orgs.orderpayment_create',
     ),
     "Administrators": (
         'api.webhookevent_list',
@@ -592,6 +593,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_read',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
+        'orgs.orderpayment_create',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -709,6 +711,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_read',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
+        'orgs.orderpayment_create',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -801,6 +804,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_read',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
+        'orgs.orderpayment_create',
 
         'channels.channel_list',
         'channels.channel_read',
