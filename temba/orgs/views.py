@@ -1715,24 +1715,6 @@ class TopUpCRUDL(SmartCRUDL):
             else:
                 return super(TopUpCRUDL.List, self).get_template_names()
 
-    class Create(SmartCreateView):
-        """
-        This is only for root to be able to credit accounts.
-        """
-        fields = ('credits', 'price', 'comment')
-
-        def get_success_url(self):
-            return reverse('orgs.topup_manage') + ('?org=%d' % self.object.org.id)
-
-        def save(self, obj):
-            obj.org = Org.objects.get(pk=self.request.REQUEST['org'])
-            return TopUp.create(self.request.user, price=obj.price, credits=obj.credits, org=obj.org)
-
-        def post_save(self, obj):
-            obj = super(TopUpCRUDL.Create, self).post_save(obj)
-            obj.org.apply_topups()
-            return obj
-
     class Update(SmartUpdateView):
         fields = ('is_active', 'price', 'credits', 'expires_on')
 
@@ -1798,6 +1780,46 @@ class OrderPaymentCRUDL(SmartCRUDL):
 
         def get_template_names(self):
             return super(OrderPaymentCRUDL.List, self).get_template_names()
+
+    class Create(OrgPermsMixin, SmartFormView):
+
+        class CreateOrderPaymentForm(Form):
+            moip_order_id = forms.CharField(help_text=_('MoIP order identifier'), widget=forms.HiddenInput)
+            card_customer_name = forms.CharField(help_text=_('Customer name exactly as on card'), label=_('Customer name'))
+            card_expiration_month = forms.IntegerField(help_text=_('Month expiration card'), max_value=12, min_value=1, )
+            card_expiration_year = forms.IntegerField(help_text=_('Year expiration card'), max_value=int(datetime.today().year) + 20, min_value=int(datetime.today().year), )
+
+            def __init__(self, *args, **kwargs):
+                self.org = kwargs['org']
+                self.moip_order_id = kwargs['moip_order_id']
+                del kwargs['org']
+                del kwargs['moip_order_id']
+                # self.fields['moip_order_id'].initial = self.moip_order_id
+                super(OrderPaymentCRUDL.Create.CreateOrderPaymentForm, self).__init__(*args, **kwargs)
+
+        success_message = _("Payment requested, wait for approval.")
+        form_class = CreateOrderPaymentForm
+        fields = ('moip_order_id', 'card_expiration_month', 'card_expiration_year', 'card_customer_name',)
+
+        def get_success_url(self):
+            return reverse('orgs.orderpayment_list')
+
+        def get_form_kwargs(self):
+            kwargs = super(OrderPaymentCRUDL.Create, self).get_form_kwargs()
+            kwargs['org'] = self.request.user.get_org()
+            kwargs['moip_order_id'] = self.request.GET.get('moip_order_id')
+            return kwargs
+
+        def form_valid(self, form):
+            try:
+                org = self.request.user.get_org()
+            except Exception as e:
+                # this is an unexpected error, report it to sentry
+                logger = logging.getLogger(__name__)
+                logger.error('Exception on request payment: %s' % unicode(e), exc_info=True)
+                return self.form_invalid(form)
+
+            return super(OrderPaymentCRUDL.Create, self).form_valid(form)
 
 
 class StripeHandler(View):  # pragma: no cover
