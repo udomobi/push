@@ -1699,7 +1699,9 @@ class OrderPayment(SmartModel):
     org = models.ForeignKey(Org, related_name='payments', help_text="The organization that payment was requested")
     value = models.IntegerField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
     credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
-    moip_order_id = models.CharField(max_length=255, help_text=_("Order MoIP identifier"))
+    moip_order_id = models.CharField(verbose_name=_("Order MoIP identifier"), max_length=255, )
+    moip_payment_id = models.CharField(verbose_name=_("Payment MoIP identifier"), null=True, blank=True, max_length=255, )
+    moip_payment_status = models.CharField(verbose_name=_("Status MoIP payment"), null=True, blank=True, max_length=255, )
 
     @classmethod
     def create(cls, user, value, credits, moip_order_id, org=None):
