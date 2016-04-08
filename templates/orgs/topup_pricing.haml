@@ -149,43 +149,49 @@
           .bundle
             .bundle-size
               %h3
-                1.000
+                1000
               %h6
-                créditos
+                credits
             .bundle-price
               R$ 99,00
             .bundle-per-credit
-              0,11 por mensagem
+              0,11 each
             .bundle-buy
-              %a.btn.btn-primary.bundle-button
-                Comprar
+              %form{ action: "", method: "POST" }
+                -csrf_token
+                %input{ value: "basic", type: "hidden", name: "plan"}
+                %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe" }
 
         .span4
           .bundle
             .bundle-size
               %h3
-                3.000
+                3000
               %h6
-                créditos
+                credits
             .bundle-price
               R$ 159,99
             .bundle-per-credit
-              0,10 por mensagem
+              0,10 each
             .bundle-buy
-              %a.btn.btn-primary.bundle-button
-                Comprar
+              %form{ action: "", method: "POST" }
+                -csrf_token
+                %input{ value: "master", type: "hidden", name: "plan"}
+                %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe" }
 
         .span4
           .bundle
             .bundle-size
               %h3
-                10.000
+                10000
               %h6
-                créditos
+                credits
             .bundle-price
               R$ 199,90
             .bundle-per-credit
-              0,09 por mensagem
+              0,09 each
             .bundle-buy
-              %a.btn.btn-primary.bundle-button
-                Comprar
+              %form{ action: "", method: "POST" }
+                -csrf_token
+                %input{ value: "premium", type: "hidden", name: "plan"}
+                %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe" }

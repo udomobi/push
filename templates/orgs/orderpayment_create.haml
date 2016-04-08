@@ -12,25 +12,9 @@
 -block title-text
   .title-text
     %h1
-      -trans "Create payment"
+      -trans "Subscription data"
 
 -block fields
-  .field.formax-vertical
-  {% render_field 'moip_order_id' %}
 
-  .field.formax-vertical
-    {% render_field 'card_customer_name' %}
-
-  .field.formax-vertical
-    {% render_field 'card_expiration_month' %}
-
-  .field.formax-vertical
-    {% render_field 'card_expiration_year' %}
-  -#
   -#.field.formax-vertical
-  -#  {% render_field 'new_password' %}
-  -#
-  -#.field.formax-vertical
-  -#  {% render_field 'language' %}
-  -#
-  -#%br
+  -#  {% render_field 'card_customer_name' %}
