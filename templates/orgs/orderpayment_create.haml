@@ -1,0 +1,36 @@
+-extends 'smartmin/form.html'
+-load smartmin
+-load i18n
+
+-block form-span
+  span8
+
+-block title-icon
+  .title-icon
+    %span.glyph.icon-coins
+
+-block title-text
+  .title-text
+    %h1
+      -trans "Create payment"
+
+-block fields
+  .field.formax-vertical
+  {% render_field 'moip_order_id' %}
+
+  .field.formax-vertical
+    {% render_field 'card_customer_name' %}
+
+  .field.formax-vertical
+    {% render_field 'card_expiration_month' %}
+
+  .field.formax-vertical
+    {% render_field 'card_expiration_year' %}
+  -#
+  -#.field.formax-vertical
+  -#  {% render_field 'new_password' %}
+  -#
+  -#.field.formax-vertical
+  -#  {% render_field 'language' %}
+  -#
+  -#%br
