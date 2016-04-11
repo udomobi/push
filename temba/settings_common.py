@@ -329,10 +329,10 @@ MEDIA_URL = "/media/"
 # this lets us easily create new permissions across our objects
 PERMISSIONS = {
     '*': ('create',  # can create an object
-          'read',    # can read an object, viewing it's details
+          'read',  # can read an object, viewing it's details
           'update',  # can update an object
           'delete',  # can delete an object,
-          'list'),   # can view a list of the objects
+          'list'),  # can view a list of the objects
 
     'campaigns.campaign': ('api',
                            'archived',
@@ -501,8 +501,8 @@ PERMISSIONS = {
 # assigns the permissions that each group should have
 GROUP_PERMISSIONS = {
     "Service Users": (  # internal Temba services have limited permissions
-        'msgs.msg_create',
-    ),
+                        'msgs.msg_create',
+                        ),
     "Alpha": (
     ),
     "Beta": (
@@ -1092,3 +1092,16 @@ SEGMENT_IO_KEY = os.environ.get('SEGMENT_IO_KEY', '')
 
 LIBRATO_USER = os.environ.get('LIBRATO_USER', '')
 LIBRATO_TOKEN = os.environ.get('LIBRATO_TOKEN', '')
+
+# MoIP basic token: base64({token}:{key})
+MOIP_TOKEN = os.environ.get('MOIP_TOKEN', None)
+
+# MoIP plans
+MOIP_PLANS = {
+    'basic': 1000,
+    'master': 3000,
+    'premium': 10000
+}
+
+# MoIP API URL
+MOIP_API_URL = os.environ.get('MOIP_API_URL', None)
