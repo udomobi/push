@@ -14,7 +14,98 @@
     %h1
       -trans "Subscription data"
 
+-block extra-script
+  {{block.super}}
+  <script type="text/javascript" src="{{ STATIC_URL }}js//jquery.mask.min.js"></script>
+  :javascript
+    $("#id_address_country").select2({placeholder: "Select a country"});
+    var SPMaskBehavior = function (val) {
+            return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009';
+        },
+        spOptions = {
+            onKeyPress: function (val, e, field, options) {
+                field.mask(SPMaskBehavior.apply({}, arguments), options);
+            }
+        };
+
+    $('#id_phone_number').mask(SPMaskBehavior, spOptions);
+    $('#id_birthday').mask('00/00/0000');
+    $('#id_billing_expiration').mask('00/00');
+    $('#id_cpf').mask('000.000.000-00');
+    $('#id_address_zipcode').mask('00000-000');
+    $('#id_billing_number').mask('0000 0000 0000 0000');
+
 -block fields
 
-  -#.field.formax-vertical
-  -#  {% render_field 'card_customer_name' %}
+  .field.formax-vertical
+    {% render_field 'name' %}
+
+  .field.formax-vertical
+    {% render_field 'email' %}
+
+  .field.formax-vertical
+    {% render_field 'cpf' %}
+
+  .field.formax-vertical
+    {% render_field 'phone_number' %}
+
+  .field.formax-vertical
+    {% render_field 'birthday' %}
+
+  .field.formax-vertical
+    {% render_field 'address_street' %}
+
+  .field.formax-vertical
+    {% render_field 'address_number' %}
+
+  .field.formax-vertical
+    {% render_field 'address_neighborhood' %}
+
+  .field.formax-vertical
+    {% render_field 'address_city' %}
+
+  .field.formax-vertical
+    {% render_field 'address_state' %}
+
+  .field.formax-vertical
+    {% render_field 'address_country' %}
+
+  .field.formax-vertical
+    {% render_field 'address_zipcode' %}
+
+  .field.formax-vertical
+    {% render_field 'billing_customer_name' %}
+
+  .field.formax-vertical
+    {% render_field 'billing_number' %}
+
+  .field.formax-vertical
+    {% render_field 'billing_expiration' %}
+
+  .field.formax-vertical
+    {% render_field 'billing_cvc' %}
+
+-block extra-style
+  {{block.super}}
+  :css
+    .info {
+      width: 800px;
+      margin-bottom: 20px;
+    }
+
+    .help-block {
+      margin-left:150px;
+      margin-bottom:20px;
+    }
+
+    #id_address_state{
+      width: 50px;
+    }
+
+    #id_address_number{
+      width: 100px;
+    }
+
+    #s2id_id_address_country{
+      width: 350px;
+    }
