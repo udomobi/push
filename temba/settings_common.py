@@ -1093,15 +1093,17 @@ SEGMENT_IO_KEY = os.environ.get('SEGMENT_IO_KEY', '')
 LIBRATO_USER = os.environ.get('LIBRATO_USER', '')
 LIBRATO_TOKEN = os.environ.get('LIBRATO_TOKEN', '')
 
-# MoIP basic token: base64({token}:{key})
-MOIP_TOKEN = os.environ.get('MOIP_TOKEN', None)
-
-# MoIP plans
-MOIP_PLANS = {
-    'basic': 1000,
-    'master': 3000,
-    'premium': 10000
+BILLING_PLANS = {
+    'basic': {
+        'credits': 5,
+        'value': 5.00,
+        'each': 0.11,
+        'paypal_button_code': '1B2'
+    },
+    'master': {
+        'credits': 10,
+        'value': 10.00,
+        'each': 0.10,
+        'paypal_button_code': 'A1B'
+    }
 }
-
-# MoIP API URL
-MOIP_API_URL = os.environ.get('MOIP_API_URL', None)
