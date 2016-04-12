@@ -145,53 +145,24 @@
           -trans "credits remaining. Top up early to prevent any disruption in your service."
 
       .row.bundles
-        .span4
-          .bundle
-            .bundle-size
-              %h3
-                1000
-              %h6
-                credits
-            .bundle-price
-              R$ 99,00
-            .bundle-per-credit
-              0,11 each
-            .bundle-buy
-              %form{ action: "", method: "POST" }
-                -csrf_token
-                %input{ value: "basic", type: "hidden", name: "plan"}
-                %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe" }
+        -for plan in plans
+          .span4
+            .bundle
+              .bundle-size
+                %h3
+                  {{ plan.1 }}
+                %h6
+                  credits
+              .bundle-price
+                R$ {{ plan.2 }}
+              .bundle-per-credit
+                {{ plan.3 }} each
+              .bundle-buy
+                %form{ action: "https://www.paypal.com/cgi-bin/webscr", method: "POST", target: "_blank" }
+                  -csrf_token
+                  %input{ value: '_s-xclick', type: "hidden", name: "cmd"}
+                  %input{ value: '{{ plan.0 }}', type: "hidden", name: "hosted_button_id"}
+                  %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe", name: "submit" }
 
-        .span4
-          .bundle
-            .bundle-size
-              %h3
-                3000
-              %h6
-                credits
-            .bundle-price
-              R$ 159,99
-            .bundle-per-credit
-              0,10 each
-            .bundle-buy
-              %form{ action: "", method: "POST" }
-                -csrf_token
-                %input{ value: "master", type: "hidden", name: "plan"}
-                %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe" }
 
-        .span4
-          .bundle
-            .bundle-size
-              %h3
-                10000
-              %h6
-                credits
-            .bundle-price
-              R$ 199,90
-            .bundle-per-credit
-              0,09 each
-            .bundle-buy
-              %form{ action: "", method: "POST" }
-                -csrf_token
-                %input{ value: "premium", type: "hidden", name: "plan"}
-                %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe" }
+

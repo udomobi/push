@@ -3,6 +3,7 @@
 -load humanize
 -load smartmin
 -load i18n
+-load temba
 
 -block table-buttons
 
@@ -81,7 +82,7 @@
 -block title-text
   .title-text
     %h1
-      -trans "Payments"
+      -trans "Subscription"
 
 -block above-bar
   %a.btn.btn-primary{ style:"float:right", href:"{% url 'orgs.topup_pricing' %}" } Add credits
@@ -94,19 +95,20 @@
     -for payment in object_list
       .topup
         .topup-price
-          {{ payment.value }}
+          R$ {{ payment.value }}
 
         .topup-credits
-          {{ payment.credits|intcomma }}
+          {{ payment.credits }} ({{ payment.plan }})
 
         .topup-expires
-          -trans "Order in "
-          {{ payment.created_on }}
+          -trans "Expires on"
+          {{ payment.created_on|date:'M, d' }}
+          -trans "each month"
 
         .topup-history
           -trans "Requested on"
-          {{ topup.created_on }}
-          -trans " by "
+          {{ payment.created_on }}
+          -trans "by"
           {{ payment.created_by.first_name }} {{ payment.created_by.last_name }}
   -else
-    -trans "No request for payment made to date."
+    -trans "No subs for payment made to date."
