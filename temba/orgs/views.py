@@ -1756,23 +1756,23 @@ class TopUpCRUDL(SmartCRUDL):
             return self.org.topups.all()
 
     class Pricing(OrgPermsMixin, SmartTemplateView):
-        """
-        This is only for root to be able to pricing topups on an account
-        """
         template_name = 'orgs/topup_pricing.haml'
 
+        def dispatch(self, request, *args, **kwargs):
+            org = request.user.get_org()
+            if OrderPayment.objects.filter(org=org, is_active=True).first():
+                messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
+                return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
+
+            return super(TopUpCRUDL.Pricing, self).dispatch(request, *args, **kwargs)
+
         def get_context_data(self, **kwargs):
+            import operator
+            org = self.request.user.get_org()
             context = super(TopUpCRUDL.Pricing, self).get_context_data(**kwargs)
-            context['org'] = self.request.user.get_org()
+            context['org'] = org
+            context['plans'] = [[key['paypal_button_code'], key['credits'], key['value'], key['each']] for plan, key in sorted(settings.BILLING_PLANS.items(), key=operator.itemgetter(1))]
             return context
-
-        def post(self, request, *args, **kwargs):
-            plan = self.request.POST.get('plan')
-            if plan in settings.MOIP_PLANS:
-                return HttpResponseRedirect(reverse('orgs.orderpayment_create') + '?moip_order_id={0}'.format(plan))
-
-            messages.error(request, _('Select a valid plan'))
-            return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
 
 class OrderPaymentCRUDL(SmartCRUDL):
@@ -1791,117 +1791,25 @@ class OrderPaymentCRUDL(SmartCRUDL):
         def get_template_names(self):
             return super(OrderPaymentCRUDL.List, self).get_template_names()
 
-    class Create(OrgPermsMixin, SmartFormView):
+    class Create(OrgPermsMixin, SmartTemplateView):
+        template_name = 'orgs/orderpayment_create.haml'
 
-        class CreateOrderPaymentForm(Form):
-            ALL_COUNTRIES = sorted(((ALT_CODES[str(code)][0], name) for code, name in COUNTRIES.items()), key=lambda x: x[1])
+        def get(self, request, *args, **kwargs):
+            org = request.user.get_org()
+            if OrderPayment.objects.filter(org=org, is_active=True).first():
+                messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
+            else:
+                value = float(self.request.GET.get('value'))
+                credits = self.request.GET.get('credits')
+                plan = self.request.GET.get('plan')
+                OrderPayment.create(user=self.request.user, value=value, plan=plan, credits=credits)
+                messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
+            return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
 
-            name = forms.CharField(label=_('Name'))
-            email = forms.CharField(label=_('Email'), help_text=_('Your email address'))
-            cpf = forms.CharField(label=_('CPF'), help_text=_('Document number CPF'))
-            phone_number = forms.CharField(label=_('Phone number'), help_text=_('Format: (00) 00000-0000'))
-            birthday = forms.CharField(label=_('Birthday'), help_text=_('Birthday with format day/month/year'))
-            address_street = forms.CharField(label=_('Street'))
-            address_number = forms.CharField(label=_('Number'))
-            address_neighborhood = forms.CharField(label=_('Neighborhood'))
-            address_city = forms.CharField(label=_('City'))
-            address_state = forms.CharField(label=_('State'), help_text=_('State initials'))
-            address_country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_('Country'), help_text=_('Country initials. Ex.: BRA, ARG'))
-            address_zipcode = forms.CharField(label=_('ZIP Code'))
-            billing_customer_name = forms.CharField(help_text=_('Customer name exactly as on card'), label=_('Customer name'))
-            billing_number = forms.CharField(label=_('Number card'))
-            billing_expiration = forms.CharField(help_text=_('Expiration card with format month/year'), )
-            billing_cvc = forms.IntegerField(label=_('Security code'), help_text=_('Security code localized on card reverse'))
-
-            def __init__(self, *args, **kwargs):
-                self.org = kwargs['org']
-                del kwargs['org']
-                super(OrderPaymentCRUDL.Create.CreateOrderPaymentForm, self).__init__(*args, **kwargs)
-
-        success_message = _("Subscribe requested, wait for approval.")
-        form_class = CreateOrderPaymentForm
-        fields = ('name', 'email', 'cpf', 'phone_area_code', 'phone_number', 'birthday', 'address_street', 'address_number', 'address_neighborhood', 'address_city', 'address_state', 'address_country', 'address_zipcode', 'billing_customer_name', 'billing_number', 'billing_expiration', 'billing_cvc',)
-
-        def get_success_url(self):
-            return reverse('orgs.orderpayment_list')
-
-        def get_form_kwargs(self):
-            kwargs = super(OrderPaymentCRUDL.Create, self).get_form_kwargs()
+        def get_context_data(self, **kwargs):
+            kwargs = super(OrderPaymentCRUDL.Create, self).get_context_data()
             kwargs['org'] = self.request.user.get_org()
             return kwargs
-
-        def form_valid(self, form):
-            try:
-                org = self.request.user.get_org()
-                moip_order_id = self.request.GET.get('moip_order_id')
-                name = self.request.POST.get('name')
-                email = self.request.POST.get('email')
-                cpf = str(self.request.POST.get('cpf')).replace('.', '').replace('-', '')
-                phone_number_full = str(self.request.POST.get('phone_number')).replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
-                phone_area_code = phone_number_full[:2]
-                phone_number = phone_number_full[2:]
-                birthday_full = str(self.request.POST.get('birthday')).replace('/', '')
-                birthdate_day = birthday_full[:2]
-                birthdate_month = birthday_full[2:4]
-                birthdate_year = birthday_full[4:]
-                address_street = self.request.POST.get('address_street')
-                address_number = self.request.POST.get('address_number')
-                address_neighborhood = self.request.POST.get('address_neighborhood')
-                address_city = self.request.POST.get('address_city')
-                address_state = self.request.POST.get('address_state')
-                address_country = self.request.POST.get('address_country')
-                address_zipcode = str(self.request.POST.get('address_zipcode')).replace('-', '')
-                billing_customer_name = self.request.POST.get('billing_customer_name')
-                billing_number = str(self.request.POST.get('billing_number')).replace(' ', '')
-                billing_expiration_full = str(self.request.POST.get('billing_expiration')).replace('/', '')
-                billing_expiration_month = billing_expiration_full[:2]
-                billing_expiration_year = billing_expiration_full[2:]
-                billing_cvc = self.request.POST.get('billing_cvc')
-
-                payload = {
-                    "code": str(org.id),
-                    "email": email,
-                    "fullname": name,
-                    "cpf": cpf,
-                    "phone_area_code": phone_area_code,
-                    "phone_number": phone_number,
-                    "birthdate_day": birthdate_day,
-                    "birthdate_month": birthdate_month,
-                    "birthdate_year": birthdate_year,
-                    "address": {
-                        "street": address_street,
-                        "number": address_number,
-                        "district": address_neighborhood,
-                        "city": address_city,
-                        "state": address_state,
-                        "country": address_country,
-                        "zipcode": address_zipcode
-                    },
-                    "billing_info": {
-                        "credit_card": {
-                            "holder_name": billing_customer_name,
-                            "number": billing_number,
-                            "expiration_month": billing_expiration_month,
-                            "expiration_year": billing_expiration_year
-                        }
-                    }
-                }
-                payload = json.dumps(payload)
-                HEADERS = {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Basic {0}'.format(settings.MOIP_TOKEN)
-                }
-                response = requests.post("{0}/customers".format(settings.MOIP_API_URL), data=payload, headers=HEADERS, timeout=5)
-                result = json.loads(response.content)
-                print(response.status_code)
-                print(result)
-            except Exception as e:
-                # this is an unexpected error, report it to sentry
-                logger = logging.getLogger(__name__)
-                logger.error('Exception on request payment: %s' % unicode(e), exc_info=True)
-                return self.form_invalid(form)
-
-            return super(OrderPaymentCRUDL.Create, self).form_valid(form)
 
 
 class StripeHandler(View):  # pragma: no cover
