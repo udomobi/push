@@ -1697,31 +1697,22 @@ class OrderPayment(SmartModel):
     Orders MoIP for payment.
     """
     org = models.ForeignKey(Org, related_name='payments', help_text="The organization that payment was requested")
-    value = models.IntegerField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
+    value = models.FloatField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
     credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
-    moip_order_id = models.CharField(verbose_name=_("Order MoIP identifier"), max_length=255, )
-    moip_payment_id = models.CharField(verbose_name=_("Payment MoIP identifier"), null=True, blank=True, max_length=255, )
-    moip_payment_status = models.CharField(verbose_name=_("Status MoIP payment"), null=True, blank=True, max_length=255, )
+    plan = models.CharField(verbose_name=_('Plan'), max_length=255)
 
     @classmethod
-    def create(cls, user, value, credits, moip_order_id, org=None):
+    def create(cls, user, value, credits, plan, org=None):
         """
-        Creates a new topup
+        Creates a new order payment for topup
         """
         if not org:
             org = user.get_org()
 
-        topup = OrderPayment.objects.create(org=org, value=value, credits=credits, moip_order_id=moip_order_id, created_by=user, modified_by=user)
-        return topup
-
-    def value_in_real(self):
-        if self.value == 0:
-            return 0
-        else:
-            return Decimal(self.value) / Decimal(100)
+        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, created_by=user, modified_by=user)
 
     def __unicode__(self):
-        return "%s" % self.moip_order_id
+        return "%s" % self.id
 
 
 class CreditAlert(SmartModel):
