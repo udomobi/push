@@ -110,5 +110,9 @@
           {{ payment.created_on }}
           -trans "by"
           {{ payment.created_by.first_name }} {{ payment.created_by.last_name }}
+
+        %a{ href: "https://www.paypal.com/cgi-bin/webscr?cmd=_subscr-find&alias=VP8Y75JU5NMQG", target: "_blank" }
+          -trans "Cancel subscription"
+
   -else
     -trans "No subs for payment made to date."
