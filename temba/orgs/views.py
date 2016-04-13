@@ -1797,18 +1797,44 @@ class OrderPaymentCRUDL(SmartCRUDL):
         def get(self, request, *args, **kwargs):
             org = request.user.get_org()
             if OrderPayment.objects.filter(org=org, is_active=True).first():
+                import paypalrestsdk
+                paypalrestsdk.configure({
+                    "mode": "live",
+                    "client_id": settings.PAYPAL_CLIENT_ID,
+                    "client_secret": settings.PAYPAL_CLIENT_SECRET
+                })
+                payment = paypalrestsdk.Capture.find('1LN87158NG814041N')
+                print(payment)
                 messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
             else:
+                import paypalrestsdk
+
                 transaction_id = self.request.GET.get('tx')
                 status = self.request.GET.get('st')
-                amt = float(self.request.GET.get('amt'))
+                plan_value = float(self.request.GET.get('amt'))
                 plan = self.request.GET.get('item_number')
                 sig = self.request.GET.get('sig')
-                OrderPayment.create(user=self.request.user, value=amt, plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=transaction_id, signature=sig)
-                if status == 'Completed':
-                    expires_on = timezone.now() + timedelta(days=30)
-                    TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[plan]['each'] * 100.0, credits=settings.BILLING_PLANS[plan]['credits'], expires_on=expires_on)
-                messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
+
+                if transaction_id and status:
+                    try:
+                        paypalrestsdk.configure({
+                            "mode": "live",
+                            "client_id": settings.PAYPAL_CLIENT_ID,
+                            "client_secret": settings.PAYPAL_CLIENT_SECRET
+                        })
+                        payment = paypalrestsdk.Order.find(transaction_id)
+                    except Exception as e:
+                        print "Error on request access token PayPal: {0}".format(e)
+                        payment = None
+
+                    if not OrderPayment.objects.filter(transaction_id=transaction_id).first() and payment and 'state' in payment and payment['state'] == str(status).lower():
+                        OrderPayment.create(user=self.request.user, value=plan_value, plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=transaction_id, signature=sig)
+                        expires_on = timezone.now() + timedelta(days=30)
+                        TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[plan]['each'] * 100.0, credits=settings.BILLING_PLANS[plan]['credits'], expires_on=expires_on)
+                        messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
+                    else:
+                        messages.info(request, _('Unauthorized! Payment not found.'))
+
             return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
 
         def get_context_data(self, **kwargs):
