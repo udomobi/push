@@ -1799,10 +1799,15 @@ class OrderPaymentCRUDL(SmartCRUDL):
             if OrderPayment.objects.filter(org=org, is_active=True).first():
                 messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
             else:
-                value = float(self.request.GET.get('value'))
-                credits = self.request.GET.get('credits')
-                plan = self.request.GET.get('plan')
-                OrderPayment.create(user=self.request.user, value=value, plan=plan, credits=credits)
+                transaction_id = self.request.GET.get('tx')
+                status = self.request.GET.get('st')
+                amt = float(self.request.GET.get('amt'))
+                plan = self.request.GET.get('item_number')
+                sig = self.request.GET.get('sig')
+                OrderPayment.create(user=self.request.user, value=amt, plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=transaction_id, signature=sig)
+                if status == 'Completed':
+                    expires_on = timezone.now() + timedelta(days=30)
+                    TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[plan]['each'] * 100.0, credits=settings.BILLING_PLANS[plan]['credits'], expires_on=expires_on)
                 messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
             return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
 
@@ -1886,3 +1891,7 @@ class StripeHandler(View):  # pragma: no cover
 
         # empty response, 200 lets Stripe know we handled it
         return HttpResponse("Ignored, uninteresting event")
+
+
+def check_subscription(request):
+    return True
