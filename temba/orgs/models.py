@@ -1600,14 +1600,15 @@ class TopUp(SmartModel):
                                help_text="Any comment associated with this topup, used when we credit accounts")
 
     @classmethod
-    def create(cls, user, price, credits, stripe_charge=None, org=None):
+    def create(cls, user, price, credits, stripe_charge=None, org=None, expires_on=None):
         """
         Creates a new topup
         """
         if not org:
             org = user.get_org()
 
-        expires_on = timezone.now() + timedelta(days=365)  # credits last 1 year
+        if not expires_on:
+            expires_on = timezone.now() + timedelta(days=365)  # credits last 1 year
 
         topup = TopUp.objects.create(org=org, price=price, credits=credits, expires_on=expires_on,
                                      stripe_charge=stripe_charge, created_by=user, modified_by=user)
@@ -1700,16 +1701,18 @@ class OrderPayment(SmartModel):
     value = models.FloatField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
     credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
     plan = models.CharField(verbose_name=_('Plan'), max_length=255)
+    transaction_id = models.CharField(verbose_name=_('Transaction ID'), help_text=_('PayPal transaction ID'), max_length=255)
+    signature = models.CharField(verbose_name=_('Signature'), max_length=255)
 
     @classmethod
-    def create(cls, user, value, credits, plan, org=None):
+    def create(cls, user, value, credits, plan, transaction_id, signature, org=None):
         """
         Creates a new order payment for topup
         """
         if not org:
             org = user.get_org()
 
-        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, created_by=user, modified_by=user)
+        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, transaction_id=transaction_id, signature=signature, created_by=user, modified_by=user)
 
     def __unicode__(self):
         return "%s" % self.id
