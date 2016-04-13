@@ -1107,3 +1107,6 @@ BILLING_PLANS = {
         'paypal_button_code': 'A1B'
     }
 }
+
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', None)
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', None)
