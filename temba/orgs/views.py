@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import json
+from paypalrestsdk.exceptions import ResourceNotFound
 import plivo
 import regex
 import logging
@@ -11,6 +12,7 @@ from datetime import datetime
 from decimal import Decimal
 from django import forms
 from django.contrib import messages
+
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -43,7 +45,10 @@ from twilio.rest import TwilioRestClient
 from .bundles import WELCOME_TOPUP_SIZE
 from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, OrderPayment
 from .models import MT_SMS_EVENTS, MO_SMS_EVENTS, MT_CALL_EVENTS, MO_CALL_EVENTS, ALARM_EVENTS
-from django_countries.data import COUNTRIES, ALT_CODES
+import paypalrestsdk
+from paypalrestsdk import BillingPlan, BillingAgreement
+
+paypalrestsdk.configure(settings.PAYPAL_API)
 
 
 def check_login(request):
@@ -1766,17 +1771,88 @@ class TopUpCRUDL(SmartCRUDL):
 
             return super(TopUpCRUDL.Pricing, self).dispatch(request, *args, **kwargs)
 
+        def post(self, request, *args, **kwargs):
+            plan = request.POST.get('plan')
+            org = request.user.get_org()
+
+            if plan in settings.BILLING_PLANS:
+                new_plan = BillingPlan({
+                    "name": settings.BILLING_PLANS[plan]['title'],
+                    "description": settings.BILLING_PLANS[plan]['title'],
+                    "type": "INFINITE",
+                    "payment_definitions": [
+                        {
+                            "name": "Regular Payments",
+                            "type": "REGULAR",
+                            "frequency": "MONTH",
+                            "frequency_interval": "1",
+                            "amount": {
+                                "value": "{0}".format(settings.BILLING_PLANS[plan]['value']),
+                                "currency": "BRL"
+                            },
+                            "cycles": "0"
+                        }
+                    ],
+                    "merchant_preferences": {
+                        "setup_fee": {
+                            "value": "0",
+                            "currency": "BRL"
+                        },
+                        "return_url": "http://{host}{reverse}".format(host=request.get_host(), reverse=reverse('orgs.orderpayment_execute')),
+                        "cancel_url": "http://{host}{reverse}".format(host=request.get_host(), reverse=reverse('orgs.orderpayment_list')),
+                        "auto_bill_amount": "YES",
+                        "initial_fail_amount_action": "CONTINUE",
+                        "max_fail_attempts": "0"
+                    }
+                })
+                if new_plan.create():
+                    try:
+                        created_plan = BillingPlan.find(new_plan.id)
+                        created_plan.activate()
+                        new_billing_agreement = BillingAgreement({
+                            "name": org.name,
+                            "description": "Agreement for {0}".format(settings.BILLING_PLANS[plan]['title']),
+                            "start_date": (datetime.now() + timedelta(minutes=1)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                            "plan": {
+                                "id": created_plan.id
+                            },
+                            "payer": {
+                                "payment_method": "paypal"
+                            },
+                            "shipping_address": {
+                                "line1": settings.PAYPAL_ADDRESS['address'],
+                                "city": settings.PAYPAL_ADDRESS['city'],
+                                "state": settings.PAYPAL_ADDRESS['state'],
+                                "postal_code": settings.PAYPAL_ADDRESS['postal_code'],
+                                "country_code": settings.PAYPAL_ADDRESS['country_code']
+                            }
+                        })
+                        if new_billing_agreement.create():
+                            for link in new_billing_agreement.links:
+                                if link.rel == "approval_url":
+                                    approval_url = link.href
+                                    return HttpResponseRedirect(approval_url)
+                        else:
+                            messages.error(request, "Error on creating billing agreement: %s" % new_billing_agreement.error['details'][0]['issue'])
+
+                    except ResourceNotFound as e:
+                        messages.error(request, "Resource not found active plan: %s" % e)
+                else:
+                    messages.error(request, new_plan.error['details'][0]['issue'])
+
+            return HttpResponseRedirect(reverse('orgs.topup_pricing'))
+
         def get_context_data(self, **kwargs):
             import operator
             org = self.request.user.get_org()
             context = super(TopUpCRUDL.Pricing, self).get_context_data(**kwargs)
             context['org'] = org
-            context['plans'] = [[key['paypal_button_code'], key['credits'], key['value'], key['each']] for plan, key in sorted(settings.BILLING_PLANS.items(), key=operator.itemgetter(1))]
+            context['plans'] = [[plan, key['credits'], key['value'], key['each']] for plan, key in sorted(settings.BILLING_PLANS.items(), key=operator.itemgetter(1))]
             return context
 
 
 class OrderPaymentCRUDL(SmartCRUDL):
-    actions = ('list', 'create',)
+    actions = ('list', 'execute')
     model = OrderPayment
 
     class List(OrgPermsMixin, SmartListView):
@@ -1791,54 +1867,41 @@ class OrderPaymentCRUDL(SmartCRUDL):
         def get_template_names(self):
             return super(OrderPaymentCRUDL.List, self).get_template_names()
 
-    class Create(OrgPermsMixin, SmartTemplateView):
+    class Execute(OrgPermsMixin, SmartTemplateView):
         template_name = 'orgs/orderpayment_create.haml'
 
         def get(self, request, *args, **kwargs):
             org = request.user.get_org()
             if OrderPayment.objects.filter(org=org, is_active=True).first():
-                import paypalrestsdk
-                paypalrestsdk.configure({
-                    "mode": "live",
-                    "client_id": settings.PAYPAL_CLIENT_ID,
-                    "client_secret": settings.PAYPAL_CLIENT_SECRET
-                })
-                payment = paypalrestsdk.Capture.find('1LN87158NG814041N')
-                print(payment)
                 messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
             else:
-                import paypalrestsdk
-
-                transaction_id = self.request.GET.get('tx')
-                status = self.request.GET.get('st')
-                plan_value = float(self.request.GET.get('amt'))
-                plan = self.request.GET.get('item_number')
-                sig = self.request.GET.get('sig')
-
-                if transaction_id and status:
-                    try:
-                        paypalrestsdk.configure({
-                            "mode": "live",
-                            "client_id": settings.PAYPAL_CLIENT_ID,
-                            "client_secret": settings.PAYPAL_CLIENT_SECRET
-                        })
-                        payment = paypalrestsdk.Order.find(transaction_id)
-                    except Exception as e:
-                        print "Error on request access token PayPal: {0}".format(e)
-                        payment = None
-
-                    if not OrderPayment.objects.filter(transaction_id=transaction_id).first() and payment and 'state' in payment and payment['state'] == str(status).lower():
-                        OrderPayment.create(user=self.request.user, value=plan_value, plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=transaction_id, signature=sig)
-                        expires_on = timezone.now() + timedelta(days=30)
-                        TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[plan]['each'] * 100.0, credits=settings.BILLING_PLANS[plan]['credits'], expires_on=expires_on)
-                        messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
-                    else:
-                        messages.info(request, _('Unauthorized! Payment not found.'))
+                transaction_id = self.request.GET.get('token')
+                print(transaction_id)
+                print(BillingAgreement.execute(transaction_id))
+                # billing_agreement = BillingAgreement.execute(transaction_id)
+                # if billing_agreement:
+                #     print(billing_agreement)
+                # else:
+                #     print(billing_agreement.error)
+                # if transaction_id and status:
+                #     try:
+                #         payment = paypalrestsdk.Order.find(transaction_id)
+                #     except Exception as e:
+                #         print "Error on request access token PayPal: {0}".format(e)
+                #         payment = None
+                #
+                # if not OrderPayment.objects.filter(transaction_id=transaction_id).first() and payment and 'state' in payment and payment['state'] == str(status).lower():
+                #     OrderPayment.create(user=self.request.user, value=plan_value, plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=transaction_id, signature=sig)
+                #     expires_on = timezone.now() + timedelta(days=30)
+                #     TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[plan]['each'] * 100.0, credits=settings.BILLING_PLANS[plan]['credits'], expires_on=expires_on)
+                #     messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
+                # else:
+                #     messages.info(request, _('Unauthorized! Payment not found.'))
 
             return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
 
         def get_context_data(self, **kwargs):
-            kwargs = super(OrderPaymentCRUDL.Create, self).get_context_data()
+            kwargs = super(OrderPaymentCRUDL.Execute, self).get_context_data()
             kwargs['org'] = self.request.user.get_org()
             return kwargs
 
