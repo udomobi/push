@@ -485,7 +485,7 @@ PERMISSIONS = {
 
     'orgs.topup': ('manage', 'pricing',),
 
-    'orgs.orderpayment': ('list', 'create',),
+    'orgs.orderpayment': ('list', 'execute',),
 
     'triggers.trigger': ('archived',
                          'catchall',
@@ -535,7 +535,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_update',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
-        'orgs.orderpayment_create',
+        'orgs.orderpayment_execute',
     ),
     "Administrators": (
         'api.webhookevent_list',
@@ -593,7 +593,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_read',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
-        'orgs.orderpayment_create',
+        'orgs.orderpayment_execute',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -711,7 +711,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_read',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
-        'orgs.orderpayment_create',
+        'orgs.orderpayment_execute',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -804,7 +804,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_read',
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
-        'orgs.orderpayment_create',
+        'orgs.orderpayment_execute',
 
         'channels.channel_list',
         'channels.channel_read',
@@ -1116,4 +1116,12 @@ PAYPAL_API = {
     "mode": PAYPAL_ENV,
     "client_id": PAYPAL_CLIENT_ID,
     "client_secret": PAYPAL_CLIENT_SECRET
+}
+
+PAYPAL_ADDRESS = {
+    'address': os.environ.get('PAYPAL_ADDRESS', 'Rua Jose Pontes de Magalhaes'),
+    'city': os.environ.get('PAYPAL_CITY', 'Maceio'),
+    'state': os.environ.get('PAYPAL_STATE', 'AL'),
+    'country_code': os.environ.get('PAYPAL_CC', 'BR'),
+    'postal_code': os.environ.get('PAYPAL_ZIPCODE', '57000000')
 }
