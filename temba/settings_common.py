@@ -1110,3 +1110,10 @@ BILLING_PLANS = {
 
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', None)
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', None)
+PAYPAL_ENV = os.environ.get('PAYPAL_ENV', 'live')
+
+PAYPAL_API = {
+    "mode": PAYPAL_ENV,
+    "client_id": PAYPAL_CLIENT_ID,
+    "client_secret": PAYPAL_CLIENT_SECRET
+}
