@@ -158,11 +158,9 @@
               .bundle-per-credit
                 {{ plan.3|floatformat:2 }} each
               .bundle-buy
-                %form{ action: "https://www.paypal.com/cgi-bin/webscr", method: "POST", target: "_blank" }
+                %form{ action: "", method: "POST" }
                   -csrf_token
-                  %input{ value: "http://{{ request.get_host }}{% url 'users.user_check_subscription' %}", type: "hidden", name: "notify_url" }
-                  %input{ value: '_s-xclick', type: "hidden", name: "cmd"}
-                  %input{ value: '{{ plan.0 }}', type: "hidden", name: "hosted_button_id"}
+                  %input{ value: '{{ plan.0 }}', type: "hidden", name: "plan"}
                   %input.btn.btn-primary.bundle-button{ type: "submit", value: "Subscribe", name: "submit" }
 
 
