@@ -587,7 +587,7 @@ class Channel(TembaModel):
 
         return channel
 
-	@classmethod
+    @classmethod
     def get_or_create_android(cls, gcm, status):
         """
         Creates a new Android channel from the gcm and status commands sent during device registration

@@ -1,18 +1,13 @@
-#RapidPro docker build management
+#uDo Docker build management
 REGISTRY = 452158872079.dkr.ecr.us-east-1.amazonaws.com
-NAME = rapidpro-udo
-VERSION = latest
+IMAGE = rapidpro-udo
+BUILD_NUMBER?=latest
 
-.PHONY: build tag release clean
+.PHONY: build release 
 
-all: build tag release clean
+all: build release 
 
 build:	
-	docker build --no-cache=false -t $(NAME) .
-tag:
-	docker tag $(NAME):$(VERSION) $(REGISTRY)/$(NAME):$(VERSION)
+	docker build -t $(REGISTRY)/$(IMAGE):$(BUILD_NUMBER) .
 release: 
-	docker push $(REGISTRY)/$(NAME):$(VERSION)
-clean:
-	echo "Not yet implemented" #docker rmi $(NAME):$(VERSION)
-
+	docker push $(REGISTRY)/$(IMAGE):$(BUILD_NUMBER)

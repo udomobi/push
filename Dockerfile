@@ -1,11 +1,10 @@
 FROM ubuntu:trusty
-RUN apt-get update
-RUN apt-get install -qyy \
+RUN apt-get update && apt-get install -qyy \
     -o APT::Install-Recommends=false -o APT::Install-Suggests=false \
     build-essential python-imaging git python-setuptools  ncurses-dev python-virtualenv  python-pip postgresql-client-9.3 libpq-dev \
     libpython-dev lib32ncurses5-dev pypy libffi6 openssl libgeos-dev \
     coffeescript node-less yui-compressor gcc libreadline6 libreadline6-dev patch libffi-dev libssl-dev libxml2-dev libxslt1-dev  python-dev \
-    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget
+    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev
 WORKDIR /tmp
 RUN wget http://download.osgeo.org/gdal/1.11.0/gdal-1.11.0.tar.gz
 RUN tar xvfz gdal-1.11.0.tar.gz
@@ -26,7 +25,7 @@ COPY settings.py.pre /udo-rapidpro/temba/settings.py
 
 RUN python manage.py collectstatic --noinput
 
-RUN touch tmp.txt
+RUN touch `echo $RANDOM`.txt
 
 RUN python manage.py hamlcompress --extension=.haml
 
@@ -34,6 +33,8 @@ RUN python manage.py hamlcompress --extension=.haml
 RUN echo "daemon off;" >> /etc/nginx/nginx.conf
 RUN rm /etc/nginx/sites-enabled/default
 RUN ln -s /udo-rapidpro/nginx.conf /etc/nginx/sites-enabled/
+
+RUN rm /udo-rapidpro/temba/settings.pyc
 
 COPY settings.py.static /udo-rapidpro/temba/settings.py
 
