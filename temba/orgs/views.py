@@ -1830,8 +1830,9 @@ class TopUpCRUDL(SmartCRUDL):
                         if new_billing_agreement.create():
                             for link in new_billing_agreement.links:
                                 if link.rel == "approval_url":
-                                    approval_url = link.href
-                                    return HttpResponseRedirect(approval_url)
+                                    token = link.href.split('=')[-1]
+                                    OrderPayment.create(user=self.request.user, value=float(settings.BILLING_PLANS[plan]['value']), plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=token, is_active=False)
+                                    return HttpResponseRedirect(link.href)
                         else:
                             messages.error(request, "Error on creating billing agreement: %s" % new_billing_agreement.error['details'][0]['issue'])
 
@@ -1876,27 +1877,27 @@ class OrderPaymentCRUDL(SmartCRUDL):
                 messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
             else:
                 transaction_id = self.request.GET.get('token')
-                print(transaction_id)
-                print(BillingAgreement.execute(transaction_id))
-                # billing_agreement = BillingAgreement.execute(transaction_id)
-                # if billing_agreement:
-                #     print(billing_agreement)
-                # else:
-                #     print(billing_agreement.error)
-                # if transaction_id and status:
-                #     try:
-                #         payment = paypalrestsdk.Order.find(transaction_id)
-                #     except Exception as e:
-                #         print "Error on request access token PayPal: {0}".format(e)
-                #         payment = None
-                #
-                # if not OrderPayment.objects.filter(transaction_id=transaction_id).first() and payment and 'state' in payment and payment['state'] == str(status).lower():
-                #     OrderPayment.create(user=self.request.user, value=plan_value, plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=transaction_id, signature=sig)
-                #     expires_on = timezone.now() + timedelta(days=30)
-                #     TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[plan]['each'] * 100.0, credits=settings.BILLING_PLANS[plan]['credits'], expires_on=expires_on)
-                #     messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
-                # else:
-                #     messages.info(request, _('Unauthorized! Payment not found.'))
+                billing_agreement = BillingAgreement.execute(transaction_id)
+
+                if 'id' in billing_agreement:
+                    billing_agreement_id = billing_agreement['id']
+                else:
+                    billing_agreement_id = None
+
+                if 'state' in billing_agreement:
+                    billing_agreement_state = billing_agreement['state']
+                else:
+                    messages.info(request, _('Billing agreement with state "{state}".'.format(billing_agreement['state'])))
+                    billing_agreement_state = None
+
+                if not OrderPayment.objects.filter(transaction_id=transaction_id, is_active=True).first() and billing_agreement_id and billing_agreement_state == 'Active':
+                    orderpayment = OrderPayment.objects.filter(transaction_id=transaction_id).first()
+                    orderpayment.update(billing_agreement_id=billing_agreement_id, is_active=True)
+                    expires_on = timezone.now() + timedelta(days=30)
+                    TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[orderpayment.plan]['each'] * 100.0, credits=settings.BILLING_PLANS[orderpayment.plan]['credits'], expires_on=expires_on)
+                    messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
+                else:
+                    messages.info(request, _('Unauthorized! Payment not found.'))
 
             return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
 
