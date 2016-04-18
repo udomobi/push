@@ -1700,22 +1700,26 @@ class OrderPayment(SmartModel):
     org = models.ForeignKey(Org, related_name='payments', help_text="The organization that payment was requested")
     value = models.FloatField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
     credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
-    plan = models.CharField(verbose_name=_('Plan'), max_length=255)
-    transaction_id = models.CharField(verbose_name=_('Transaction ID'), help_text=_('PayPal transaction ID'), max_length=255)
-    signature = models.CharField(verbose_name=_('Signature'), max_length=255)
+    plan = models.CharField(verbose_name=_('Plan'), max_length=255, )
+    transaction_id = models.CharField(verbose_name=_('Transaction ID'), help_text=_('PayPal request transaction ID'), max_length=255, unique=True)
+    billing_agreement_id = models.CharField(verbose_name=_('Billing Agreement ID'), help_text=_('PayPal billing agreement ID'), max_length=255, null=True, )
 
     @classmethod
-    def create(cls, user, value, credits, plan, transaction_id, signature, org=None):
+    def create(cls, user, value, credits, plan, transaction_id, billing_agreement_id=None, org=None, is_active=True):
         """
         Creates a new order payment for topup
         """
         if not org:
             org = user.get_org()
 
-        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, transaction_id=transaction_id, signature=signature, created_by=user, modified_by=user)
+        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, transaction_id=transaction_id, billing_agreement_id=billing_agreement_id, created_by=user, modified_by=user, is_active=is_active)
 
     def __unicode__(self):
         return "%s" % self.id
+
+    @classmethod
+    def update(cls, billing_agreement_id, is_active=True):
+        return OrderPayment.objects.update(billing_agreement_id=billing_agreement_id, is_active=is_active)
 
 
 class CreditAlert(SmartModel):
