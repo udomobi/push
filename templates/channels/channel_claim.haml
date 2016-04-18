@@ -544,6 +544,21 @@
                   -blocktrans
                     Add a <a href="https://www.whatsapp.com" target="_blank">WhatsApp</a> account to send and receive messages of contacts.
 
+      -if org_perms.channels.channel_claim_whatsapp
+        .claim-row.twitter-channel
+          .row
+            .span3
+              %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_facebook' %}"}
+                .claim-glyph.icon-facebook
+                %p.claim-text
+                  -trans "Facebook Messenger"
+
+            .span9
+              .claim-description
+                %div
+                  -blocktrans
+                    Add a Facebook Messenger account to send and receive messages of contacts.
+
       -if org_perms.channels.channel_claim_telegram
         .claim-row.twitter-channel
           .row
