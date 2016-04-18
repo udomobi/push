@@ -132,8 +132,8 @@ CHANNEL_SETTINGS = {
     VUMI: dict(scheme='tel', max_length=1600),
     YO: dict(scheme='tel', max_length=1600),
     ZENVIA: dict(scheme='tel', max_length=150),
-	WHATSAPP: dict(scheme='whatsapp', max_length=10000),
-	_GCM: dict(scheme='gcm', max_length=10000)
+    WHATSAPP: dict(scheme='whatsapp', max_length=10000),
+    _GCM: dict(scheme='gcm', max_length=10000)
 }
 
 TEMBA_HEADERS = {'User-agent': 'RapidPro'}
@@ -186,9 +186,9 @@ class Channel(TembaModel):
                     (VERBOICE, "Verboice"),
                     (VUMI, "Vumi"),
                     (YO, "Yo!"),
-                    (ZENVIA, "Zenvia")),
-					(WHATSAPP, "WhatsApp"),
-					(_GCM, "Google Cloud Messaging"))
+                    (ZENVIA, "Zenvia"),
+                    (WHATSAPP, "WhatsApp"),
+                    (_GCM, "Google Cloud Messaging"))
 
     channel_type = models.CharField(verbose_name=_("Channel Type"), max_length=3, choices=TYPE_CHOICES,
                                     default=ANDROID, help_text=_("Type of this channel, whether Android, Twilio or SMSC"))

@@ -56,7 +56,7 @@ URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (TELEGRAM_SCHEME, _("Telegram identifier"), 'telegram', TELEGRAM_SCHEME),
                      (EMAIL_SCHEME, _("Email address"), 'email', EMAIL_SCHEME),
                      (FACEBOOK_SCHEME, _("Facebook identifier"), 'facebook', FACEBOOK_SCHEME),
-                     (EXTERNAL_SCHEME, _("External identifier"), 'external', EXTERNAL_SCHEME)),
+                     (EXTERNAL_SCHEME, _("External identifier"), 'external', EXTERNAL_SCHEME),
                      (WHATSAPP_SCHEME, _("WhatsApp number"), 'whatsapp', 'whatsapp'),
                      (GCM_SCHEME, _("GCM identifier"), 'gcm', 'gcm'))
 
