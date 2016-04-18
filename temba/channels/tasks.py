@@ -20,7 +20,7 @@ class MageStreamAction(Enum):
 
 
 @task(track_started=True, name='sync_channel_task')
-def sync_channel_task(gcm_id, channel_id=None):  #pragma: no cover
+def sync_channel_task(gcm_id, channel_id=None):  # pragma: no cover
     channel = Channel.objects.filter(pk=channel_id).first()
     Channel.sync_channel(gcm_id, channel)
 
@@ -39,8 +39,8 @@ def send_msg_task():
     if not task:
         return
 
-    msg = dict_to_struct('MockMsg', task, datetime_fields=['delivered_on', 'sent_on', 'created_on',
-                         'queued_on', 'next_attempt'])
+    msg = dict_to_struct('MockMsg', task,
+                         datetime_fields=['modified_on', 'sent_on', 'created_on', 'queued_on', 'next_attempt'])
 
     # send it off
     r = get_redis_connection()
@@ -95,20 +95,6 @@ def notify_twitter_mage_task(channel_uuid, action):
     else:
         raise ValueError('Invalid action: %s' % action)
 
-@task(track_started=True, name='notify_whatsapp_mage_task')
-def notify_whatsapp_mage_task(channel_uuid, action):
-    """
-    Notifies Mage of a change to a WhatsApp channel. Having this in a djcelery_transactions task ensures that the channel
-    db object is updated before Mage tries to fetch it
-    """
-    mage = MageClient(settings.MAGE_API_URL, settings.MAGE_AUTH_TOKEN)
-
-    if action == MageStreamAction.activate:
-        mage.activate_whatsapp_stream(channel_uuid)
-    elif action == MageStreamAction.deactivate:
-        mage.deactivate_whatsapp_stream(channel_uuid)
-    else:
-        raise ValueError('Invalid action: %s' % action)
 
 @task(track_started=True, name="squash_channelcounts")
 def squash_channelcounts():

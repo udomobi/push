@@ -4,14 +4,16 @@ from django.conf.urls import url, include
 from .handlers import TwilioHandler, VerboiceHandler, AfricasTalkingHandler, ZenviaHandler, M3TechHandler
 from .handlers import ExternalHandler, ShaqodoonHandler, NexmoHandler, InfobipHandler, Hub9Handler, VumiHandler
 from .handlers import KannelHandler, ClickatellHandler, PlivoHandler, HighConnectionHandler, BlackmynaHandler
-from .handlers import SMSCentralHandler, MageHandler, YoHandler, StartHandler, TelegramHandler
-from temba.channels.handlers import GCMHandler
+from .handlers import SMSCentralHandler, MageHandler, YoHandler, StartHandler, TelegramHandler, ChikkaHandler
+from .handlers import TwilioMessagingServiceHandler, JasminHandler, MbloxHandler, FacebookHandler, GCMHandler
 from .views import ChannelCRUDL, ChannelLogCRUDL
 
 urlpatterns = [
     url(r'^channels/', include(ChannelCRUDL().as_urlpatterns() + ChannelLogCRUDL().as_urlpatterns())),
+
     url(r'^handlers', include([
         url(r'^/twilio/$', TwilioHandler.as_view(), name='handlers.twilio_handler'),
+        url(r'^/twilio_messaging_service/(?P<action>receive)/(?P<uuid>[a-z0-9\-]+)/?$', TwilioMessagingServiceHandler.as_view(), name='handlers.twilio_messaging_service_handler'),
         url(r'^/verboice/(?P<action>status|receive)/(?P<uuid>[a-z0-9\-]+)/?$', VerboiceHandler.as_view(), name='handlers.verboice_handler'),
         url(r'^/africastalking/(?P<action>delivery|callback)/(?P<uuid>[a-z0-9\-]+)/$', AfricasTalkingHandler.as_view(), name='handlers.africas_talking_handler'),
         url(r'^/zenvia/(?P<action>status|receive)/(?P<uuid>[a-z0-9\-]+)/$', ZenviaHandler.as_view(), name='handlers.zenvia_handler'),
@@ -32,6 +34,10 @@ urlpatterns = [
         url(r'^/yo/(?P<action>received)/(?P<uuid>[a-z0-9\-]+)/?$', YoHandler.as_view(), name='handlers.yo_handler'),
         url(r'^/mage/(?P<action>handle_message|follow_notification)$', MageHandler.as_view(), name='handlers.mage_handler'),
         url(r'^/telegram/(?P<uuid>[a-z0-9\-]+)/?$', TelegramHandler.as_view(), name='handlers.telegram_handler'),
+        url(r'^/chikka/(?P<uuid>[a-z0-9\-]+)/?$', ChikkaHandler.as_view(), name='handlers.chikka_handler'),
+        url(r'^/jasmin/(?P<action>status|receive)/(?P<uuid>[a-z0-9\-]+)/?$', JasminHandler.as_view(), name='handlers.jasmin_handler'),
+        url(r'^/mblox/(?P<uuid>[a-z0-9\-]+)/?$', MbloxHandler.as_view(), name='handlers.mblox_handler'),
+        url(r'^/facebook/(?P<uuid>[a-z0-9\-]+)/?$', FacebookHandler.as_view(), name='handlers.facebook_handler'),
         url(r'^/gcm/(?P<uuid>[a-z0-9\-]+)/?$', GCMHandler.as_view(), name='handlers.gcm_handler')
     ])),
 
