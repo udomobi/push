@@ -1831,7 +1831,8 @@ class TopUpCRUDL(SmartCRUDL):
                             for link in new_billing_agreement.links:
                                 if link.rel == "approval_url":
                                     token = link.href.split('=')[-1]
-                                    OrderPayment.create(user=self.request.user, value=float(settings.BILLING_PLANS[plan]['value']), plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=token, is_active=False)
+                                    orderpayment = OrderPayment.create(user=self.request.user, value=float(settings.BILLING_PLANS[plan]['value']), plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=token, is_active=False)
+                                    orderpayment.set_status(status='Inactive')
                                     return HttpResponseRedirect(link.href)
                         else:
                             messages.error(request, "Error on creating billing agreement: %s" % new_billing_agreement.error['details'][0]['issue'])
@@ -1895,6 +1896,7 @@ class OrderPaymentCRUDL(SmartCRUDL):
                     orderpayment.billing_agreement_id = billing_agreement_id
                     orderpayment.save()
                     orderpayment.active()
+                    orderpayment.set_status(status=billing_agreement_state)
                     expires_on = timezone.now() + timedelta(days=30)
                     TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[orderpayment.plan]['each'] * 100.0, credits=settings.BILLING_PLANS[orderpayment.plan]['credits'], expires_on=expires_on)
                     messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
@@ -1916,6 +1918,7 @@ class OrderPaymentCRUDL(SmartCRUDL):
                 if billing_agreement.state == 'Active':
                     billing_agreement.cancel(attributes={'note': 'Canceling the agreement.'})
                     orderpayment.active(is_active=False)
+                    orderpayment.set_status(status='Cancelled')
                     messages.success(request, _('Billing agreement cancelled.'))
                 else:
                     messages.info(request, _('Billing agreement are not active. Contact the system administrator.'))

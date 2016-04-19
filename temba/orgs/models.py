@@ -1703,6 +1703,7 @@ class OrderPayment(SmartModel):
     plan = models.CharField(verbose_name=_('Plan'), max_length=255, )
     transaction_id = models.CharField(verbose_name=_('Transaction ID'), help_text=_('PayPal request transaction ID'), max_length=255, unique=True)
     billing_agreement_id = models.CharField(verbose_name=_('Billing Agreement ID'), help_text=_('PayPal billing agreement ID'), max_length=255, null=True, )
+    status = models.CharField(verbose_name=_('Status'), max_length=255, )
 
     @classmethod
     def create(cls, user, value, credits, plan, transaction_id, billing_agreement_id=None, org=None, is_active=True):
@@ -1719,6 +1720,11 @@ class OrderPayment(SmartModel):
 
     def active(self, is_active=True):
         self.is_active = is_active
+        self.save()
+        return self
+
+    def set_status(self, status):
+        self.status = status
         self.save()
         return self
 
