@@ -48,3 +48,25 @@ def squash_topupcredits():
         with r.lock(key, timeout=900):
             TopUpCredits.squash_credits()
 
+
+@task(track_started=True, name="check_billing_agreements")
+def check_billing_agreements():
+    import paypalrestsdk
+    from temba import settings
+    from paypalrestsdk import BillingAgreement
+    from temba.orgs.models import OrderPayment, TopUp
+
+    paypalrestsdk.configure(settings.PAYPAL_API)
+    orders_payment = OrderPayment.objects.filter(is_active=True, billing_agreement_id__isnull=False)
+    count_not_active = 0
+    for agreement in orders_payment:
+        billing_agreement = BillingAgreement.find(agreement.billing_agreement_id)
+        if billing_agreement.state == 'Active':
+            topups = TopUp.objects.filter(org=agreement.org, user=agreement.created_by, created_on__month=timezone.now().month, created_on__year=timezone.now().year)
+            if not topups:
+                expires_on = timezone.now() + timedelta(days=30)
+                TopUp.create(user=agreement.created_by, price=agreement.value, credits=agreement.credits, expires_on=expires_on)
+        else:
+            count_not_active += 1
+
+    print ("-- Billing agreements inactives: {count}".format(count=count_not_active))

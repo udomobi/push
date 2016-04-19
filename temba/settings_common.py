@@ -957,6 +957,10 @@ CELERYBEAT_SCHEDULE = {
         'task': 'squash_topupcredits',
         'schedule': timedelta(seconds=300),
     },
+    "check-billing-agreements": {
+        'task': 'check_billing_agreements',
+        'schedule': timedelta(hours=8),
+    },
 }
 
 # Mapping of task name to task function path, used when CELERY_ALWAYS_EAGER is set to True
