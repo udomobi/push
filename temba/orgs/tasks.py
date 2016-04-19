@@ -58,7 +58,7 @@ def check_billing_agreements():
 
     paypalrestsdk.configure(settings.PAYPAL_API)
     orders_payment = OrderPayment.objects.filter(is_active=True, billing_agreement_id__isnull=False)
-    count_not_active = 0
+    count_inactive = 0
     for agreement in orders_payment:
         billing_agreement = BillingAgreement.find(agreement.billing_agreement_id)
         if billing_agreement.state == 'Active':
@@ -67,6 +67,6 @@ def check_billing_agreements():
                 expires_on = timezone.now() + timedelta(days=30)
                 TopUp.create(user=agreement.created_by, price=agreement.value, credits=agreement.credits, expires_on=expires_on)
         else:
-            count_not_active += 1
+            count_inactive += 1
 
-    print ("-- Billing agreements inactives: {count}".format(count=count_not_active))
+    print ("-- Billing agreements inactives: {count}".format(count=count_inactive))
