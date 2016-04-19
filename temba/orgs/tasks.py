@@ -60,12 +60,11 @@ def check_billing_agreements():
     orders_payment = OrderPayment.objects.filter(is_active=True, billing_agreement_id__isnull=False)
     count_inactive = 0
     for agreement in orders_payment:
+        topups = TopUp.objects.filter(org=agreement.org, user=agreement.created_by, created_on__month=timezone.now().month, created_on__year=timezone.now().year)
         billing_agreement = BillingAgreement.find(agreement.billing_agreement_id)
-        if billing_agreement.state == 'Active':
-            topups = TopUp.objects.filter(org=agreement.org, user=agreement.created_by, created_on__month=timezone.now().month, created_on__year=timezone.now().year)
-            if not topups:
-                expires_on = timezone.now() + timedelta(days=30)
-                TopUp.create(user=agreement.created_by, price=agreement.value, credits=agreement.credits, expires_on=expires_on)
+        if billing_agreement.state == 'Active' and not topups:
+            expires_on = timezone.now() + timedelta(days=30)
+            TopUp.create(user=agreement.created_by, price=agreement.value, credits=agreement.credits, expires_on=expires_on)
         else:
             count_inactive += 1
 
