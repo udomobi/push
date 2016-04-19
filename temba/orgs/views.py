@@ -1853,7 +1853,7 @@ class TopUpCRUDL(SmartCRUDL):
 
 
 class OrderPaymentCRUDL(SmartCRUDL):
-    actions = ('list', 'execute')
+    actions = ('list', 'execute', 'cancel')
     model = OrderPayment
 
     class List(OrgPermsMixin, SmartListView):
@@ -1892,7 +1892,9 @@ class OrderPaymentCRUDL(SmartCRUDL):
 
                 if not OrderPayment.objects.filter(transaction_id=transaction_id, is_active=True).first() and billing_agreement_id and billing_agreement_state == 'Active':
                     orderpayment = OrderPayment.objects.filter(transaction_id=transaction_id).first()
-                    orderpayment.update(billing_agreement_id=billing_agreement_id, is_active=True)
+                    orderpayment.billing_agreement_id = billing_agreement_id
+                    orderpayment.save()
+                    orderpayment.active()
                     expires_on = timezone.now() + timedelta(days=30)
                     TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[orderpayment.plan]['each'] * 100.0, credits=settings.BILLING_PLANS[orderpayment.plan]['credits'], expires_on=expires_on)
                     messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
@@ -1903,6 +1905,24 @@ class OrderPaymentCRUDL(SmartCRUDL):
 
         def get_context_data(self, **kwargs):
             kwargs = super(OrderPaymentCRUDL.Execute, self).get_context_data()
+            kwargs['org'] = self.request.user.get_org()
+            return kwargs
+
+    class Cancel(OrgPermsMixin, SmartUpdateView):
+        def get(self, request, *args, **kwargs):
+            orderpayment = OrderPayment.objects.filter(pk=kwargs['pk'], org=self.request.user.get_org(), is_active=True).first()
+            if orderpayment:
+                billing_agreement = BillingAgreement.find(orderpayment.billing_agreement_id)
+                if billing_agreement.state == 'Active':
+                    billing_agreement.cancel(attributes={'note': 'Canceling the agreement.'})
+                    orderpayment.active(is_active=False)
+                    messages.success(request, _('Billing agreement cancelled.'))
+                else:
+                    messages.info(request, _('Billing agreement are not active. Contact the system administrator.'))
+            return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
+
+        def get_context_data(self, **kwargs):
+            kwargs = super(OrderPaymentCRUDL.Cancel, self).get_context_data()
             kwargs['org'] = self.request.user.get_org()
             return kwargs
 

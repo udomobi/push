@@ -1717,9 +1717,10 @@ class OrderPayment(SmartModel):
     def __unicode__(self):
         return "%s" % self.id
 
-    @classmethod
-    def update(cls, billing_agreement_id, is_active=True):
-        return OrderPayment.objects.update(billing_agreement_id=billing_agreement_id, is_active=is_active)
+    def active(self, is_active=True):
+        self.is_active = is_active
+        self.save()
+        return self
 
 
 class CreditAlert(SmartModel):

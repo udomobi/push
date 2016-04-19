@@ -92,26 +92,26 @@
 -block table
 
   -if object_list
-    -for payment in object_list
+    -for item in object_list
       .topup
         .topup-price
-          R$ {{ payment.value }}
+          R$ {{ item.value }}
 
         .topup-credits
-          {{ payment.credits }} ({{ payment.plan }})
+          {{ item.credits }} ({{ item.plan }})
 
         .topup-expires
           -trans "Expires on"
-          {{ payment.created_on|date:'M, d' }}
+          {{ item.created_on|date:'M, d' }}
           -trans "each month"
 
         .topup-history
           -trans "Requested on"
-          {{ payment.created_on }}
+          {{ item.created_on }}
           -trans "by"
-          {{ payment.created_by.first_name }} {{ payment.created_by.last_name }}
+          {{ item.created_by.first_name }} {{ item.created_by.last_name }}
 
-        %a{ href: "https://www.paypal.com/cgi-bin/webscr?cmd=_subscr-find&alias=VP8Y75JU5NMQG", target: "_blank" }
+        %a{ href: "{% url 'orgs.orderpayment_cancel' item.pk %}" }
           -trans "Cancel subscription"
 
   -else
