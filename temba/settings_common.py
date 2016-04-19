@@ -485,7 +485,7 @@ PERMISSIONS = {
 
     'orgs.topup': ('manage', 'pricing',),
 
-    'orgs.orderpayment': ('list', 'execute',),
+    'orgs.orderpayment': ('list', 'execute', 'cancel',),
 
     'triggers.trigger': ('archived',
                          'catchall',
@@ -536,6 +536,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
         'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
     ),
     "Administrators": (
         'api.webhookevent_list',
@@ -594,6 +595,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
         'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -712,6 +714,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
         'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -805,6 +808,7 @@ GROUP_PERMISSIONS = {
         'orgs.topup_pricing',
         'orgs.orderpayment_list',
         'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
 
         'channels.channel_list',
         'channels.channel_read',
@@ -1095,16 +1099,22 @@ LIBRATO_TOKEN = os.environ.get('LIBRATO_TOKEN', '')
 
 BILLING_PLANS = {
     'basic': {
-        'credits': 5,
-        'value': 5.00,
+        'credits': 1000,
+        'value': 99.00,
         'each': 0.11,
-        'paypal_button_code': '1B2'
+        'title': 'Basic Plan'
     },
     'master': {
-        'credits': 10,
-        'value': 10.00,
+        'credits': 3000,
+        'value': 159.99,
         'each': 0.10,
-        'paypal_button_code': 'A1B'
+        'title': 'Master Plan'
+    },
+    'premium': {
+        'credits': 10000,
+        'value': 199.90,
+        'each': 0.09,
+        'title': 'Premium Plan'
     }
 }
 
@@ -1119,9 +1129,9 @@ PAYPAL_API = {
 }
 
 PAYPAL_ADDRESS = {
-    'address': os.environ.get('PAYPAL_ADDRESS', 'Rua Jose Pontes de Magalhaes'),
-    'city': os.environ.get('PAYPAL_CITY', 'Maceio'),
-    'state': os.environ.get('PAYPAL_STATE', 'AL'),
-    'country_code': os.environ.get('PAYPAL_CC', 'BR'),
-    'postal_code': os.environ.get('PAYPAL_ZIPCODE', '57000000')
+    'address': os.environ.get('PAYPAL_ADDRESS', '111 First Street'),
+    'city': os.environ.get('PAYPAL_CITY', 'Saratoga'),
+    'state': os.environ.get('PAYPAL_STATE', 'CA'),
+    'country_code': os.environ.get('PAYPAL_CC', 'US'),
+    'postal_code': os.environ.get('PAYPAL_ZIPCODE', '95070')
 }
