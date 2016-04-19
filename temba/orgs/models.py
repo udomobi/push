@@ -1046,9 +1046,9 @@ class Org(SmartModel):
         Calculates the oldest non-expired topup that still has credits
         """
         non_expired_topups = self.topups.filter(is_active=True, expires_on__gte=timezone.now()).order_by('expires_on')
-        active_topups = non_expired_topups.annotate(used_credits=Sum('topupcredits__used'))\
-                                          .filter(credits__gt=0)\
-                                          .filter(Q(used_credits__lt=F('credits')) | Q(used_credits=None))
+        active_topups = non_expired_topups.annotate(used_credits=Sum('topupcredits__used')) \
+            .filter(credits__gt=0) \
+            .filter(Q(used_credits__lt=F('credits')) | Q(used_credits=None))
 
         return active_topups.first()
 
@@ -1451,7 +1451,6 @@ def set_role(obj, role):
 
 
 def get_role(obj):
-
     if not hasattr(obj, '_role'):
         obj._role = obj.get_org_group()
 
@@ -1492,7 +1491,6 @@ User.get_org_group = get_org_group
 User.get_role = get_role
 User.set_role = set_role
 User.has_org_perm = _user_has_org_perm
-
 
 USER_GROUPS = (('A', _("Administrator")),
                ('E', _("Editor")),
@@ -1585,7 +1583,7 @@ class Invitation(SmartModel):
         """
         Generates a [length] characters alpha numeric secret
         """
-        letters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ" # avoid things that could be mistaken ex: 'I' and '1'
+        letters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # avoid things that could be mistaken ex: 'I' and '1'
         return ''.join([random.choice(letters) for _ in range(length)])
 
     def send_invitation(self):
@@ -1646,14 +1644,15 @@ class TopUp(SmartModel):
                                help_text="Any comment associated with this topup, used when we credit accounts")
 
     @classmethod
-    def create(cls, user, price, credits, stripe_charge=None, org=None):
+    def create(cls, user, price, credits, stripe_charge=None, org=None, expires_on=None):
         """
         Creates a new topup
         """
         if not org:
             org = user.get_org()
 
-        expires_on = timezone.now() + timedelta(days=365)  # credits last 1 year
+        if not expires_on:
+            expires_on = timezone.now() + timedelta(days=365)  # credits last 1 year
 
         topup = TopUp.objects.create(org=org, price=price, credits=credits, expires_on=expires_on,
                                      stripe_charge=stripe_charge, created_by=user, modified_by=user)
@@ -1738,6 +1737,42 @@ class TopUpCredits(models.Model):
         print "Squashed topupcredits for %d pairs in %0.3fs" % (squash_count, time.time() - start)
 
 
+class OrderPayment(SmartModel):
+    """
+    Orders MoIP for payment.
+    """
+    org = models.ForeignKey(Org, related_name='payments', help_text="The organization that payment was requested")
+    value = models.FloatField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
+    credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
+    plan = models.CharField(verbose_name=_('Plan'), max_length=255, )
+    transaction_id = models.CharField(verbose_name=_('Transaction ID'), help_text=_('PayPal request transaction ID'), max_length=255, unique=True)
+    billing_agreement_id = models.CharField(verbose_name=_('Billing Agreement ID'), help_text=_('PayPal billing agreement ID'), max_length=255, null=True, )
+    status = models.CharField(verbose_name=_('Status'), max_length=255, )
+
+    @classmethod
+    def create(cls, user, value, credits, plan, transaction_id, billing_agreement_id=None, org=None, is_active=True):
+        """
+        Creates a new order payment for topup
+        """
+        if not org:
+            org = user.get_org()
+
+        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, transaction_id=transaction_id, billing_agreement_id=billing_agreement_id, created_by=user, modified_by=user, is_active=is_active)
+
+    def __unicode__(self):
+        return "%s" % self.id
+
+    def active(self, is_active=True):
+        self.is_active = is_active
+        self.save()
+        return self
+
+    def set_status(self, status):
+        self.status = status
+        self.save()
+        return self
+
+
 class CreditAlert(SmartModel):
     """
     Tracks when we have sent alerts to organization admins about low credits.
@@ -1798,8 +1833,7 @@ class CreditAlert(SmartModel):
         from temba.msgs.models import Msg
 
         # all active orgs in the last hour
-        active_orgs = Msg.current_messages.filter(created_on__gte=timezone.now() - timedelta(hours=1))
-        active_orgs = active_orgs.order_by('org').distinct('org')
+        active_orgs = Msg.current_messages.filter(created_on__gte=timezone.now() - timedelta(hours=1)).order_by('org').distinct('org')
 
         for msg in active_orgs:
             org = msg.org

@@ -1,17 +1,19 @@
 from __future__ import absolute_import, unicode_literals
 
 import json
-import logging
+from paypalrestsdk.exceptions import ResourceNotFound
 import plivo
 import regex
 import six
+import logging
 
+import requests
 from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
 from django import forms
-from django.conf import settings
 from django.contrib import messages
+
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -29,6 +31,7 @@ from django.views.generic import View
 from operator import attrgetter
 from smartmin.views import SmartCRUDL, SmartCreateView, SmartFormView, SmartReadView, SmartUpdateView, SmartListView, SmartTemplateView
 from datetime import timedelta
+from temba import settings
 from temba.assets.models import AssetType
 from temba.channels.models import Channel, PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN
 from temba.formax import FormaxMixin
@@ -41,9 +44,12 @@ from timezones.forms import TimeZoneField
 from twilio import TwilioRestException
 from twilio.rest import TwilioRestClient
 from .bundles import WELCOME_TOPUP_SIZE
-from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings
+from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, OrderPayment
 from .models import MT_SMS_EVENTS, MO_SMS_EVENTS, MT_CALL_EVENTS, MO_CALL_EVENTS, ALARM_EVENTS
-from .models import SUSPENDED, WHITELISTED, RESTORED
+import paypalrestsdk
+from paypalrestsdk import BillingPlan, BillingAgreement
+
+paypalrestsdk.configure(settings.PAYPAL_API)
 
 
 def check_login(request):
@@ -65,6 +71,7 @@ class OrgPermsMixin(object):
     Get the organisation and the user within the inheriting view so that it be come easy to decide
     whether this user has a certain permission for that particular organization to perform the view's actions
     """
+
     def get_user(self):
         return self.request.user
 
@@ -117,7 +124,6 @@ class OrgPermsMixin(object):
 
 
 class OrgObjPermsMixin(OrgPermsMixin):
-
     def get_object_org(self):
         return self.get_object().org
 
@@ -146,7 +152,6 @@ class OrgObjPermsMixin(OrgPermsMixin):
 
 
 class ModalMixin(SmartFormView):
-
     def get_context_data(self, **kwargs):
         context = super(ModalMixin, self).get_context_data(**kwargs)
 
@@ -409,7 +414,6 @@ class UserSettingsCRUDL(SmartCRUDL):
     model = UserSettings
 
     class Phone(ModalMixin, OrgPermsMixin, SmartUpdateView):
-
         @classmethod
         def derive_url_pattern(cls, path, action):
             return r'^%s/%s/$' % (path, action)
@@ -527,6 +531,7 @@ class OrgCRUDL(SmartCRUDL):
                         see(node)
                         nodes |= neighbors[node] - seen
                         yield node
+
                 for node in neighbors:
                     if node not in seen:
                         yield sorted(component(node))
@@ -620,8 +625,8 @@ class OrgCRUDL(SmartCRUDL):
             org.save()
 
             response = self.render_to_response(self.get_context_data(form=form,
-                                               success_url=self.get_success_url(),
-                                               success_script=getattr(self, 'success_script', None)))
+                                                                     success_url=self.get_success_url(),
+                                                                     success_script=getattr(self, 'success_script', None)))
 
             response['Temba-Success'] = self.get_success_url()
             return response
@@ -681,8 +686,8 @@ class OrgCRUDL(SmartCRUDL):
             org.save()
 
             response = self.render_to_response(self.get_context_data(form=form,
-                                               success_url=self.get_success_url(),
-                                               success_script=getattr(self, 'success_script', None)))
+                                                                     success_url=self.get_success_url(),
+                                                                     success_script=getattr(self, 'success_script', None)))
 
             response['Temba-Success'] = self.get_success_url()
             return response
@@ -726,8 +731,8 @@ class OrgCRUDL(SmartCRUDL):
             self.request.session[PLIVO_AUTH_TOKEN] = auth_token
 
             response = self.render_to_response(self.get_context_data(form=form,
-                                               success_url=self.get_success_url(),
-                                               success_script=getattr(self, 'success_script', None)))
+                                                                     success_url=self.get_success_url(),
+                                                                     success_script=getattr(self, 'success_script', None)))
 
             response['Temba-Success'] = self.get_success_url()
             return response
@@ -1579,11 +1584,9 @@ class OrgCRUDL(SmartCRUDL):
     class Country(InferOrgMixin, OrgPermsMixin, SmartUpdateView):
 
         class CountryForm(forms.ModelForm):
-            country = forms.ModelChoiceField(
-                Org.get_possible_countries(), required=False,
-                label=_("The country used for location values. (optional)"),
-                help_text="State and district names will be searched against this country."
-            )
+            country = forms.ModelChoiceField(Org.get_possible_countries(), required=False,
+                                             label=_("The country used for location values. (optional)"),
+                                             help_text="State and district names will be searched against this country.")
 
             class Meta:
                 model = Org
@@ -1707,7 +1710,7 @@ class OrgCRUDL(SmartCRUDL):
             self.org = self.derive_org()
             return self.request.user.has_perm('orgs.org_country') or self.has_org_perm('orgs.org_country')
 
-    class ClearCache(SmartUpdateView): # pragma: no cover
+    class ClearCache(SmartUpdateView):  # pragma: no cover
         fields = ('id',)
         success_message = None
         success_url = 'id@orgs.org_update'
@@ -1721,6 +1724,7 @@ class OrgCRUDL(SmartCRUDL):
         """
         For backwards compatibility, redirect old org/download style requests to the assets app
         """
+
         @classmethod
         def derive_url_pattern(cls, path, action):
             return r'%s/%s/(?P<task_type>\w+)/(?P<pk>\d+)/$' % (path, action)
@@ -1741,7 +1745,7 @@ class OrgCRUDL(SmartCRUDL):
 
 
 class TopUpCRUDL(SmartCRUDL):
-    actions = ('list', 'create', 'read', 'manage', 'update')
+    actions = ('list', 'create', 'read', 'manage', 'update', 'pricing',)
     model = TopUp
 
     class Read(OrgPermsMixin, SmartReadView):
@@ -1766,24 +1770,6 @@ class TopUpCRUDL(SmartCRUDL):
                 return ['orgs/topup_list_summary.haml']
             else:
                 return super(TopUpCRUDL.List, self).get_template_names()
-
-    class Create(SmartCreateView):
-        """
-        This is only for root to be able to credit accounts.
-        """
-        fields = ('credits', 'price', 'comment')
-
-        def get_success_url(self):
-            return reverse('orgs.topup_manage') + ('?org=%d' % self.object.org.id)
-
-        def save(self, obj):
-            obj.org = Org.objects.get(pk=self.request.REQUEST['org'])
-            return TopUp.create(self.request.user, price=obj.price, credits=obj.credits, org=obj.org)
-
-        def post_save(self, obj):
-            obj = super(TopUpCRUDL.Create, self).post_save(obj)
-            obj.org.apply_topups()
-            return obj
 
     class Update(SmartUpdateView):
         fields = ('is_active', 'price', 'credits', 'expires_on')
@@ -1823,12 +1809,182 @@ class TopUpCRUDL(SmartCRUDL):
             self.org = Org.objects.get(pk=self.request.REQUEST['org'])
             return self.org.topups.all()
 
+    class Pricing(OrgPermsMixin, SmartTemplateView):
+        template_name = 'orgs/topup_pricing.haml'
+
+        def dispatch(self, request, *args, **kwargs):
+            org = request.user.get_org()
+            if OrderPayment.objects.filter(org=org, is_active=True).first():
+                messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
+                return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
+
+            return super(TopUpCRUDL.Pricing, self).dispatch(request, *args, **kwargs)
+
+        def post(self, request, *args, **kwargs):
+            plan = request.POST.get('plan')
+            org = request.user.get_org()
+
+            if plan in settings.BILLING_PLANS:
+                new_plan = BillingPlan({
+                    "name": settings.BILLING_PLANS[plan]['title'],
+                    "description": settings.BILLING_PLANS[plan]['title'],
+                    "type": "INFINITE",
+                    "payment_definitions": [
+                        {
+                            "name": "Regular Payments",
+                            "type": "REGULAR",
+                            "frequency": "MONTH",
+                            "frequency_interval": "1",
+                            "amount": {
+                                "value": "{0}".format(settings.BILLING_PLANS[plan]['value']),
+                                "currency": "BRL"
+                            },
+                            "cycles": "0"
+                        }
+                    ],
+                    "merchant_preferences": {
+                        "setup_fee": {
+                            "value": "0",
+                            "currency": "BRL"
+                        },
+                        "return_url": "http://{host}{reverse}".format(host=request.get_host(), reverse=reverse('orgs.orderpayment_execute')),
+                        "cancel_url": "http://{host}{reverse}".format(host=request.get_host(), reverse=reverse('orgs.orderpayment_list')),
+                        "auto_bill_amount": "YES",
+                        "initial_fail_amount_action": "CONTINUE",
+                        "max_fail_attempts": "0"
+                    }
+                })
+                if new_plan.create():
+                    try:
+                        created_plan = BillingPlan.find(new_plan.id)
+                        created_plan.activate()
+                        new_billing_agreement = BillingAgreement({
+                            "name": org.name,
+                            "description": "Agreement for {0}".format(settings.BILLING_PLANS[plan]['title']),
+                            "start_date": (datetime.now() + timedelta(minutes=1)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                            "plan": {
+                                "id": created_plan.id
+                            },
+                            "payer": {
+                                "payment_method": "paypal"
+                            },
+                            "shipping_address": {
+                                "line1": settings.PAYPAL_ADDRESS['address'],
+                                "city": settings.PAYPAL_ADDRESS['city'],
+                                "state": settings.PAYPAL_ADDRESS['state'],
+                                "postal_code": settings.PAYPAL_ADDRESS['postal_code'],
+                                "country_code": settings.PAYPAL_ADDRESS['country_code']
+                            }
+                        })
+                        if new_billing_agreement.create():
+                            for link in new_billing_agreement.links:
+                                if link.rel == "approval_url":
+                                    token = link.href.split('=')[-1]
+                                    orderpayment = OrderPayment.create(user=self.request.user, value=float(settings.BILLING_PLANS[plan]['value']), plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=token, is_active=False)
+                                    orderpayment.set_status(status='Inactive')
+                                    return HttpResponseRedirect(link.href)
+                        else:
+                            messages.error(request, "Error on creating billing agreement: %s" % new_billing_agreement.error['details'][0]['issue'])
+
+                    except ResourceNotFound as e:
+                        messages.error(request, "Resource not found active plan: %s" % e)
+                else:
+                    messages.error(request, new_plan.error['details'][0]['issue'])
+
+            return HttpResponseRedirect(reverse('orgs.topup_pricing'))
+
+        def get_context_data(self, **kwargs):
+            import operator
+            org = self.request.user.get_org()
+            context = super(TopUpCRUDL.Pricing, self).get_context_data(**kwargs)
+            context['org'] = org
+            context['plans'] = [[plan, key['credits'], key['value'], key['each']] for plan, key in sorted(settings.BILLING_PLANS.items(), key=operator.itemgetter(1))]
+            return context
+
+
+class OrderPaymentCRUDL(SmartCRUDL):
+    actions = ('list', 'execute', 'cancel')
+    model = OrderPayment
+
+    class List(OrgPermsMixin, SmartListView):
+        def derive_queryset(self, **kwargs):
+            return OrderPayment.objects.filter(is_active=True, org=self.request.user.get_org()).order_by('-created_on')
+
+        def get_context_data(self, **kwargs):
+            context = super(OrderPaymentCRUDL.List, self).get_context_data(**kwargs)
+            context['org'] = self.request.user.get_org()
+            return context
+
+        def get_template_names(self):
+            return super(OrderPaymentCRUDL.List, self).get_template_names()
+
+    class Execute(OrgPermsMixin, SmartTemplateView):
+        template_name = 'orgs/orderpayment_create.haml'
+
+        def get(self, request, *args, **kwargs):
+            org = request.user.get_org()
+            if OrderPayment.objects.filter(org=org, is_active=True).first():
+                messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
+            else:
+                transaction_id = self.request.GET.get('token')
+                billing_agreement = BillingAgreement.execute(transaction_id)
+
+                if 'id' in billing_agreement:
+                    billing_agreement_id = billing_agreement['id']
+                else:
+                    billing_agreement_id = None
+
+                if 'state' in billing_agreement:
+                    billing_agreement_state = billing_agreement['state']
+                else:
+                    messages.info(request, _('Billing agreement with state "{state}".'.format(billing_agreement['state'])))
+                    billing_agreement_state = None
+
+                if not OrderPayment.objects.filter(transaction_id=transaction_id, is_active=True).first() and billing_agreement_id and billing_agreement_state == 'Active':
+                    orderpayment = OrderPayment.objects.filter(transaction_id=transaction_id).first()
+                    orderpayment.billing_agreement_id = billing_agreement_id
+                    orderpayment.save()
+                    orderpayment.active()
+                    orderpayment.set_status(status=billing_agreement_state)
+                    expires_on = timezone.now() + timedelta(days=30)
+                    TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[orderpayment.plan]['each'] * 100.0, credits=settings.BILLING_PLANS[orderpayment.plan]['credits'], expires_on=expires_on)
+                    messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
+                else:
+                    messages.info(request, _('Unauthorized! Payment not found.'))
+
+            return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
+
+        def get_context_data(self, **kwargs):
+            kwargs = super(OrderPaymentCRUDL.Execute, self).get_context_data()
+            kwargs['org'] = self.request.user.get_org()
+            return kwargs
+
+    class Cancel(OrgPermsMixin, SmartUpdateView):
+        def get(self, request, *args, **kwargs):
+            orderpayment = OrderPayment.objects.filter(pk=kwargs['pk'], org=self.request.user.get_org(), is_active=True).first()
+            if orderpayment:
+                billing_agreement = BillingAgreement.find(orderpayment.billing_agreement_id)
+                if billing_agreement.state == 'Active':
+                    billing_agreement.cancel(attributes={'note': 'Canceling the agreement.'})
+                    orderpayment.active(is_active=False)
+                    orderpayment.set_status(status='Cancelled')
+                    messages.success(request, _('Billing agreement cancelled.'))
+                else:
+                    messages.info(request, _('Billing agreement are not active. Contact the system administrator.'))
+            return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
+
+        def get_context_data(self, **kwargs):
+            kwargs = super(OrderPaymentCRUDL.Cancel, self).get_context_data()
+            kwargs['org'] = self.request.user.get_org()
+            return kwargs
+
 
 class StripeHandler(View):  # pragma: no cover
     """
     Handles WebHook events from Stripe.  We are interested as to when invoices are
     charged by Stripe so we can send the user an invoice email.
     """
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(StripeHandler, self).dispatch(*args, **kwargs)

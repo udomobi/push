@@ -1,14 +1,5 @@
 from __future__ import unicode_literals
 
-import djcelery
-import iptools
-import os
-import sys
-
-from celery.schedules import crontab
-from datetime import timedelta
-from django.utils.translation import ugettext_lazy as _
-
 # -----------------------------------------------------------------------------------
 # Default to debugging
 # -----------------------------------------------------------------------------------
@@ -68,6 +59,7 @@ LANGUAGE_CODE = 'en-us'
 # -----------------------------------------------------------------------------------
 # Available languages for translation
 # -----------------------------------------------------------------------------------
+gettext = lambda s: s
 LANGUAGES = (
     ('en-us', _("English")),
     ('pt-br', _("Portuguese")),
@@ -132,7 +124,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 if TESTING:
-    TEMPLATE_CONTEXT_PROCESSORS += ('temba.tests.add_testing_flag_to_context', )
+    TEMPLATE_CONTEXT_PROCESSORS += ('temba.tests.add_testing_flag_to_context',)
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
@@ -262,6 +254,8 @@ LOGGING = {
 # -----------------------------------------------------------------------------------
 # Branding Configuration
 # -----------------------------------------------------------------------------------
+from django.utils.translation import ugettext_lazy as _
+
 BRANDING = {
     'rapidpro.io': {
         'slug': 'rapidpro',
@@ -295,7 +289,7 @@ RESOURCES_DIR = os.path.join(PROJECT_DIR, '../resources')
 FIXTURE_DIRS = (os.path.join(PROJECT_DIR, '../fixtures'),)
 TESTFILES_DIR = os.path.join(PROJECT_DIR, '../testfiles')
 TEMPLATE_DIRS = (os.path.join(PROJECT_DIR, '../templates'),)
-STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'), )
+STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'),)
 STATIC_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
 STATIC_URL = '/static/'
 COMPRESS_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
@@ -309,17 +303,16 @@ MEDIA_URL = "/media/"
 # this lets us easily create new permissions across our objects
 PERMISSIONS = {
     '*': ('create',  # can create an object
-          'read',    # can read an object, viewing it's details
+          'read',  # can read an object, viewing it's details
           'update',  # can update an object
           'delete',  # can delete an object,
-          'list'),   # can view a list of the objects
+          'list'),  # can view a list of the objects
 
     'campaigns.campaign': ('api',
                            'archived',
                            ),
 
     'campaigns.campaignevent': ('api',),
-
 
     'contacts.contact': ('api',
                          'block',
@@ -378,7 +371,6 @@ PERMISSIONS = {
 
     'orgs.usersettings': ('phone',),
 
-
     'channels.channel': ('api',
                          'bulk_sender_options',
                          'claim',
@@ -406,7 +398,7 @@ PERMISSIONS = {
                          'claim_twilio',
                          'claim_twilio_messaging_service',
                          'claim_twitter',
-			 'claim_whatsapp',
+                         'claim_whatsapp',
                          'claim_verboice',
                          'claim_vumi',
                          'claim_yo',
@@ -473,7 +465,9 @@ PERMISSIONS = {
 
     'msgs.label': ('api', 'create', 'create_folder'),
 
-    'orgs.topup': ('manage',),
+    'orgs.topup': ('manage', 'pricing',),
+
+    'orgs.orderpayment': ('list', 'execute', 'cancel',),
 
     'triggers.trigger': ('archived',
                          'catchall',
@@ -522,6 +516,10 @@ GROUP_PERMISSIONS = {
         'orgs.topup_create',
         'orgs.topup_manage',
         'orgs.topup_update',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
+        'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
     ),
     "Administrators": (
         'api.webhookevent_list',
@@ -577,6 +575,10 @@ GROUP_PERMISSIONS = {
         'orgs.org_webhook',
         'orgs.topup_list',
         'orgs.topup_read',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
+        'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -608,7 +610,7 @@ GROUP_PERMISSIONS = {
         'channels.channel_claim_twitter',
         'channels.channel_claim_gcm',
         'channels.channel_claim_verboice',
-	'channels.channel_claim_whatsapp',
+        'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
         'channels.channel_claim_yo',
         'channels.channel_claim_zenvia',
@@ -699,6 +701,10 @@ GROUP_PERMISSIONS = {
         'orgs.org_webhook',
         'orgs.topup_list',
         'orgs.topup_read',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
+        'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
         'orgs.usersettings_phone',
         'orgs.usersettings_update',
 
@@ -729,7 +735,7 @@ GROUP_PERMISSIONS = {
         'channels.channel_claim_twitter',
         'channels.channel_claim_gcm',
         'channels.channel_claim_verboice',
- 	'channels.channel_claim_whatsapp',
+        'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
         'channels.channel_claim_yo',
         'channels.channel_claim_zenvia',
@@ -796,6 +802,10 @@ GROUP_PERMISSIONS = {
         'orgs.org_profile',
         'orgs.topup_list',
         'orgs.topup_read',
+        'orgs.topup_pricing',
+        'orgs.orderpayment_list',
+        'orgs.orderpayment_execute',
+        'orgs.orderpayment_cancel',
 
         'channels.channel_list',
         'channels.channel_read',
@@ -867,6 +877,8 @@ TEST_EXCLUDE = ('smartmin',)
 # -----------------------------------------------------------------------------------
 # Debug Toolbar
 # -----------------------------------------------------------------------------------
+import iptools
+
 INTERNAL_IPS = iptools.IpRangeList(
     '127.0.0.1',
     '192.168.0.10',
@@ -881,6 +893,10 @@ DEBUG_TOOLBAR_CONFIG = {
 # -----------------------------------------------------------------------------------
 # Crontab Settings ..
 # -----------------------------------------------------------------------------------
+
+from datetime import timedelta
+from celery.schedules import crontab
+
 CELERYBEAT_SCHEDULE = {
     "retry-webhook-events": {
         'task': 'retry_events_task',
@@ -942,6 +958,10 @@ CELERYBEAT_SCHEDULE = {
         'task': 'squash_contactgroupcounts',
         'schedule': timedelta(seconds=300),
     },
+    "check-billing-agreements": {
+        'task': 'check_billing_agreements',
+        'schedule': timedelta(hours=8),
+    },
 }
 
 # Mapping of task name to task function path, used when CELERY_ALWAYS_EAGER is set to True
@@ -954,6 +974,8 @@ CELERY_TASK_MAP = {
 # -----------------------------------------------------------------------------------
 # Async tasks with django-celery
 # -----------------------------------------------------------------------------------
+import djcelery
+
 djcelery.setup_loader()
 
 REDIS_HOST = 'localhost'
@@ -1082,3 +1104,42 @@ SEGMENT_IO_KEY = os.environ.get('SEGMENT_IO_KEY', '')
 
 LIBRATO_USER = os.environ.get('LIBRATO_USER', '')
 LIBRATO_TOKEN = os.environ.get('LIBRATO_TOKEN', '')
+
+BILLING_PLANS = {
+    'basic': {
+        'credits': 1000,
+        'value': 99.00,
+        'each': 0.11,
+        'title': 'Basic Plan'
+    },
+    'master': {
+        'credits': 3000,
+        'value': 159.99,
+        'each': 0.10,
+        'title': 'Master Plan'
+    },
+    'premium': {
+        'credits': 10000,
+        'value': 199.90,
+        'each': 0.09,
+        'title': 'Premium Plan'
+    }
+}
+
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', None)
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', None)
+PAYPAL_ENV = os.environ.get('PAYPAL_ENV', 'live')
+
+PAYPAL_API = {
+    "mode": PAYPAL_ENV,
+    "client_id": PAYPAL_CLIENT_ID,
+    "client_secret": PAYPAL_CLIENT_SECRET
+}
+
+PAYPAL_ADDRESS = {
+    'address': os.environ.get('PAYPAL_ADDRESS', '111 First Street'),
+    'city': os.environ.get('PAYPAL_CITY', 'Saratoga'),
+    'state': os.environ.get('PAYPAL_STATE', 'CA'),
+    'country_code': os.environ.get('PAYPAL_CC', 'US'),
+    'postal_code': os.environ.get('PAYPAL_ZIPCODE', '95070')
+}
