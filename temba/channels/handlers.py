@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 import json
 import pytz
+import requests
 import xml.etree.ElementTree as ET
 
 from datetime import datetime
@@ -15,7 +16,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.generic import View
 from redis_cache import get_redis_connection
 from temba.api.models import WebHookEvent, SMS_RECEIVED
-from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE
+from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN
 from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
