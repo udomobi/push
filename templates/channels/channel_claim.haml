@@ -34,31 +34,31 @@
           We recommend using an Android phone with a local sim card for your country. This phone
           will send and receive messages for you. You will only need one phone per country depending on
           message volume. Don't worry! The people you are texting with can still use basic phones.
-
-      .claim-row
-        .row
-          .span3
-            %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_android' %}"}
+      .row
+        .span3
+          %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_android' %}"}
+            .btn-container
               .claim-glyph.icon-channel-android
               %p.claim-text
                 -trans "Android Phone"
 
-          .span9
-            .claim-description
-              %div
-                -blocktrans
-                  Works in any country and uses the cell phone plan
-                  you already have. You just need an Android phone
-                  to get started.
+        .span9
+          .claim-description
+            %div
+              -blocktrans
+                Works in any country and uses the cell phone plan
+                you already have. You just need an Android phone
+                to get started.
 
     -if user_org.timezone == 'America/Sao_Paulo'
       .claim-row.zenvia-channel
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_zenvia' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Zenvia Short Code"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Zenvia Short Code"
           .span9.no-margin
             .claim-description
               %div
@@ -78,9 +78,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_africas_talking' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Africa's Talking Short Code"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Africa's Talking Short Code"
 
           .span9
             .claim-description
@@ -101,9 +102,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_yo' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Yo! Short Code"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Yo! Short Code"
 
           .span9
             .claim-description
@@ -123,9 +125,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_shaqodoon' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Shaqodoon Short Code"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Shaqodoon Short Code"
 
           .span9
             .claim-description
@@ -145,9 +148,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_chikka' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Chikka Short Code"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Chikka Short Code"
 
           .span9
             .claim-description
@@ -167,9 +171,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_hub9' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Hub9 Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Hub9 Number"
 
           .span9
             .claim-description
@@ -188,9 +193,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-twilio{href:"#"}
-              .claim-glyph.icon-channel-twilio
-              %p.claim-text
-                -trans "Connect Twilio"
+              .btn-container
+                .claim-glyph.icon-channel-twilio
+                %p.claim-text
+                  -trans "Connect Twilio"
 
           .span9
             .claim-description
@@ -199,6 +205,7 @@
                   The easiest way to get started if you are in
                   {{ twilio_countries }}, connect a Twilio account
                   and get a dedicated phone number.
+
 
 
     -else
@@ -212,9 +219,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_twilio' %}"}
-              .claim-glyph.icon-channel-twilio
-              %p.claim-text
-                -trans "Twilio Number"
+              .btn-container
+                .claim-glyph.icon-channel-twilio
+                %p.claim-text
+                  -trans "Twilio Number"
 
           .span9
             .claim-description
@@ -233,9 +241,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_twilio_messaging_service' %}"}
-              .claim-glyph.icon-channel-twilio
-              %p.claim-text
-                -trans "Twilio Messaging Service"
+              .btn-container
+                .claim-glyph.icon-channel-twilio
+                %p.claim-text
+                  -trans "Twilio Messaging Service"
 
           .span9
             .claim-description
@@ -253,9 +262,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-nexmo{href:"#"}
-              .claim-glyph.icon-channel-nexmo
-              %p.claim-text
-                -trans "Connect Nexmo"
+              .btn-container
+                .claim-glyph.icon-channel-nexmo
+                %p.claim-text
+                  -trans "Connect Nexmo"
 
           .span9
             .claim-description
@@ -274,9 +284,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_nexmo' %}"}
-              .claim-glyph.icon-channel-nexmo
-              %p.claim-text
-                -trans "Nexmo Number"
+              .btn-container
+                .claim-glyph.icon-channel-nexmo
+                %p.claim-text
+                  -trans "Nexmo Number"
 
           .span9
             .claim-description
@@ -296,9 +307,10 @@
       .row
         .span3
           %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-plivo{href:"#"}
-            .claim-glyph.icon-channel-plivo
-            %p.claim-text
-              -trans "Plivo Number"
+            .btn-container
+              .claim-glyph.icon-channel-plivo
+              %p.claim-text
+                -trans "Plivo Number"
 
         .span9
           .claim-description
@@ -311,9 +323,10 @@
       .row
         .span3
           %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_clickatell' %}"}
-            .claim-glyph.icon-channel-clickatell
-            %p.claim-text
-              -trans "Clickatell"
+            .btn-container
+              .claim-glyph.icon-channel-clickatell
+              %p.claim-text
+                -trans "Clickatell"
 
         .span9
           .claim-description
@@ -326,9 +339,10 @@
       .row
         .span3
           %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_kannel' %}"}
-            .claim-glyph.icon-channel-kannel
-            %p.claim-text
-              -trans "Kannel"
+            .btn-container
+              .claim-glyph.icon-channel-kannel
+              %p.claim-text
+                -trans "Kannel"
 
         .span9
           .claim-description
@@ -341,9 +355,10 @@
       .row
         .span3
           %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_jasmin' %}"}
-            .claim-glyph.icon-channel-external
-            %p.claim-text
-              -trans "Jasmin"
+            .btn-container
+              .claim-glyph.icon-channel-external
+              %p.claim-text
+                -trans "Jasmin"
 
         .span9
           .claim-description
@@ -357,9 +372,11 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_high_connection' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "High Connection Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "High Connection Number"
+
           .span9.no-margin
             .claim-description
               %div
@@ -378,9 +395,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_blackmyna' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Blackmyna Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Blackmyna Number"
 
           .span9
             .claim-description
@@ -392,9 +410,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_smscentral' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "SMSCentral Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "SMSCentral Number"
 
           .span9
             .claim-description
@@ -407,9 +426,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_start' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Start Mobile Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Start Mobile Number"
 
           .span9
             .claim-description
@@ -427,9 +447,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_infobip' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Infobip Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Infobip Number"
 
           .span9
             .claim-description
@@ -447,9 +468,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_m3tech' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "M3 Tech Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "M3 Tech Number"
 
           .span9
             .claim-description
@@ -467,9 +489,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_verboice' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Verboice"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Verboice"
 
           .span9
             .claim-description
@@ -487,9 +510,10 @@
         .row
           .span3
             %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_vumi' %}"}
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "Vumi Number"
+              .btn-container
+                .claim-glyph.icon-channel-external
+                %p.claim-text
+                  -trans "Vumi Number"
 
           .span9
             .claim-description
@@ -501,27 +525,47 @@
       .row
         .span3
           %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_external' %}"}
-            .claim-glyph.icon-power-cord
-            %p.claim-text
-              -trans "External API"
+            .btn-container
+              .claim-glyph.icon-power-cord
+              %p.claim-text
+                -trans "External API"
 
         .span9
           .claim-description
             %div
               -trans "Use our pluggable API to connect an external service you already have."
 
-    -if org_perms.channels.channel_claim_twitter or org_perms.channels.channel_claim_telegram or org_perms.channels.channel_claim_whatsapp
+    -if org_perms.channels.channel_claim_twitter or org_perms.channels.channel_claim_telegram or org_perms.channels.channel_claim_facebook or org_perms.channels.channel_claim_whatsapp
       %h3
         -trans "Social Network Channels"
+
+      -if org_perms.channels.channel_claim_facebook
+        .claim-row.facebook-channel
+          .row
+            .span3
+              %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_facebook' %}"}
+                .btn-container
+                  .claim-glyph.icon-facebook-official
+                  %p.claim-text
+                    -trans "Facebook"
+
+            .span9
+              .claim-description
+                %div
+                  -blocktrans
+                    Add a <a href="http://facebook.com">Facebook</a> bot to send and receive messages on behalf
+                    of one of your Facebook pages for free. You will need to create a Facebook application on
+                    their <a href="http://developers.facebook.com">developers</a> site first.
 
       -if org_perms.channels.channel_claim_twitter
         .claim-row.twitter-channel
           .row
             .span3
               %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_twitter' %}"}
-                .claim-glyph.icon-twitter
-                %p.claim-text
-                  -trans "Twitter"
+                .btn-container
+                  .claim-glyph.icon-twitter
+                  %p.claim-text
+                    -trans "Twitter"
 
             .span9
               .claim-description
@@ -544,29 +588,15 @@
                   -blocktrans
                     Add a <a href="https://www.whatsapp.com" target="_blank">WhatsApp</a> account to send and receive messages of contacts.
 
-      -if org_perms.channels.channel_claim_facebook
-        .claim-row.twitter-channel
-          .row
-            .span3
-              %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_facebook' %}"}
-                .claim-glyph.icon-facebook
-                %p.claim-text
-                  -trans "Facebook Messenger"
-
-            .span9
-              .claim-description
-                %div
-                  -blocktrans
-                    Add a Facebook Messenger account to send and receive messages of contacts.
-
       -if org_perms.channels.channel_claim_telegram
         .claim-row.twitter-channel
           .row
             .span3
               %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_telegram' %}"}
-                .claim-glyph.icon-telegram
-                %p.claim-text
-                  -trans "Telegram"
+                .btn-container
+                  .claim-glyph.icon-telegram
+                  %p.claim-text
+                    -trans "Telegram"
 
             .span9
               .claim-description
@@ -734,7 +764,10 @@
 
     .claim-text {
       margin-top: 10px;
-      margin-right:10px;
+    }
+
+    .btn-container {
+      margin-right: 10px;
     }
 
     .external {
@@ -767,6 +800,10 @@
     .icon-channel-kannel {
       font-size: 55px;
       margin-top: -5px;
+    }
+
+    .icon-facebook-official {
+      font-size: 48px;
     }
 
     ul {

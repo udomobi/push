@@ -301,7 +301,7 @@ class Contact(TembaModel):
             return getattr(self, cache_attr)
 
         value = Value.objects.filter(contact=self, contact_field__key__exact=key).first()
-        setattr(self, cache_attr, value)
+        self.set_cached_field_value(key, value)
         return value
 
     def get_field_raw(self, key):
@@ -334,6 +334,8 @@ class Contact(TembaModel):
             return field.org.format_date(value.datetime_value)
         elif field.value_type == Value.TYPE_DECIMAL:
             return format_decimal(value.decimal_value)
+        elif field.value_type in [Value.TYPE_STATE, Value.TYPE_DISTRICT, Value.TYPE_WARD] and value.location_value:
+            return value.location_value.name
         elif value.category:
             return value.category
         else:
@@ -351,6 +353,8 @@ class Contact(TembaModel):
             return datetime_to_str(value.datetime_value)
         elif field.value_type == Value.TYPE_DECIMAL:
             return format_decimal(value.decimal_value)
+        elif field.value_type in [Value.TYPE_STATE, Value.TYPE_DISTRICT, Value.TYPE_WARD] and value.location_value:
+            return value.location_value.name
         elif value.category:
             return value.category
         else:
@@ -418,7 +422,7 @@ class Contact(TembaModel):
                                                 location_value=loc_value, category=category)
 
         # cache
-        setattr(self, '__field__%s' % key, existing)
+        self.set_cached_field_value(key, existing)
 
         self.modified_by = user
         self.modified_on = timezone.now()
@@ -429,6 +433,9 @@ class Contact(TembaModel):
 
         # invalidate our value cache for this contact field
         Value.invalidate_cache(contact_field=field)
+
+    def set_cached_field_value(self, key, value):
+        setattr(self, '__field__%s' % key, value)
 
     def handle_update(self, attrs=(), urns=(), field=None, group=None):
         """
@@ -648,7 +655,7 @@ class Contact(TembaModel):
         Gets or creates the test contact for the given user
         """
         org = user.get_org()
-        test_contact = Contact.objects.filter(is_test=True, org=org, created_by=user).first()
+        test_contact = Contact.objects.filter(is_test=True, org=org, created_by=user, is_active=True).order_by('-created_on').first()
 
         # double check that our test contact has a valid URN, it may have been reassigned
         if test_contact:
@@ -724,7 +731,7 @@ class Contact(TembaModel):
                 # excel formatting that field as numeric.. try to parse it into an int instead
                 try:
                     value = str(int(float(value)))
-                except Exception: # pragma: no cover
+                except Exception:  # pragma: no cover
                     # oh well, neither of those, stick to the plan, maybe we can make sense of it below
                     pass
 
@@ -1084,7 +1091,7 @@ class Contact(TembaModel):
 
         # cache all field values
         values = Value.objects.filter(contact_id__in=contact_map.keys(),
-                                      contact_field_id__in=key_map.keys()).select_related('contact_field')
+                                      contact_field_id__in=key_map.keys()).select_related('contact_field', 'location_value')
         for value in values:
             contact = contact_map[value.contact_id]
             field_key = key_map[value.contact_field_id]
@@ -1447,8 +1454,8 @@ class ContactURN(models.Model):
         elif scheme == EXTERNAL_SCHEME:
             return True
 
-        # telegram uses integer ids
-        elif scheme == TELEGRAM_SCHEME:
+        # telegram and facebook uses integer ids
+        elif scheme in [TELEGRAM_SCHEME, FACEBOOK_SCHEME]:
             try:
                 int(path)
                 return True
@@ -1466,8 +1473,8 @@ class ContactURN(models.Model):
         """
         Normalizes a URN scheme and path. Should be called anytime looking for a URN match.
         """
-        norm_scheme = scheme.strip().lower()
-        norm_path = path.strip()
+        norm_scheme = unicode(scheme).strip().lower()
+        norm_path = unicode(path).strip()
 
         if norm_scheme == TEL_SCHEME:
             norm_path, valid = cls.normalize_number(norm_path, country_code)
@@ -1477,6 +1484,8 @@ class ContactURN(models.Model):
                 norm_path = norm_path[1:]
             norm_path = norm_path.lower()  # Twitter handles are case-insensitive, so we always store as lowercase
         elif norm_scheme == EMAIL_SCHEME:
+            norm_path = norm_path.lower()
+        elif norm_scheme == FACEBOOK_SCHEME:
             norm_path = norm_path.lower()
 
         return norm_scheme, norm_path
@@ -1517,15 +1526,15 @@ class ContactURN(models.Model):
         # this must be a local number of some kind, just lowercase and save
         return regex.sub('[^0-9a-z]', '', number.lower(), regex.V0), False
 
-    def ensure_number_normalization(self, channel):
+    def ensure_number_normalization(self, country_code):
         """
         Tries to normalize our phone number from a possible 10 digit (0788 383 383) to a 12 digit number
         with country code (+250788383383) using the country we now know about the channel.
         """
         number = self.path
 
-        if number and not number[0] == '+' and channel.country:
-            (norm_number, valid) = ContactURN.normalize_number(number, channel.country.code)
+        if number and not number[0] == '+' and country_code:
+            (norm_number, valid) = ContactURN.normalize_number(number, country_code)
 
             # don't trounce existing contacts with that country code already
             norm_urn = ContactURN.format_urn(TEL_SCHEME, norm_number)
@@ -1535,6 +1544,17 @@ class ContactURN(models.Model):
                 self.save()
 
         return self
+
+    @classmethod
+    def derive_country_from_tel(cls, phone, country=None):
+        """
+        Given a phone number in E164 returns the two letter country code for it.  ex: +250788383383 -> RW
+        """
+        try:
+            parsed = phonenumbers.parse(phone, country)
+            return phonenumbers.region_code_for_number(parsed)
+        except Exception:
+            return None
 
     def get_display(self, org=None, full=False):
         """

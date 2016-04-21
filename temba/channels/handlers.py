@@ -7,6 +7,7 @@ import requests
 import xml.etree.ElementTree as ET
 
 from datetime import datetime
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -14,7 +15,6 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.generic import View
-from redis_cache import get_redis_connection
 from temba.api.models import WebHookEvent, SMS_RECEIVED
 from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN
 from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME
@@ -151,20 +151,14 @@ class TwilioHandler(View):
 
             body = request.POST['Body']
 
-            # process any attached media, we will append these to our body
-            media = list()
+            # process any attached media
             for i in range(int(request.POST.get('NumMedia', 0))):
-                media.append(request.POST['MediaUrl%d' % i])
+                media_url = client.download_media(request.POST['MediaUrl%d' % i])
+                path = media_url.partition(':')[2]
+                Msg.create_incoming(channel, (TEL_SCHEME, request.POST['From']), path, media=media_url)
 
-            if media:
-                # add a newline if there is a text message as well
-                if body:
-                    body += '\n'
-
-                # Add each media URL, with newlines separating them
-                body += '\n'.join(media)
-
-            Msg.create_incoming(channel, (TEL_SCHEME, request.POST['From']), body)
+            if body:
+                Msg.create_incoming(channel, (TEL_SCHEME, request.POST['From']), body)
 
             return HttpResponse("", status=201)
 
@@ -220,7 +214,7 @@ class AfricasTalkingHandler(View):
         return HttpResponse("ILLEGAL METHOD", status=400)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import AFRICAS_TALKING
 
         action = kwargs['action']
@@ -277,7 +271,7 @@ class ZenviaHandler(View):
         return self.post(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import ZENVIA
 
         request.encoding = "ISO-8859-1"
@@ -382,7 +376,7 @@ class ExternalHandler(View):
         return self.post(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
 
         action = kwargs['action'].lower()
 
@@ -472,42 +466,11 @@ class TelegramHandler(View):
 
         channel_uuid = kwargs['uuid']
         channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=TELEGRAM).exclude(org=None).first()
+
         if not channel:
             return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
 
         body = json.loads(request.body)
-
-        try:
-            # skip if there is no message block (could be a sticker or voice)
-            if 'photo' in body['message'] or 'document' in body['message'] or 'video' in body['message']:
-                bot = telegram.Bot(token=str(channel.config_json()['auth_token']))
-
-                if 'photo' in body['message']:
-                    telegram_file = bot.getFile(file_id=body['message']['photo'][-1]['file_id'])
-                    text = telegram_file.file_path
-
-                elif 'document' in body['message']:
-                    telegram_file = bot.getFile(file_id=body['message']['document']['file_id'])
-                    text = telegram_file.file_path
-
-                else:
-                    telegram_file = bot.getFile(file_id=body['message']['video']['file_id'])
-                    text = telegram_file.file_path
-
-            elif 'text' in body['message']:
-                text = body['message']['text']
-
-            elif 'location' in body['message']:
-                text = "{0},{1}".format(body['message']['location']['latitude'], body['message']['location']['longitude'])
-
-            elif 'contact' in body['message']:
-                text = "{0} {1} - {2}".format(body['message']['contact'].get('first_name', ''), body['message']['contact'].get('last_name', ''), body['message']['contact'].get('phone_number', ''))
-
-            else:
-                return HttpResponse("No message text, photo, video, location or contact, ignored.")
-            
-        except Exception as e:
-            return HttpResponse("Error: {0}".format(e))
 
         # look up the contact
         telegram_id = str(body['message']['from']['id'])
@@ -544,10 +507,9 @@ class InfobipHandler(View):
         return super(InfobipHandler, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import INFOBIP
 
-        action = kwargs['action'].lower()
         channel_uuid = kwargs['uuid']
 
         channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=INFOBIP).exclude(org=None).first()
@@ -589,7 +551,7 @@ class InfobipHandler(View):
         return HttpResponse("SMS Status Updated")
 
     def get(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import INFOBIP
 
         action = kwargs['action'].lower()
@@ -623,7 +585,7 @@ class Hub9Handler(View):
         return super(Hub9Handler, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import HUB9
 
         channel_uuid = kwargs['uuid']
@@ -780,7 +742,7 @@ class BlackmynaHandler(View):
             to_number = request.REQUEST.get('to', None)
             from_number = request.REQUEST.get('from', None)
             message = request.REQUEST.get('text', None)
-            smsc = request.REQUEST.get('smsc', None)
+            # smsc = request.REQUEST.get('smsc', None)
 
             if to_number is None or from_number is None or message is None:
                 return HttpResponse("Missing to, from or text parameters", status=400)
@@ -788,7 +750,7 @@ class BlackmynaHandler(View):
             if channel.address != to_number:
                 return HttpResponse("Invalid to number [%s], expecting [%s]" % (to_number, channel.address), status=400)
 
-            msg = Msg.create_incoming(channel, (TEL_SCHEME, from_number), message)
+            Msg.create_incoming(channel, (TEL_SCHEME, from_number), message)
             return HttpResponse("")
 
         return HttpResponse("Unrecognized action: %s" % action, status=400)
@@ -847,7 +809,7 @@ class NexmoHandler(View):
         return self.get(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import NEXMO
 
         action = kwargs['action'].lower()
@@ -955,7 +917,7 @@ class VumiHandler(View):
         return HttpResponse("Illegal method, must be POST", status=405)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, PENDING, QUEUED, WIRED, SENT, DELIVERED, FAILED, ERRORED
+        from temba.msgs.models import Msg, PENDING, QUEUED, WIRED, SENT
         from temba.channels.models import VUMI
 
         action = kwargs['action'].lower()
@@ -1403,7 +1365,7 @@ class StartHandler(View):
         return super(StartHandler, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import START
 
         channel_uuid = kwargs['uuid']
@@ -1421,7 +1383,7 @@ class StartHandler(View):
         # </message>
         try:
             message = ET.fromstring(request.body)
-        except ET.ParseError as e:
+        except ET.ParseError:
             message = None
 
         service = message.find('service') if message is not None else None
@@ -1454,7 +1416,7 @@ class ChikkaHandler(View):
         return self.post(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, DELIVERED, FAILED, WIRED, PENDING, QUEUED
+        from temba.msgs.models import Msg, SENT, FAILED, WIRED, PENDING, QUEUED
         from temba.channels.models import CHIKKA
 
         request_uuid = kwargs['uuid']
