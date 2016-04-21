@@ -1724,7 +1724,7 @@ class FacebookHandler(View):
                                 # if this isn't an anonymous org, look up their name from the Facebook API
                                 if not channel.org.is_anon:
                                     try:
-                                        response = requests.get('https://graph.facebook.com/v2.5/' + unicode(sender_id),
+                                        response = requests.get('https://graph.facebook.com/v2.6/' + unicode(sender_id),
                                                                 params=dict(fields='first_name,last_name',
                                                                             access_token=channel.config_json()[AUTH_TOKEN]))
 
