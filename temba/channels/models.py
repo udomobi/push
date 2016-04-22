@@ -523,13 +523,6 @@ class Channel(TembaModel):
 
     @classmethod
     def add_facebook_channel(cls, org, user, page_name, page_id, page_access_token):
-        # subscribe to messaging events
-        response = requests.post('https://graph.facebook.com/v2.6/me/subscribed_apps',
-                                 params=dict(access_token=page_access_token))
-
-        if response.status_code != 200 or not response.json()['success']:
-            raise Exception("Unable to subscribe for delivery of events: %s" % (response.content))
-
         return Channel.create(org, user, None, FACEBOOK, name=page_name, address=page_id,
                               config={AUTH_TOKEN: page_access_token, PAGE_NAME: page_name},
                               secret=Channel.generate_secret())
@@ -952,7 +945,7 @@ class Channel(TembaModel):
             # unsubscribe from facebook events for this page
             elif self.channel_type == FACEBOOK:
                 page_access_token = self.config_json()[AUTH_TOKEN]
-                requests.delete('https://graph.facebook.com/v2.6/me/subscribed_apps',
+                requests.delete('https://graph.facebook.com/v2.5/me/subscribed_apps',
                                 params=dict(access_token=page_access_token))
 
         # save off our org and gcm id before nullifying
@@ -1109,7 +1102,7 @@ class Channel(TembaModel):
         payload['message'] = dict(text=text)
         payload = json.dumps(payload)
 
-        url = "https://graph.facebook.com/v2.6/me/messages"
+        url = "https://graph.facebook.com/v2.5/me/messages"
         params = dict(access_token=channel.config[AUTH_TOKEN])
         headers = {'Content-Type': 'application/json'}
         start = time.time()

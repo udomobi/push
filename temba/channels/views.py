@@ -56,7 +56,8 @@ RELAYER_TYPE_ICONS = {ANDROID: "icon-channel-android",
                       FACEBOOK: "icon-facebook-official",
                       WHATSAPP: "icon-whatsapp",
                       TELEGRAM: "icon-telegram",
-                      _GCM: "icon-gcm"}
+                      _GCM: "icon-gcm",
+                      FACEBOOK: "icon-facebook-official"}
 
 SESSION_TWITTER_TOKEN = 'twitter_oauth_token'
 SESSION_TWITTER_SECRET = 'twitter_oauth_token_secret'
@@ -547,7 +548,8 @@ class ChannelCRUDL(SmartCRUDL):
                'claim_hub9', 'claim_vumi', 'create_caller', 'claim_kannel', 'claim_twitter', 'claim_whatsapp', 'claim_shaqodoon',
                'claim_verboice', 'claim_clickatell', 'claim_plivo', 'search_plivo', 'claim_high_connection',
                'claim_blackmyna', 'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo', 'claim_gcm',
-               'claim_twilio_messaging_service', 'claim_zenvia', 'claim_jasmin', 'claim_mblox', 'claim_facebook')
+               'claim_twilio_messaging_service', 'claim_zenvia', 'claim_jasmin', 'claim_mblox', 'claim_facebook',
+               'facebook_welcome')
     permissions = True
 
     class AnonMixin(OrgPermsMixin):
@@ -1813,7 +1815,7 @@ class ChannelCRUDL(SmartCRUDL):
                 token = self.cleaned_data['page_access_token']
 
                 # hit the FB graph, see if we can load the page attributes
-                response = requests.get('https://graph.facebook.com/v2.6/me', params=dict(access_token=token))
+                response = requests.get('https://graph.facebook.com/v2.5/me', params=dict(access_token=token))
                 response_json = response.json()
                 if response.status_code != 200:
                     default_error = _("Invalid page access token, please check it and try again.")
@@ -1831,6 +1833,50 @@ class ChannelCRUDL(SmartCRUDL):
                                                    page['name'], page['id'], form.cleaned_data['page_access_token'])
 
             return HttpResponseRedirect(reverse('channels.channel_configuration', args=[channel.id]))
+
+    class FacebookWelcome(ModalMixin, OrgPermsMixin, SmartUpdateView):
+        class WelcomeForm(forms.ModelForm):
+            message = forms.CharField(max_length=160, widget=forms.Textarea, label=_("Welcome Message"), required=False,
+                                      help_text=_("This message will appear when a user first interacts with your page."))
+
+            class Meta:
+                model = Channel
+                fields = 'id', 'message'
+
+        form_class = WelcomeForm
+        success_url = 'id@channels.channel_configuration'
+
+        def form_valid(self, form):
+            welcome_message = form.cleaned_data['message'].strip()
+
+            # fire our post to facebook to update their welcome message
+            url = 'https://graph.facebook.com/v2.6/%s/thread_settings' % self.object.address
+            payload = dict(setting_type='call_to_actions',
+                           thread_state='new_thread',
+                           call_to_actions=[])
+
+            # set our welcome message if we have one
+            if welcome_message:
+                payload['call_to_actions'].append(dict(message=dict(text=welcome_message)))
+
+            response = requests.post(url, json.dumps(payload),
+                                     params=dict(access_token=self.object.config_json()[AUTH_TOKEN]),
+                                     headers={'Content-Type': 'application/json'})
+            if response.status_code == 200:
+                messages.info(self.request, _("Your welcome message has been updated."))
+            else:
+                messages.info(self.request, _("We encountered an error updating your welcome message: %s" % str(response.content)))
+
+            if 'HTTP_X_PJAX' not in self.request.META:
+                return HttpResponseRedirect(self.get_success_url())
+            else:  # pragma: no cover
+                response = self.render_to_response(
+                    self.get_context_data(form=form,
+                                          success_url=self.get_success_url(),
+                                          success_script=getattr(self, 'success_script', None)))
+                response['Temba-Success'] = self.get_success_url()
+                response['REDIRECT'] = self.get_success_url()
+                return response
 
     class List(OrgPermsMixin, SmartListView):
         title = _("Channels")
