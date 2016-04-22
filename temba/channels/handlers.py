@@ -17,7 +17,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.generic import View
 from temba.api.models import WebHookEvent, SMS_RECEIVED
 from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN
-from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME
+from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME, WHATSAPP_SCHEME
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT
@@ -1756,3 +1756,34 @@ class FacebookHandler(View):
                 return HttpResponse("Msgs Updated: %s" % (",".join([str(m.id) for m in msgs])))
 
         return HttpResponse("Ignored, unknown msg", status=200)
+
+class WhatsappHandler(View):
+
+    @disable_middleware
+    def dispatch(self, *args, **kwargs):
+        return super(WhatsappHandler, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg
+        from temba.channels.models import WHATSAPP
+
+        channel_uuid = kwargs['uuid']
+
+        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=WHATSAPP).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+        if 'from' not in request.REQUEST or 'msg' not in request.REQUEST:
+            return HttpResponse("Missing parameters, requires 'from' and 'msg'", status=400)
+
+        try:
+            date = request.REQUEST.get('date', request.REQUEST.get('time', None))
+            if date:
+                date = json_date_to_datetime(date)
+            sms = Msg.create_incoming(channel, (WHATSAPP_SCHEME, request.REQUEST['from']), request.REQUEST['msg'], date=date)
+            return HttpResponse("Message accepted: %d" % sms.id)
+        except:
+            return HttpResponse("Not handled", status=400)

@@ -1764,7 +1764,6 @@ class ChannelCRUDL(SmartCRUDL):
                 cc = str(number.country_code)
                 phone = "{0}{1}".format(cc, str(number.national_number))
                 self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=phone, password=data['password'])
-                self.object.ensure_normalized_contacts()
 
             except Exception as e:
                 import traceback

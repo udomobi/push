@@ -558,6 +558,7 @@ class Channel(TembaModel):
 
     @classmethod
     def add_whatsapp_channel(cls, org, user, cc, phone, password):
+        print(password)
         config = dict(password=password,
                       phone=phone,
                       cc=cc)
@@ -574,10 +575,6 @@ class Channel(TembaModel):
             else:
                 channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
                                      config=config, address=config['phone'])
-
-                # notify Mage so that it activates this channel
-                from .tasks import MageStreamAction, notify_whatsapp_mage_task
-                notify_whatsapp_mage_task.delay(channel.uuid, MageStreamAction.activate)
 
         return channel
 
@@ -986,11 +983,6 @@ class Channel(TembaModel):
             # notify Mage so that it deactivates this channel
             from .tasks import MageStreamAction, notify_twitter_mage_task
             notify_twitter_mage_task.delay(self.uuid, MageStreamAction.deactivate)
-
-        if notify_mage and self.channel_type == WHATSAPP:
-            # notify Mage so that it deactivates this channel
-            from .tasks import MageStreamAction, notify_whatsapp_mage_task
-            notify_whatsapp_mage_task.delay(self.uuid, MageStreamAction.deactivate)
 
         # if we just lost calling capabilities archive our voice flows
         if CALL in self.role:
@@ -2193,6 +2185,7 @@ class Channel(TembaModel):
         start = time.time()
         try:
             credentials = (channel.config['phone'], channel.config['password'])
+            print(credentials)
             text = ("{0}".format(text)).encode('utf-8', 'ignore')
             result = YowsupSendStack(credentials, [(msg.urn_path, text)])
             try:
