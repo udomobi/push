@@ -474,7 +474,7 @@ class TelegramHandler(View):
 
         # skip if there is no message block (could be a sticker or voice)
         if 'photo' in body['message'] or 'document' in body['message'] or 'video' in body['message']:
-            bot = telegram.Bot(token=channel.config['auth_token'])
+            bot = telegram.Bot(token=channel.config_json()[AUTH_TOKEN])
 
             if 'photo' in body['message']:
                 telegram_file = bot.getFile(file_id=body['message']['photo'][-1]['file_id'])
