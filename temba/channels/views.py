@@ -1801,9 +1801,6 @@ class ChannelCRUDL(SmartCRUDL):
             }
             self.object = Channel.add_gcm_channel(org=org, user=self.request.user, data=obj)
 
-            # make sure all contacts added before the channel are normalized
-            self.object.ensure_normalized_contacts()
-
             return super(ChannelCRUDL.ClaimGcm, self).form_valid(form)
 
     class ClaimFacebook(OrgPermsMixin, SmartFormView):

@@ -309,7 +309,7 @@ class Channel(TembaModel):
             existing.save(update_fields=('config',))
             return existing
         else:
-            return Channel.create(org, user, None, _GCM, name=org.name, address="gcm-%s" % org.slug, config={'api_key': api_key, 'notification_title': notification_title}, scheme=GCM_SCHEME)
+            return Channel.create(org, user, None, _GCM, name=org.name, address="gcm-%s" % org.slug[:12], config={'api_key': api_key, 'notification_title': notification_title}, scheme=GCM_SCHEME)
 
     @classmethod
     def add_authenticated_external_channel(cls, org, user, country, phone_number,
