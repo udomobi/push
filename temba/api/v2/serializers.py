@@ -4,7 +4,7 @@ from rest_framework import serializers
 from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel, ANDROID
 from temba.contacts.models import Contact, ContactField, ContactGroup
-from temba.flows.models import FlowRun, ACTION_SET, RULE_SET
+from temba.flows.models import FlowRun, ACTION_SET, RULE_SET, Flow, FlowStep, RuleSet
 from temba.msgs.models import Broadcast, Msg, Label, Call, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED
 from temba.utils import datetime_to_json_date
@@ -22,6 +22,7 @@ class ReadSerializer(serializers.ModelSerializer):
     """
     We deviate slightly from regular REST framework usage with distinct serializers for reading and writing
     """
+
     @staticmethod
     def extract_constants(config):
         return {t[0]: t[2] for t in config}
@@ -298,6 +299,15 @@ class MsgReadSerializer(ReadSerializer):
     archived = serializers.SerializerMethodField()
     visibility = serializers.SerializerMethodField()
     labels = serializers.SerializerMethodField()
+    ruleset = serializers.SerializerMethodField()
+
+    def get_ruleset(self, obj):
+        try:
+            step = obj.get_flow_step()
+            destination = step.get_step().destination
+            return RuleSet.objects.filter(uuid=destination).first().as_json()
+        except:
+            return None
 
     def get_broadcast(self, obj):
         return obj.broadcast_id
@@ -339,4 +349,4 @@ class MsgReadSerializer(ReadSerializer):
         model = Msg
         fields = ('id', 'broadcast', 'contact', 'urn', 'channel',
                   'direction', 'type', 'status', 'archived', 'visibility', 'text', 'labels',
-                  'created_on', 'sent_on', 'modified_on')
+                  'created_on', 'sent_on', 'modified_on', 'ruleset')
