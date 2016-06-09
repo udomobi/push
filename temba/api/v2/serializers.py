@@ -4,7 +4,7 @@ from rest_framework import serializers
 from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel, ANDROID
 from temba.contacts.models import Contact, ContactField, ContactGroup
-from temba.flows.models import FlowRun, ACTION_SET, RULE_SET, Flow, FlowStep, RuleSet
+from temba.flows.models import FlowRun, ACTION_SET, RULE_SET, RuleSet
 from temba.msgs.models import Broadcast, Msg, Label, Call, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED
 from temba.utils import datetime_to_json_date
