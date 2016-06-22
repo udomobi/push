@@ -499,7 +499,13 @@ class Channel(TembaModel):
 
     @classmethod
     def add_twiml_api_channel(cls, org, user, country, address, config):
-        return Channel.create(org, user, country, TWIML_API, name=address, address=address, config=config)
+        role = SEND + RECEIVE + CALL + ANSWER
+        is_short_code = len(address) <= 6
+
+        if is_short_code:
+            role = SEND + RECEIVE
+
+        return Channel.create(org, user, country, TWIML_API, name=address, address=address, config=config, role=role)
 
     @classmethod
     def add_africas_talking_channel(cls, org, user, country, phone, username, api_key, is_shared=False):
