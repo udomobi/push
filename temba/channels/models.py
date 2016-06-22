@@ -716,6 +716,8 @@ class Channel(TembaModel):
     def get_ivr_client(self):
         if self.channel_type == TWILIO:
             return self.org.get_twilio_client()
+        if self.channel_type == TWIML_API:
+            return self.org.get_twiml_client()
         if self.channel_type == VERBOICE:
             return self.org.get_verboice_client()
         return None
