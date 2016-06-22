@@ -2102,6 +2102,13 @@ class Channel(TembaModel):
                                    messaging_service_sid=messaging_service_sid,
                                    body=text,
                                    status_callback=callback_url)
+        elif channel.channel_type == TWIML_API:
+            config = channel.config_json()
+            client = TwilioRestClient(config.get(ACCOUNT_SID), config.get(ACCOUNT_TOKEN))
+            client.messages.create(to=msg.urn_path,
+                                   from_=channel.address,
+                                   body=text,
+                                   status_callback=callback_url)
         else:
             client.messages.create(to=msg.urn_path,
                                    from_=channel.address,
@@ -2502,6 +2509,7 @@ class Channel(TembaModel):
                       START: Channel.send_start_message,
                       TELEGRAM: Channel.send_telegram_message,
                       TWILIO: Channel.send_twilio_message,
+                      TWIML_API: Channel.send_twilio_message,
                       TWILIO_MESSAGING_SERVICE: Channel.send_twilio_message,
                       TWITTER: Channel.send_twitter_message,
                       VUMI: Channel.send_vumi_message,
