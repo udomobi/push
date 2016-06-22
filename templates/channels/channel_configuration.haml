@@ -284,6 +284,16 @@
     %hr
 
     %h4
+      -trans "TwiML REST API Host"
+
+    %p
+      -blocktrans
+        The below endpoint should receive message this channel.
+
+    %code
+      {{ object.config_json.send_url }}
+
+    %h4
       -trans "Request URL"
 
     %p
