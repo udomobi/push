@@ -2186,9 +2186,6 @@ class ChannelCRUDL(SmartCRUDL):
         success_url = "id@channels.channel_configuration"
         form_class = TwimlApiClaimForm
 
-        def is_valid_country(self, country_code):
-            return country_code in TWILIO_SUPPORTED_COUNTRY_CODES
-
         def form_valid(self, form):
             org = self.request.user.get_org()
             data = form.cleaned_data
@@ -2201,7 +2198,9 @@ class ChannelCRUDL(SmartCRUDL):
                       ACCOUNT_SID: data.get('account_sid', None),
                       ACCOUNT_TOKEN: data.get('account_token', None)}
 
-            self.object = Channel.add_twiml_api_channel(org=org, user=self.request.user, country=country, address=number, config=config)
+            number = phonenumbers.parse(number=number, region=country)
+            phone_number = "{0}{1}".format(str(number.country_code), str(number.national_number))
+            self.object = Channel.add_twiml_api_channel(org=org, user=self.request.user, country=country, address=phone_number, config=config)
 
             # if they didn't set a username or password, generate them, we do this after the addition above
             # because we use the channel id in the configuration
