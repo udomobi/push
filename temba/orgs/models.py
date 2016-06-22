@@ -669,6 +669,18 @@ class Org(SmartModel):
                 return TwilioClient(account_sid, auth_token, org=self)
         return None
 
+    def get_twiml_client(self, channel):
+        from temba.ivr.clients import TwilioClient
+
+        config = channel.config_json()
+
+        if config:
+            account_sid = config.get(ACCOUNT_SID, None)
+            auth_token = config.get(ACCOUNT_TOKEN, None)
+            if account_sid and auth_token:
+                return TwilioClient(account_sid, auth_token, org=self)
+        return None
+
     def get_nexmo_client(self):
         config = self.config_json()
         if config:

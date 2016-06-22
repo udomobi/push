@@ -58,6 +58,7 @@ PLIVO = 'PL'
 SHAQODOON = 'SQ'
 SMSCENTRAL = 'SC'
 TWILIO = 'T'
+TWIML_API = 'TW'
 TWITTER = 'TT'
 VERBOICE = 'VB'
 VUMI = 'VM'
@@ -84,7 +85,7 @@ ENCODING = 'encoding'
 PAGE_NAME = 'page_name'
 
 DEFAULT_ENCODING = 'D'  # we just pass the text down to the endpoint
-SMART_ENCODING = 'S'    # we try simple substitutions to GSM7 then go to unicode if it still isn't GSM7
+SMART_ENCODING = 'S'  # we try simple substitutions to GSM7 then go to unicode if it still isn't GSM7
 UNICODE_ENCODING = 'U'  # we send everything as unicode
 
 ENCODING_CHOICES = ((DEFAULT_ENCODING, _("Default Encoding")),
@@ -125,6 +126,7 @@ CHANNEL_SETTINGS = {
     START: dict(scheme='tel', max_length=1600),
     TELEGRAM: dict(scheme='telegram', max_length=1600),
     TWILIO: dict(scheme='tel', max_length=1600),
+    TWIML_API: dict(scheme='tel', max_length=1600),
     TWILIO_MESSAGING_SERVICE: dict(scheme='tel', max_length=1600),
     TWITTER: dict(scheme='twitter', max_length=10000),
     VERBOICE: dict(scheme='tel', max_length=1600),
@@ -180,6 +182,7 @@ class Channel(TembaModel):
                     (START, "Start Mobile"),
                     (TELEGRAM, "Telegram"),
                     (TWILIO, "Twilio"),
+                    (TWIML_API, "TwiML"),
                     (TWILIO_MESSAGING_SERVICE, "Twilio Messaging Service"),
                     (TWITTER, "Twitter"),
                     (VERBOICE, "Verboice"),
@@ -495,6 +498,10 @@ class Channel(TembaModel):
                               name=messaging_service_sid, address=None, config=config)
 
     @classmethod
+    def add_twiml_api_channel(cls, org, user, country, address, config):
+        return Channel.create(org, user, country, TWIML_API, name=address, address=address, config=config)
+
+    @classmethod
     def add_africas_talking_channel(cls, org, user, country, phone, username, api_key, is_shared=False):
         config = dict(username=username, api_key=api_key, is_shared=is_shared)
 
@@ -567,7 +574,7 @@ class Channel(TembaModel):
 
             else:
                 channel = Channel.create(org, user, None, WHATSAPP, name="%s@s.whatsapp.net" % config['phone'],
-                                     config=config, address=config['phone'])
+                                         config=config, address=config['phone'])
 
         return channel
 
@@ -2599,8 +2606,8 @@ class Channel(TembaModel):
             return unicode(self.pk)
 
     def get_count(self, count_types):
-        count = ChannelCount.objects.filter(channel=self, count_type__in=count_types)\
-                                    .aggregate(Sum('count')).get('count__sum', 0)
+        count = ChannelCount.objects.filter(channel=self, count_type__in=count_types) \
+            .aggregate(Sum('count')).get('count__sum', 0)
 
         return 0 if count is None else count
 
@@ -2621,6 +2628,7 @@ class Channel(TembaModel):
 
     class Meta:
         ordering = ('-last_seen', '-pk')
+
 
 SOURCE_AC = "AC"
 SOURCE_USB = "USB"
@@ -2646,8 +2654,8 @@ class ChannelCount(models.Model):
     OUTGOING_MSG_TYPE = 'OM'  # Outgoing message
     INCOMING_IVR_TYPE = 'IV'  # Incoming IVR step
     OUTGOING_IVR_TYPE = 'OV'  # Outgoing IVR step
-    SUCCESS_LOG_TYPE = 'LS'   # ChannelLog record
-    ERROR_LOG_TYPE = 'LE'     # ChannelLog record that is an error
+    SUCCESS_LOG_TYPE = 'LS'  # ChannelLog record
+    ERROR_LOG_TYPE = 'LE'  # ChannelLog record that is an error
 
     COUNT_TYPE_CHOICES = ((INCOMING_MSG_TYPE, _("Incoming Message")),
                           (OUTGOING_MSG_TYPE, _("Outgoing Message")),
@@ -2682,8 +2690,8 @@ class ChannelCount(models.Model):
         # get the unique ids for all new ones
         start = time.time()
         squash_count = 0
-        for count in ChannelCount.objects.filter(id__gt=last_squash).order_by('channel_id', 'count_type', 'day')\
-                                                                    .distinct('channel_id', 'count_type', 'day'):
+        for count in ChannelCount.objects.filter(id__gt=last_squash).order_by('channel_id', 'count_type', 'day') \
+                .distinct('channel_id', 'count_type', 'day'):
             print "Squashing: %d %s %s" % (count.channel_id, count.count_type, count.day)
 
             # perform our atomic squash in SQL by calling our squash method
@@ -2707,7 +2715,6 @@ class ChannelCount(models.Model):
 
 
 class SendException(Exception):
-
     def __init__(self, description, url, method, request, response, response_status, fatal=False):
         super(SendException, self).__init__(description)
 
@@ -2869,9 +2876,9 @@ class Alert(SmartModel):
     TYPE_POWER = 'P'
     TYPE_SMS = 'S'
 
-    TYPE_CHOICES = ((TYPE_POWER, _("Power")),                 # channel has low power
-                    (TYPE_DISCONNECTED, _("Disconnected")),   # channel hasn't synced in a while
-                    (TYPE_SMS, _("SMS")))                     # channel has many unsent messages
+    TYPE_CHOICES = ((TYPE_POWER, _("Power")),  # channel has low power
+                    (TYPE_DISCONNECTED, _("Disconnected")),  # channel hasn't synced in a while
+                    (TYPE_SMS, _("SMS")))  # channel has many unsent messages
 
     channel = models.ForeignKey(Channel, verbose_name=_("Channel"),
                                 help_text=_("The channel that this alert is for"))
