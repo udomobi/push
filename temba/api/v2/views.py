@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from smartmin.views import SmartTemplateView, SmartFormView
+from temba import settings
 from temba.api.models import get_or_create_api_token, APIToken
 from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel
@@ -98,6 +99,7 @@ class AuthenticateView(SmartFormView):
     """
     Provides a login form view for app users to generate and access their API tokens
     """
+
     class LoginForm(forms.Form):
         username = forms.CharField()
         password = forms.CharField(widget=forms.PasswordInput)
@@ -939,7 +941,6 @@ class MediaEndpoint(BaseAPIView):
     permission = 'msgs.msg_api'
 
     def post(self, request, format=None, *args, **kwargs):
-
         org = self.request.user.get_org()
         media_file = request.data.get('media_file', None)
         extension = request.data.get('extension', None)
@@ -1009,12 +1010,20 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
             ...
         }
     """
+
     class Pagination(CustomCursorPagination):
         """
         Overridden paginator for Msg endpoint that switches from created_on to modified_on when looking
         at all incoming messages.
         """
+
         def get_ordering(self, request, queryset, view=None):
+
+            try:
+                self.page_size = int(request.query_params.get('count'))
+            except:
+                pass
+
             if request.query_params.get('folder', '').lower() == 'incoming':
                 return ModifiedOnCursorPagination.ordering
             else:
@@ -1117,7 +1126,8 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
                 {'name': 'folder', 'required': False, 'help': "A folder name to filter by, one of: inbox, flows, archived, outbox, sent, incoming"},
                 {'name': 'label', 'required': False, 'help': "A label name or UUID to filter by, ex: Spam"},
                 {'name': 'before', 'required': False, 'help': "Only return messages created before this date, ex: 2015-01-28T18:00:00.000"},
-                {'name': 'after', 'required': False, 'help': "Only return messages created after this date, ex: 2015-01-28T18:00:00.000"}
+                {'name': 'after', 'required': False, 'help': "Only return messages created after this date, ex: 2015-01-28T18:00:00.000"},
+                {'name': 'count', 'required': False, 'help': "Number of items returned in the query, paging the rest."}
             ]
         }
 
