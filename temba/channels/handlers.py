@@ -16,7 +16,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.generic import View
 from temba.api.models import WebHookEvent, SMS_RECEIVED
-from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN
+from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN, TWIML_API
 from temba.contacts.models import Contact, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME, WHATSAPP_SCHEME
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
@@ -30,7 +30,6 @@ from twilio import twiml
 
 
 class TwilioHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(TwilioHandler, self).dispatch(*args, **kwargs)
@@ -205,8 +204,46 @@ class TwilioMessagingServiceHandler(View):
         return HttpResponse("Not Handled, unknown action", status=400)
 
 
-class AfricasTalkingHandler(View):
+class TwimlAPIHandler(View):
+    @disable_middleware
+    def dispatch(self, *args, **kwargs):
+        return super(TwimlAPIHandler, self).dispatch(*args, **kwargs)
 
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from twilio.util import RequestValidator
+        from temba.msgs.models import Msg
+
+        signature = request.META.get('HTTP_X_TWILIO_SIGNATURE', '')
+        url = "https://" + settings.HOSTNAME + "%s" % request.get_full_path()
+
+        action = kwargs['action']
+        channel_uuid = kwargs['uuid']
+
+        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=TWIML_API).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+        if action == 'receive':
+
+            org = channel.org
+            client = org.get_twiml_client(channel=channel)
+            validator = RequestValidator(client.auth[1])
+
+            if not validator.validate(url, request.POST, signature):
+                # raise an exception that things weren't properly signed
+                raise ValidationError("Invalid request signature")
+
+            Msg.create_incoming(channel, (TEL_SCHEME, request.POST['From']), request.POST['Body'])
+
+            return HttpResponse("", status=201)
+
+        return HttpResponse("Not Handled, unknown action", status=400)
+
+
+class AfricasTalkingHandler(View):
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(AfricasTalkingHandler, self).dispatch(*args, **kwargs)
@@ -263,7 +300,6 @@ class AfricasTalkingHandler(View):
 
 
 class ZenviaHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ZenviaHandler, self).dispatch(*args, **kwargs)
@@ -364,7 +400,6 @@ class GCMHandler(View):
 
 
 class ExternalHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ExternalHandler, self).dispatch(*args, **kwargs)
@@ -442,6 +477,7 @@ class ShaqodoonHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Shaqodoon messages
     """
+
     def get_channel_type(self):
         return SHAQODOON
 
@@ -450,12 +486,12 @@ class YoHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Yo! Messages.
     """
+
     def get_channel_type(self):
         return YO
 
 
 class TelegramHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(TelegramHandler, self).dispatch(*args, **kwargs)
@@ -528,7 +564,6 @@ class TelegramHandler(View):
 
 
 class InfobipHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(InfobipHandler, self).dispatch(*args, **kwargs)
@@ -606,7 +641,6 @@ class InfobipHandler(View):
 
 
 class Hub9Handler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(Hub9Handler, self).dispatch(*args, **kwargs)
@@ -662,7 +696,6 @@ class Hub9Handler(View):
 
 
 class HighConnectionHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(HighConnectionHandler, self).dispatch(*args, **kwargs)
@@ -725,7 +758,6 @@ class HighConnectionHandler(View):
 
 
 class BlackmynaHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(BlackmynaHandler, self).dispatch(*args, **kwargs)
@@ -784,7 +816,6 @@ class BlackmynaHandler(View):
 
 
 class SMSCentralHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(SMSCentralHandler, self).dispatch(*args, **kwargs)
@@ -821,13 +852,13 @@ class M3TechHandler(ExternalHandler):
     """
     Exposes our API for handling and receiving messages, same as external handlers.
     """
+
     def get_channel_type(self):
         from temba.channels.models import M3TECH
         return M3TECH
 
 
 class NexmoHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(NexmoHandler, self).dispatch(*args, **kwargs)
@@ -897,7 +928,6 @@ class NexmoHandler(View):
 
 
 class VerboiceHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(VerboiceHandler, self).dispatch(*args, **kwargs)
@@ -935,7 +965,6 @@ class VerboiceHandler(View):
 
 
 class VumiHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(VumiHandler, self).dispatch(*args, **kwargs)
@@ -1026,7 +1055,6 @@ class VumiHandler(View):
 
 
 class KannelHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(KannelHandler, self).dispatch(*args, **kwargs)
@@ -1111,7 +1139,6 @@ class KannelHandler(View):
 
 
 class ClickatellHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ClickatellHandler, self).dispatch(*args, **kwargs)
@@ -1149,19 +1176,19 @@ class ClickatellHandler(View):
                 return HttpResponse("Message with external id of '%s' not found" % sms_id, status=400)
 
             # possible status codes Clickatell will send us
-            STATUS_CHOICES = {'001': FAILED,      # incorrect msg id
-                              '002': WIRED,       # queued
-                              '003': SENT,        # delivered to upstream gateway
-                              '004': DELIVERED,   # received by handset
-                              '005': FAILED,      # error in message
-                              '006': FAILED,      # terminated by user
-                              '007': FAILED,      # error delivering
-                              '008': WIRED,       # msg received
-                              '009': FAILED,      # error routing
-                              '010': FAILED,      # expired
-                              '011': WIRED,       # delayed but queued
-                              '012': FAILED,      # out of credit
-                              '014': FAILED}      # too long
+            STATUS_CHOICES = {'001': FAILED,  # incorrect msg id
+                              '002': WIRED,  # queued
+                              '003': SENT,  # delivered to upstream gateway
+                              '004': DELIVERED,  # received by handset
+                              '005': FAILED,  # error in message
+                              '006': FAILED,  # terminated by user
+                              '007': FAILED,  # error delivering
+                              '008': WIRED,  # msg received
+                              '009': FAILED,  # error routing
+                              '010': FAILED,  # expired
+                              '011': WIRED,  # delayed but queued
+                              '012': FAILED,  # out of credit
+                              '014': FAILED}  # too long
 
             # check our status
             status_code = self.request.REQUEST['status']
@@ -1233,7 +1260,6 @@ class ClickatellHandler(View):
 
 
 class PlivoHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(PlivoHandler, self).dispatch(*args, **kwargs)
@@ -1248,8 +1274,8 @@ class PlivoHandler(View):
         request_uuid = kwargs['uuid']
 
         if not all(k in request.REQUEST for k in ['From', 'To', 'MessageUUID']):
-                return HttpResponse("Missing one of 'From', 'To', or 'MessageUUID' in request parameters.",
-                                    status=400)
+            return HttpResponse("Missing one of 'From', 'To', or 'MessageUUID' in request parameters.",
+                                status=400)
 
         channel = Channel.objects.filter(is_active=True, uuid=request_uuid, channel_type=PLIVO).first()
 
@@ -1341,7 +1367,6 @@ class PlivoHandler(View):
 
 
 class MageHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(MageHandler, self).dispatch(*args, **kwargs)
@@ -1386,7 +1411,6 @@ class MageHandler(View):
 
 
 class StartHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(StartHandler, self).dispatch(*args, **kwargs)
@@ -1434,7 +1458,6 @@ class StartHandler(View):
 
 
 class ChikkaHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ChikkaHandler, self).dispatch(*args, **kwargs)
@@ -1511,7 +1534,6 @@ class ChikkaHandler(View):
 
 
 class JasminHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(JasminHandler, self).dispatch(*args, **kwargs)
@@ -1576,7 +1598,6 @@ class JasminHandler(View):
 
 
 class MbloxHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(MbloxHandler, self).dispatch(*args, **kwargs)
@@ -1647,7 +1668,6 @@ class MbloxHandler(View):
 
 
 class FacebookHandler(View):
-
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(FacebookHandler, self).dispatch(*args, **kwargs)
@@ -1761,8 +1781,8 @@ class FacebookHandler(View):
 
         return HttpResponse("Ignored, unknown msg", status=200)
 
-class WhatsappHandler(View):
 
+class WhatsappHandler(View):
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(WhatsappHandler, self).dispatch(*args, **kwargs)
