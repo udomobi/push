@@ -1,10 +1,10 @@
 @font-face {
 	font-family: 'rapidpro';
-	src:url('fonts/udofont.eot?-vr02l1');
-	src:url('fonts/udofont.eot?#iefix-vr02l1') format('embedded-opentype'),
-		url('fonts/udofont.woff?-vr02l1') format('woff'),
-		url('fonts/udofont.ttf?-vr02l1') format('truetype'),
-		url('fonts/udofont.svg?-vr02l1#rapidpro') format('svg');
+	src:url('fonts/ilhapush.eot?-vr02l1');
+	src:url('fonts/ilhapush.eot?#iefix-vr02l1') format('embedded-opentype'),
+		url('fonts/ilhapush.woff?-vr02l1') format('woff'),
+		url('fonts/ilhapush.ttf?-vr02l1') format('truetype'),
+		url('fonts/ilhapush.svg?-vr02l1#rapidpro') format('svg');
 	font-weight: normal;
 	font-style: normal;
 }
