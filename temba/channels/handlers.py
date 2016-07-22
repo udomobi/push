@@ -388,7 +388,7 @@ class GCMHandler(View):
             date = request.REQUEST.get('date', request.REQUEST.get('time', None))
             if date:
                 date = json_date_to_datetime(date)
-            sms = Msg.create_incoming(channel, (GCM_SCHEME, request.REQUEST['from']), request.REQUEST['msg'], date=date)
+            sms = Msg.create_incoming(channel, URN.from_gcm(request.REQUEST['from']), request.REQUEST['msg'], date=date)
             return HttpResponse("SMS Accepted: %d" % sms.id)
         except:
             return HttpResponse("Not handled", status=400)
@@ -553,7 +553,7 @@ class TelegramHandler(View):
                 Contact.get_or_create(channel.org, channel.created_by, name, urns=[urn])
 
         msg_date = datetime.utcfromtimestamp(body['message']['date']).replace(tzinfo=pytz.utc)
-        sms = Msg.create_incoming(channel, (TELEGRAM_SCHEME, telegram_id), text, date=msg_date)
+        sms = Msg.create_incoming(channel, urn, text, date=msg_date)
 
         return HttpResponse("SMS Accepted: %d" % sms.id)
 

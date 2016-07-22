@@ -234,6 +234,10 @@ class URN(object):
     def from_external(cls, path):
         return cls.from_parts(EXTERNAL_SCHEME, path)
 
+    @classmethod
+    def from_gcm(cls, path):
+        return cls.from_parts(GCM_SCHEME, path)
+
 
 URN_SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
 
