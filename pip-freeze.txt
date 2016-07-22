@@ -90,7 +90,8 @@ rapidpro-expressions==1.1.5
 raven==4.0.4
 redis==2.10.1
 regex==2014.6.28
-requests==2.9.1
+#requests==2.9.1
+requests[security]
 requests-oauthlib==0.4.0
 rsa==3.1.1
 selenium==2.31.0
@@ -109,3 +110,4 @@ uservoice==0.0.19
 xlrd==0.9.3
 xlutils==1.7.1
 xlwt==0.7.5
+paypalrestsdk
