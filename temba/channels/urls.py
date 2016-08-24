@@ -7,9 +7,12 @@ from .handlers import KannelHandler, ClickatellHandler, PlivoHandler, HighConnec
 from .handlers import SMSCentralHandler, MageHandler, YoHandler, StartHandler, TelegramHandler, ChikkaHandler
 from .handlers import TwilioMessagingServiceHandler, JasminHandler, MbloxHandler, FacebookHandler, GCMHandler, WhatsappHandler
 from temba.channels.handlers import TwimlAPIHandler
-from .views import ChannelCRUDL, ChannelLogCRUDL
+from .views import ChannelCRUDL, ChannelLogCRUDL, ChannelEventCRUDL
+
 
 urlpatterns = [
+    url(r'^', include(ChannelEventCRUDL().as_urlpatterns())),
+
     url(r'^channels/', include(ChannelCRUDL().as_urlpatterns() + ChannelLogCRUDL().as_urlpatterns())),
 
     url(r'^handlers', include([
@@ -39,7 +42,6 @@ urlpatterns = [
         url(r'^/chikka/(?P<uuid>[a-z0-9\-]+)/?$', ChikkaHandler.as_view(), name='handlers.chikka_handler'),
         url(r'^/jasmin/(?P<action>status|receive)/(?P<uuid>[a-z0-9\-]+)/?$', JasminHandler.as_view(), name='handlers.jasmin_handler'),
         url(r'^/mblox/(?P<uuid>[a-z0-9\-]+)/?$', MbloxHandler.as_view(), name='handlers.mblox_handler'),
-        url(r'^/facebook/(?P<uuid>[a-z0-9\-]+)/?$', FacebookHandler.as_view(), name='handlers.facebook_handler'),
         url(r'^/facebook/(?P<uuid>[a-z0-9\-]+)/?$', FacebookHandler.as_view(), name='handlers.facebook_handler'),
         url(r'^/gcm/(?P<uuid>[a-z0-9\-]+)/?$', GCMHandler.as_view(), name='handlers.gcm_handler'),
         url(r'^/whatsapp/(?P<uuid>[a-z0-9\-]+)/?$', WhatsappHandler.as_view(), name='handlers.whatsapp_handler')

@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, login
 from django.db.models import Prefetch, Q
 from django.db.transaction import non_atomic_requests
 from django.http import HttpResponse, JsonResponse
+from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, mixins, status
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -13,19 +14,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from smartmin.views import SmartTemplateView, SmartFormView
-from temba.api.models import get_or_create_api_token, APIToken
+from temba.api.models import APIToken
 from temba.campaigns.models import Campaign, CampaignEvent
-from temba.channels.models import Channel
+from temba.channels.models import Channel, ChannelEvent
 from temba.contacts.models import Contact, ContactURN, ContactGroup, ContactField
 from temba.flows.models import Flow, FlowRun, FlowStep
-from temba.msgs.models import Broadcast, Call, Msg, Label, SystemLabel
+from temba.msgs.models import Broadcast, Msg, Label, SystemLabel
 from temba.orgs.models import Org
 from temba.utils import str_to_bool, json_date_to_datetime
-from .serializers import BroadcastReadSerializer, CallReadSerializer, CampaignReadSerializer
-from .serializers import CampaignEventReadSerializer, ChannelReadSerializer, ContactReadSerializer
+from .serializers import BroadcastReadSerializer, CampaignReadSerializer, CampaignEventReadSerializer
+from .serializers import ChannelReadSerializer, ChannelEventReadSerializer, ContactReadSerializer
 from .serializers import ContactFieldReadSerializer, ContactGroupReadSerializer, FlowRunReadSerializer
 from .serializers import LabelReadSerializer, MsgReadSerializer
-from ..models import ApiPermission, SSLPermission
+from ..models import APIPermission, SSLPermission
 from ..support import InvalidQueryError, CustomCursorPagination
 
 
@@ -98,10 +99,13 @@ class AuthenticateView(SmartFormView):
     """
     Provides a login form view for app users to generate and access their API tokens
     """
+
     class LoginForm(forms.Form):
+        ROLE_CHOICES = (('A', _("Administrator")), ('E', _("Editor")), ('S', _("Surveyor")))
+
         username = forms.CharField()
         password = forms.CharField(widget=forms.PasswordInput)
-        role = forms.ChoiceField(choices=APIToken.ROLE_CHOICES)
+        role = forms.ChoiceField(choices=ROLE_CHOICES)
 
     title = "API Authentication"
     form_class = LoginForm
@@ -113,24 +117,22 @@ class AuthenticateView(SmartFormView):
     def form_valid(self, form, *args, **kwargs):
         username = form.cleaned_data.get('username')
         password = form.cleaned_data.get('password')
-        role = form.cleaned_data.get('role')
+        role_code = form.cleaned_data.get('role')
 
         user = authenticate(username=username, password=password)
         if user and user.is_active:
             login(self.request, user)
+
+            role = APIToken.get_role_from_code(role_code)
             tokens = []
 
-            valid_orgs, role = APIToken.get_orgs_for_role(user, role)
             if role:
+                valid_orgs = APIToken.get_orgs_for_role(user, role)
                 for org in valid_orgs:
-                    user.set_org(org)
-                    user.set_role(role)
-                    token = get_or_create_api_token(user)
-
-                    if token:
-                        tokens.append({'org': {'id': org.pk, 'name': org.name}, 'token': token})
+                    token = APIToken.get_or_create(org, user, role)
+                    tokens.append({'org': {'id': org.pk, 'name': org.name}, 'token': token.key})
             else:
-                return HttpResponse(status=403)
+                return HttpResponse(status=404)
 
             return JsonResponse({'tokens': tokens})
         else:
@@ -138,18 +140,18 @@ class AuthenticateView(SmartFormView):
 
 
 class CreatedOnCursorPagination(CustomCursorPagination):
-    ordering = ('-created_on',)
+    ordering = ('-created_on', '-id')
 
 
 class ModifiedOnCursorPagination(CustomCursorPagination):
-    ordering = ('-modified_on',)
+    ordering = ('-modified_on', '-id')
 
 
 class BaseAPIView(generics.GenericAPIView):
     """
     Base class of all our API endpoints
     """
-    permission_classes = (SSLPermission, ApiPermission)
+    permission_classes = (SSLPermission, APIPermission)
 
     @non_atomic_requests
     def dispatch(self, request, *args, **kwargs):
@@ -248,7 +250,6 @@ class BroadcastEndpoint(ListAPIMixin, BaseAPIView):
      * **groups** - the groups that received the broadcast (array of objects)
      * **text** - the message text (string)
      * **created_on** - when this broadcast was either created (datetime) (filterable as `before` and `after`).
-     * **status** - the status of the broadcast (one of "initializing", "queued", "wired", "sent", "delivered", "errored", "failed", "resent").
 
     Example:
 
@@ -266,8 +267,7 @@ class BroadcastEndpoint(ListAPIMixin, BaseAPIView):
                     "contacts": [{"uuid": "09d23a05-47fe-11e4-bfe9-b8f6b119e9ab", "name": "Joe"}]
                     "groups": [],
                     "text": "hello world",
-                    "created_on": "2013-03-02T17:28:12.123Z",
-                    "status": "queued"
+                    "created_on": "2013-03-02T17:28:12.123Z"
                 },
                 ...
     """
@@ -590,9 +590,9 @@ class ChannelEventsEndpoint(ListAPIMixin, BaseAPIView):
             ...
 
     """
-    permission = 'msgs.call_api'
-    model = Call
-    serializer_class = CallReadSerializer
+    permission = 'channels.channelevent_api'
+    model = ChannelEvent
+    serializer_class = ChannelEventReadSerializer
     pagination_class = CreatedOnCursorPagination
 
     def filter_queryset(self, queryset):
@@ -939,7 +939,6 @@ class MediaEndpoint(BaseAPIView):
     permission = 'msgs.msg_api'
 
     def post(self, request, format=None, *args, **kwargs):
-
         org = self.request.user.get_org()
         media_file = request.data.get('media_file', None)
         extension = request.data.get('extension', None)
@@ -1009,12 +1008,20 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
             ...
         }
     """
+
     class Pagination(CustomCursorPagination):
         """
         Overridden paginator for Msg endpoint that switches from created_on to modified_on when looking
         at all incoming messages.
         """
+
         def get_ordering(self, request, queryset, view=None):
+
+            try:
+                self.page_size = int(request.query_params.get('count'))
+            except:
+                pass
+
             if request.query_params.get('folder', '').lower() == 'incoming':
                 return ModifiedOnCursorPagination.ordering
             else:
@@ -1117,7 +1124,8 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
                 {'name': 'folder', 'required': False, 'help': "A folder name to filter by, one of: inbox, flows, archived, outbox, sent, incoming"},
                 {'name': 'label', 'required': False, 'help': "A label name or UUID to filter by, ex: Spam"},
                 {'name': 'before', 'required': False, 'help': "Only return messages created before this date, ex: 2015-01-28T18:00:00.000"},
-                {'name': 'after', 'required': False, 'help': "Only return messages created after this date, ex: 2015-01-28T18:00:00.000"}
+                {'name': 'after', 'required': False, 'help': "Only return messages created after this date, ex: 2015-01-28T18:00:00.000"},
+                {'name': 'count', 'required': False, 'help': "Number of items returned in the query, paging the rest."}
             ]
         }
 

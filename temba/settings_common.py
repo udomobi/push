@@ -316,6 +316,8 @@ PERMISSIONS = {
           'delete',  # can delete an object,
           'list'),  # can view a list of the objects
 
+    'api.apitoken': ('refresh',),
+
     'campaigns.campaign': ('api',
                            'archived',
                            ),
@@ -328,12 +330,13 @@ PERMISSIONS = {
                          'break_anon',
                          'customize',
                          'export',
-                         'failed',
+                         'stopped',
                          'filter',
                          'history',
                          'import',
                          'omnibox',
                          'unblock',
+                         'unstop',
                          'update_fields'
                          ),
 
@@ -350,7 +353,8 @@ PERMISSIONS = {
                                 'boundaries',
                                 'geometry'),
 
-    'orgs.org': ('api',
+    'orgs.org': ('accounts',
+                 'api',
                  'country',
                  'clear_cache',
                  'create_login',
@@ -417,10 +421,12 @@ PERMISSIONS = {
                          'create_bulk_sender',
                          'create_caller',
                          'errors',
-                         'facebook_welcome',
                          'search_nexmo',
                          'search_numbers',
                          ),
+
+    'channels.channelevent': ('api',
+                              'calls'),
 
     'flows.flow': ('activity',
                    'activity_list',
@@ -472,8 +478,6 @@ PERMISSIONS = {
                        'send',
                        ),
 
-    'msgs.call': ('api',),
-
     'msgs.label': ('api', 'create', 'create_folder'),
 
     'orgs.topup': ('manage', 'pricing',),
@@ -486,6 +490,7 @@ PERMISSIONS = {
                          'inbound_call',
                          'keyword',
                          'missed_call',
+                         'new_conversation',
                          'register',
                          'schedule',
                          ),
@@ -534,6 +539,7 @@ GROUP_PERMISSIONS = {
         'orgs.orderpayment_cancel',
     ),
     "Administrators": (
+        'api.apitoken_refresh',
         'api.webhookevent_list',
         'api.webhookevent_read',
 
@@ -547,14 +553,15 @@ GROUP_PERMISSIONS = {
         'contacts.contact_customize',
         'contacts.contact_delete',
         'contacts.contact_export',
-        'contacts.contact_failed',
         'contacts.contact_filter',
         'contacts.contact_history',
         'contacts.contact_import',
         'contacts.contact_list',
         'contacts.contact_omnibox',
         'contacts.contact_read',
+        'contacts.contact_stopped',
         'contacts.contact_unblock',
+        'contacts.contact_unstop',
         'contacts.contact_update',
         'contacts.contact_update_fields',
         'contacts.contactfield.*',
@@ -569,6 +576,7 @@ GROUP_PERMISSIONS = {
         'locations.adminboundary_boundaries',
         'locations.adminboundary_geometry',
 
+        'orgs.org_accounts',
         'orgs.org_api',
         'orgs.org_country',
         'orgs.org_download',
@@ -633,12 +641,12 @@ GROUP_PERMISSIONS = {
         'channels.channel_create_bulk_sender',
         'channels.channel_create_caller',
         'channels.channel_delete',
-        'channels.channel_facebook_welcome',
         'channels.channel_list',
         'channels.channel_read',
         'channels.channel_search_nexmo',
         'channels.channel_search_numbers',
         'channels.channel_update',
+        'channels.channelevent.*',
         'channels.channellog_list',
         'channels.channellog_read',
 
@@ -652,7 +660,6 @@ GROUP_PERMISSIONS = {
 
         'msgs.broadcast.*',
         'msgs.broadcastschedule.*',
-        'msgs.call.*',
         'msgs.label.*',
         'msgs.msg_api',
         'msgs.msg_archive',
@@ -672,6 +679,7 @@ GROUP_PERMISSIONS = {
 
     ),
     "Editors": (
+        'api.apitoken_refresh',
         'api.webhookevent_list',
         'api.webhookevent_read',
 
@@ -685,14 +693,15 @@ GROUP_PERMISSIONS = {
         'contacts.contact_customize',
         'contacts.contact_delete',
         'contacts.contact_export',
-        'contacts.contact_failed',
         'contacts.contact_filter',
         'contacts.contact_history',
         'contacts.contact_import',
         'contacts.contact_list',
         'contacts.contact_omnibox',
         'contacts.contact_read',
+        'contacts.contact_stopped',
         'contacts.contact_unblock',
+        'contacts.contact_unstop',
         'contacts.contact_update',
         'contacts.contact_update_fields',
         'contacts.contactfield.*',
@@ -760,11 +769,11 @@ GROUP_PERMISSIONS = {
         'channels.channel_create_bulk_sender',
         'channels.channel_create_caller',
         'channels.channel_delete',
-        'channels.channel_facebook_welcome',
         'channels.channel_list',
         'channels.channel_read',
         'channels.channel_search_numbers',
         'channels.channel_update',
+        'channels.channelevent.*',
 
         'reports.report.*',
 
@@ -776,7 +785,6 @@ GROUP_PERMISSIONS = {
 
         'msgs.broadcast.*',
         'msgs.broadcastschedule.*',
-        'msgs.call.*',
         'msgs.label.*',
         'msgs.msg_api',
         'msgs.msg_archive',
@@ -803,11 +811,11 @@ GROUP_PERMISSIONS = {
 
         'contacts.contact_blocked',
         'contacts.contact_export',
-        'contacts.contact_failed',
         'contacts.contact_filter',
         'contacts.contact_history',
         'contacts.contact_list',
         'contacts.contact_read',
+        'contacts.contact_stopped',
 
         'locations.adminboundary_boundaries',
         'locations.adminboundary_geometry',
@@ -826,6 +834,7 @@ GROUP_PERMISSIONS = {
 
         'channels.channel_list',
         'channels.channel_read',
+        'channels.channelevent_calls',
 
         'flows.flow_activity',
         'flows.flow_archived',
@@ -847,7 +856,6 @@ GROUP_PERMISSIONS = {
 
         'msgs.broadcast_schedule_list',
         'msgs.broadcast_schedule_read',
-        'msgs.call_list',
         'msgs.msg_archived',
         'msgs.msg_export',
         'msgs.msg_failed',
@@ -879,11 +887,6 @@ AUTHENTICATION_BACKENDS = (
 )
 
 ANONYMOUS_USER_ID = -1
-
-# -----------------------------------------------------------------------------------
-# Async tasks with django-celery, for testing we use a memory test backend
-# -----------------------------------------------------------------------------------
-BROKER_BACKEND = 'memory'
 
 # -----------------------------------------------------------------------------------
 # Our test runner is standard but with ability to exclude apps

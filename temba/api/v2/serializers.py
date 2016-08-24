@@ -2,9 +2,9 @@ from __future__ import absolute_import, unicode_literals
 
 from rest_framework import serializers
 from temba.campaigns.models import Campaign, CampaignEvent
-from temba.channels.models import Channel, ANDROID
+from temba.channels.models import Channel, ChannelEvent, ANDROID
 from temba.contacts.models import Contact, ContactField, ContactGroup
-from temba.flows.models import FlowRun, ACTION_SET, RULE_SET, RuleSet
+from temba.flows.models import FlowRun, FlowStep, ACTION_SET, RULE_SET, RuleSet
 from temba.msgs.models import Broadcast, Msg, Label, Call, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED
 from temba.utils import datetime_to_json_date
@@ -36,16 +36,13 @@ class ReadSerializer(serializers.ModelSerializer):
 # ============================================================
 
 class BroadcastReadSerializer(ReadSerializer):
-    STATUSES = ReadSerializer.extract_constants(STATUS_CONFIG)
-
     urns = serializers.SerializerMethodField()
     contacts = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
 
     def get_urns(self, obj):
         if obj.org.is_anon:
-            return []
+            return None
         else:
             return [urn.urn for urn in obj.urns.all()]
 
@@ -55,23 +52,20 @@ class BroadcastReadSerializer(ReadSerializer):
     def get_groups(self, obj):
         return [{'uuid': g.uuid, 'name': g.name} for g in obj.groups.all()]
 
-    def get_status(self, obj):
-        return self.STATUSES.get(obj.status)
-
     class Meta:
         model = Broadcast
-        fields = ('id', 'urns', 'contacts', 'groups', 'text', 'created_on', 'status')
+        fields = ('id', 'urns', 'contacts', 'groups', 'text', 'created_on')
 
 
-class CallReadSerializer(ReadSerializer):
-    TYPES = ReadSerializer.extract_constants(Call.TYPE_CONFIG)
+class ChannelEventReadSerializer(ReadSerializer):
+    TYPES = ReadSerializer.extract_constants(ChannelEvent.TYPE_CONFIG)
 
     type = serializers.SerializerMethodField()
     contact = serializers.SerializerMethodField()
     channel = serializers.SerializerMethodField()
 
     def get_type(self, obj):
-        return self.TYPES.get(obj.call_type)
+        return self.TYPES.get(obj.event_type)
 
     def get_contact(self, obj):
         return {'uuid': obj.contact.uuid, 'name': obj.contact.name}
@@ -80,7 +74,7 @@ class CallReadSerializer(ReadSerializer):
         return {'uuid': obj.channel.uuid, 'name': obj.channel.name}
 
     class Meta:
-        model = Call
+        model = ChannelEvent
         fields = ('id', 'type', 'contact', 'channel', 'time', 'duration', 'created_on')
 
 
@@ -154,7 +148,7 @@ class ContactReadSerializer(ReadSerializer):
     groups = serializers.SerializerMethodField()
     fields = serializers.SerializerMethodField('get_contact_fields')
     blocked = serializers.SerializerMethodField()
-    failed = serializers.SerializerMethodField()
+    stopped = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.name if obj.is_active else None
@@ -188,12 +182,12 @@ class ContactReadSerializer(ReadSerializer):
     def get_blocked(self, obj):
         return obj.is_blocked if obj.is_active else None
 
-    def get_failed(self, obj):
-        return obj.is_failed if obj.is_active else None
+    def get_stopped(self, obj):
+        return obj.is_stopped if obj.is_active else None
 
     class Meta:
         model = Contact
-        fields = ('uuid', 'name', 'language', 'urns', 'groups', 'fields', 'blocked', 'failed',
+        fields = ('uuid', 'name', 'language', 'urns', 'groups', 'fields', 'blocked', 'stopped',
                   'created_on', 'modified_on')
 
 
@@ -218,13 +212,13 @@ class ContactGroupReadSerializer(ReadSerializer):
 
     class Meta:
         model = ContactGroup
-        fields = ('uuid', 'name', 'count')
+        fields = ('uuid', 'name', 'query', 'count')
 
 
 class FlowRunReadSerializer(ReadSerializer):
     NODE_TYPES = {
-        RULE_SET: 'ruleset',
-        ACTION_SET: 'actionset'
+        FlowStep.TYPE_RULE_SET: 'ruleset',
+        FlowStep.TYPE_ACTION_SET: 'actionset'
     }
     EXIT_TYPES = {
         FlowRun.EXIT_TYPE_COMPLETED: 'completed',
