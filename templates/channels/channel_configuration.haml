@@ -49,7 +49,7 @@
 
     %hr
 
-    %h4
+    %h4 
       -trans "Delivery URL"
 
     %p
@@ -92,6 +92,7 @@
       https://{{ domain }}{% url 'handlers.clickatell_handler' 'status' object.uuid %}
 
     %hr
+
 
   -elif object.channel_type == 'SQ'
     %h4
@@ -184,6 +185,7 @@
 
     %code
       https://{{ domain }}{% url 'handlers.nexmo_handler' 'status' object.org.nexmo_uuid %}
+
 
   -elif object.channel_type == 'IB'
     %h4
@@ -298,10 +300,10 @@
 
     %p
       -blocktrans
-        This endpoint should be called by Twilio when new messages are received by your TwiML REST API instance.
+        Outgoing messages for this channel will be sent to this endpoint.
 
     %code
-      https://{{ domain }}{% url 'handlers.twiml_api_handler' 'receive' object.uuid %}
+      https://{{ domain }}{% url 'handlers.twiml_api_handler' object.uuid %}
 
     %hr
 

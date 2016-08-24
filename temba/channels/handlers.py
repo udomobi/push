@@ -18,7 +18,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.generic import View
 from temba.api.models import WebHookEvent, SMS_RECEIVED
 from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN, TELEGRAM, TWIML_API
-from temba.contacts.models import Contact, URN, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME, WHATSAPP_SCHEME
+from temba.contacts.models import Contact, URN
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT
@@ -31,6 +31,7 @@ from twilio import twiml
 
 
 class TwilioHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(TwilioHandler, self).dispatch(*args, **kwargs)
@@ -221,24 +222,121 @@ class TwimlAPIHandler(View):
         signature = request.META.get('HTTP_X_TWILIO_SIGNATURE', '')
         url = "https://" + settings.HOSTNAME + "%s" % request.get_full_path()
 
-        action = kwargs['action']
+        call_sid = request.REQUEST.get('CallSid', None)
+        direction = request.REQUEST.get('Direction', None)
+        status = request.REQUEST.get('CallStatus', None)
+        to_number = request.REQUEST.get('To', None)
+        to_country = request.REQUEST.get('ToCountry', None)
+        from_number = request.REQUEST.get('From', None)
+
+        # Twilio sometimes sends un-normalized numbers
+        if not to_number.startswith('+') and to_country:
+            to_number, valid = URN.normalize_number(to_number, to_country)
+
+        # see if it's a twilio call being initiated
+        if to_number and call_sid and direction == 'inbound' and status == 'ringing':
+
+            # find a channel that knows how to answer twilio calls
+            channel = Channel.objects.filter(address=to_number, channel_type=TWIML_API, role__contains='A', is_active=True).exclude(org=None).first()
+            if not channel:
+                raise Exception("No active answering channel found for number: %s" % to_number)
+
+            client = channel.org.get_twiml_client()
+            validator = RequestValidator(client.auth[1])
+            signature = request.META.get('HTTP_X_TWILIO_SIGNATURE', '')
+
+            base_url = settings.TEMBA_HOST
+            url = "https://%s%s" % (base_url, request.get_full_path())
+
+            if validator.validate(url, request.POST, signature):
+                from temba.ivr.models import IVRCall
+
+                # find a contact for the one initiating us
+                urn = URN.from_tel(from_number)
+                contact = Contact.get_or_create(channel.org, channel.created_by, urns=[urn], channel=channel)
+                urn_obj = contact.urn_objects[urn]
+
+                flow = Trigger.find_flow_for_inbound_call(contact)
+
+                call = IVRCall.create_incoming(channel, contact, urn_obj, flow, channel.created_by)
+                call.update_status(request.POST.get('CallStatus', None),
+                                   request.POST.get('CallDuration', None))
+                call.save()
+
+                if flow:
+                    FlowRun.create(flow, contact.pk, call=call)
+                    response = Flow.handle_call(call, {})
+                    return HttpResponse(unicode(response))
+                else:
+
+                    # we don't have an inbound trigger to deal with this call.
+                    response = twiml.Response()
+
+                    # say nothing and hangup, this is a little rude, but if we reject the call, then
+                    # they'll get a non-working number error. We send 'busy' when our server is down
+                    # so we don't want to use that here either.
+                    response.say('')
+                    response.hangup()
+
+                    # if they have a missed call trigger, fire that off
+                    Trigger.catch_triggers(contact, Trigger.TYPE_MISSED_CALL, channel)
+
+                    # either way, we need to hangup now
+                    return HttpResponse(unicode(response))
+
+        action = request.GET.get('action', 'received')
         channel_uuid = kwargs['uuid']
 
-        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=TWIML_API).exclude(org=None).first()
-        if not channel:
-            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+        # this is a callback for a message we sent
+        if action == 'callback':
+            smsId = request.GET.get('id', None)
+            status = request.POST.get('SmsStatus', None)
 
-        if action == 'receive':
+            # get the SMS
+            sms = Msg.all_messages.select_related('channel').get(id=smsId)
 
-            org = channel.org
-            client = org.get_twiml_client(channel=channel)
+            # validate this request is coming from TwiML
+            org = sms.org
+            client = org.get_twiml_client()
             validator = RequestValidator(client.auth[1])
 
             if not validator.validate(url, request.POST, signature):
                 # raise an exception that things weren't properly signed
                 raise ValidationError("Invalid request signature")
 
-            Msg.create_incoming(channel, (TEL_SCHEME, request.POST['From']), request.POST['Body'])
+            # queued, sending, sent, failed, or received.
+            if status == 'sent':
+                sms.status_sent()
+            elif status == 'delivered':
+                sms.status_delivered()
+            elif status == 'failed':
+                sms.fail()
+
+            return HttpResponse("", status=200)
+
+        elif action == 'received':
+            channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=TWIML_API).exclude(org=None).first()
+            if not channel:
+                return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+            client = channel.org.get_twiml_client()
+            validator = RequestValidator(client.auth[1])
+
+            if not validator.validate(url, request.POST, signature):
+                # raise an exception that things weren't properly signed
+                raise ValidationError("Invalid request signature")
+
+            body = request.POST.get('Body')
+            urn = URN.from_tel(request.POST['From'])
+
+            # process any attached media
+            for i in range(int(request.POST.get('NumMedia', 0))):
+                media_url = client.download_media(request.POST['MediaUrl%d' % i])
+                path = media_url.partition(':')[2]
+                Msg.create_incoming(channel, urn, path, media=media_url)
+
+            if body:
+                Msg.create_incoming(channel, urn, body)
 
             return HttpResponse("", status=201)
 
@@ -246,6 +344,7 @@ class TwimlAPIHandler(View):
 
 
 class AfricasTalkingHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(AfricasTalkingHandler, self).dispatch(*args, **kwargs)
@@ -300,6 +399,7 @@ class AfricasTalkingHandler(View):
 
 
 class ZenviaHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ZenviaHandler, self).dispatch(*args, **kwargs)
@@ -395,6 +495,7 @@ class GCMHandler(View):
 
 
 class ExternalHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ExternalHandler, self).dispatch(*args, **kwargs)
@@ -471,7 +572,6 @@ class ShaqodoonHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Shaqodoon messages
     """
-
     def get_channel_type(self):
         return SHAQODOON
 
@@ -480,12 +580,12 @@ class YoHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Yo! Messages.
     """
-
     def get_channel_type(self):
         return YO
 
 
 class TelegramHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(TelegramHandler, self).dispatch(*args, **kwargs)
@@ -559,6 +659,7 @@ class TelegramHandler(View):
 
 
 class InfobipHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(InfobipHandler, self).dispatch(*args, **kwargs)
@@ -633,6 +734,7 @@ class InfobipHandler(View):
 
 
 class Hub9Handler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(Hub9Handler, self).dispatch(*args, **kwargs)
@@ -686,6 +788,7 @@ class Hub9Handler(View):
 
 
 class HighConnectionHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(HighConnectionHandler, self).dispatch(*args, **kwargs)
@@ -747,6 +850,7 @@ class HighConnectionHandler(View):
 
 
 class BlackmynaHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(BlackmynaHandler, self).dispatch(*args, **kwargs)
@@ -804,6 +908,7 @@ class BlackmynaHandler(View):
 
 
 class SMSCentralHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(SMSCentralHandler, self).dispatch(*args, **kwargs)
@@ -840,13 +945,13 @@ class M3TechHandler(ExternalHandler):
     """
     Exposes our API for handling and receiving messages, same as external handlers.
     """
-
     def get_channel_type(self):
         from temba.channels.models import M3TECH
         return M3TECH
 
 
 class NexmoHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(NexmoHandler, self).dispatch(*args, **kwargs)
@@ -914,6 +1019,7 @@ class NexmoHandler(View):
 
 
 class VerboiceHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(VerboiceHandler, self).dispatch(*args, **kwargs)
@@ -951,6 +1057,7 @@ class VerboiceHandler(View):
 
 
 class VumiHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(VumiHandler, self).dispatch(*args, **kwargs)
@@ -1038,6 +1145,7 @@ class VumiHandler(View):
 
 
 class KannelHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(KannelHandler, self).dispatch(*args, **kwargs)
@@ -1117,6 +1225,7 @@ class KannelHandler(View):
 
 
 class ClickatellHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ClickatellHandler, self).dispatch(*args, **kwargs)
@@ -1235,6 +1344,7 @@ class ClickatellHandler(View):
 
 
 class PlivoHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(PlivoHandler, self).dispatch(*args, **kwargs)
@@ -1340,6 +1450,7 @@ class PlivoHandler(View):
 
 
 class MageHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(MageHandler, self).dispatch(*args, **kwargs)
@@ -1384,6 +1495,7 @@ class MageHandler(View):
 
 
 class StartHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(StartHandler, self).dispatch(*args, **kwargs)
@@ -1431,6 +1543,7 @@ class StartHandler(View):
 
 
 class ChikkaHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ChikkaHandler, self).dispatch(*args, **kwargs)
@@ -1505,6 +1618,7 @@ class ChikkaHandler(View):
 
 
 class JasminHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(JasminHandler, self).dispatch(*args, **kwargs)
@@ -1569,6 +1683,7 @@ class JasminHandler(View):
 
 
 class MbloxHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(MbloxHandler, self).dispatch(*args, **kwargs)
@@ -1639,6 +1754,7 @@ class MbloxHandler(View):
 
 
 class FacebookHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(FacebookHandler, self).dispatch(*args, **kwargs)

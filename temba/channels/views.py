@@ -36,8 +36,8 @@ from temba.utils import analytics, non_atomic_when_eager, timezone_to_country_co
 from twilio import TwilioRestException
 from twython import Twython
 from uuid import uuid4
-from .models import Channel, ChannelEvent, SyncEvent, Alert, ChannelLog, ChannelCount, M3TECH, TWILIO_MESSAGING_SERVICE
-from .models import PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN, PLIVO, BLACKMYNA, SMSCENTRAL, VERIFY_SSL, JASMIN, FACEBOOK, TWIML_API
+from .models import Channel, ChannelEvent, SyncEvent, Alert, ChannelLog, ChannelCount, M3TECH, TWILIO_MESSAGING_SERVICE, TWIML_API
+from .models import PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN, PLIVO, BLACKMYNA, SMSCENTRAL, VERIFY_SSL, JASMIN, FACEBOOK
 from .models import PASSWORD, RECEIVE, SEND, CALL, ANSWER, SEND_METHOD, SEND_URL, USERNAME, CLICKATELL, HIGH_CONNECTION
 from .models import ANDROID, EXTERNAL, HUB9, INFOBIP, KANNEL, NEXMO, TWILIO, TWITTER, VUMI, VERBOICE, SHAQODOON, MBLOX
 from .models import ENCODING, ENCODING_CHOICES, DEFAULT_ENCODING, YO, USE_NATIONAL, START, TELEGRAM, CHIKKA, AUTH_TOKEN
@@ -242,6 +242,7 @@ def channel_status_processor(request):
 
 
 def get_commands(channel, commands, sync_event=None):
+
     # we want to find all queued messages
 
     # all outgoing messages for our channel that are queued up
@@ -556,7 +557,6 @@ class ChannelCRUDL(SmartCRUDL):
         """
         Mixin that makes sure that anonymous orgs cannot add channels (have no permission if anon)
         """
-
         def has_permission(self, request, *args, **kwargs):
             org = self.derive_org()
 
@@ -636,15 +636,15 @@ class ChannelCRUDL(SmartCRUDL):
             # power source stats data
             source_stats = [[event['power_source'], event['count']]
                             for event in sync_events.order_by('power_source')
-                                .values('power_source')
-                                .annotate(count=Count('power_source'))]
+                                                    .values('power_source')
+                                                    .annotate(count=Count('power_source'))]
             context['source_stats'] = source_stats
 
             # network connected to stats
             network_stats = [[event['network_type'], event['count']]
                              for event in sync_events.order_by('network_type')
-                                 .values('network_type')
-                                 .annotate(count=Count('network_type'))]
+                                                     .values('network_type')
+                                                     .annotate(count=Count('network_type'))]
             context['network_stats'] = network_stats
 
             total_network = 0
@@ -713,13 +713,13 @@ class ChannelCRUDL(SmartCRUDL):
 
             # get all our counts for that period
             daily_counts = list(ChannelCount.objects.filter(channel__in=channels, day__gte=start_date)
-                                .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
-                                                        ChannelCount.OUTGOING_MSG_TYPE,
-                                                        ChannelCount.INCOMING_IVR_TYPE,
-                                                        ChannelCount.OUTGOING_IVR_TYPE])
-                                .values('day', 'count_type')
-                                .order_by('day', 'count_type')
-                                .annotate(count_sum=Sum('count')))
+                                                    .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
+                                                                            ChannelCount.OUTGOING_MSG_TYPE,
+                                                                            ChannelCount.INCOMING_IVR_TYPE,
+                                                                            ChannelCount.OUTGOING_IVR_TYPE])
+                                                    .values('day', 'count_type')
+                                                    .order_by('day', 'count_type')
+                                                    .annotate(count_sum=Sum('count')))
 
             current = start_date
             while current <= end_date:
@@ -747,14 +747,14 @@ class ChannelCRUDL(SmartCRUDL):
 
             # get our totals grouped by month
             monthly_totals = list(ChannelCount.objects.filter(channel=channel, day__gte=month_start)
-                                  .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
-                                                          ChannelCount.OUTGOING_MSG_TYPE,
-                                                          ChannelCount.INCOMING_IVR_TYPE,
-                                                          ChannelCount.OUTGOING_IVR_TYPE])
-                                  .extra({'month': "date_trunc('month', day)"})
-                                  .values('month', 'count_type')
-                                  .order_by('month', 'count_type')
-                                  .annotate(count_sum=Sum('count')))
+                                                      .filter(count_type__in=[ChannelCount.INCOMING_MSG_TYPE,
+                                                                              ChannelCount.OUTGOING_MSG_TYPE,
+                                                                              ChannelCount.INCOMING_IVR_TYPE,
+                                                                              ChannelCount.OUTGOING_IVR_TYPE])
+                                                      .extra({'month': "date_trunc('month', day)"})
+                                                      .values('month', 'count_type')
+                                                      .order_by('month', 'count_type')
+                                                      .annotate(count_sum=Sum('count')))
 
             # calculate our summary table for last 12 months
             now = timezone.now()
@@ -933,7 +933,7 @@ class ChannelCRUDL(SmartCRUDL):
                 return connection
 
         form_class = BulkSenderForm
-        fields = ('connection',)
+        fields = ('connection', )
 
         def get_form_kwargs(self, *args, **kwargs):
             form_kwargs = super(ChannelCRUDL.CreateBulkSender, self).get_form_kwargs(*args, **kwargs)
@@ -1291,7 +1291,7 @@ class ChannelCRUDL(SmartCRUDL):
 
         title = _("Connect Chikka")
         channel_type = CHIKKA
-        readonly = ('country',)
+        readonly = ('country', )
         form_class = ChikkaForm
 
         def get_country(self, obj):
@@ -1604,6 +1604,56 @@ class ChannelCRUDL(SmartCRUDL):
                                                                        country=data['country'])
 
             return super(ChannelCRUDL.ClaimTwilioMessagingService, self).form_valid(form)
+
+    class ClaimTwimlApi(OrgPermsMixin, SmartFormView):
+
+        class TwimlApiClaimForm(forms.Form):
+            ROLES = (
+                (SEND + RECEIVE, _('Messaging')),
+                (CALL + ANSWER, _('Voice')),
+                (SEND + RECEIVE + CALL + ANSWER, _('Both')),
+            )
+            country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"), help_text=_("The country this phone number is used in"))
+            number = forms.CharField(max_length=14, min_length=1, label=_("Number"), help_text=_("The phone number with country code or short code you are connecting."))
+            url = forms.URLField(max_length=1024, label=_("TwiML REST API Host"), help_text=_("The publicly accessible URL for your TwiML REST API instance ex: https://api.twilio.com"))
+            role = forms.ChoiceField(choices=ROLES, label=_("Role"), help_text=_("Choose the role that this channel supports"))
+            account_sid = forms.CharField(max_length=64, required=False, help_text=_("The Account SID to use to authenticate to the TwiML REST API"), widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+            account_token = forms.CharField(max_length=64, required=False, help_text=_("The Account Token to use to authenticate to the TwiML REST API"), widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+
+        title = _("Connect TwiML REST API")
+        success_url = "id@channels.channel_configuration"
+        form_class = TwimlApiClaimForm
+
+        def form_valid(self, form):
+            org = self.request.user.get_org()
+            data = form.cleaned_data
+
+            country = data['country']
+            number = data['number']
+            url = data['url']
+            role = data['role']
+
+            config = {SEND_URL: url,
+                      ACCOUNT_SID: data.get('account_sid', None),
+                      ACCOUNT_TOKEN: data.get('account_token', None)}
+
+            number = phonenumbers.parse(number=number, region=country)
+            phone_number = "{0}{1}".format(str(number.country_code), str(number.national_number))
+            self.object = Channel.add_twiml_api_channel(org=org, user=self.request.user, country=country, address=phone_number, config=config, role=role)
+
+            # if they didn't set a username or password, generate them, we do this after the addition above
+            # because we use the channel id in the configuration
+            config = self.object.config_json()
+            if not config.get(ACCOUNT_SID, None):
+                config[ACCOUNT_SID] = '%s_%d' % (self.request.branding['name'].lower(), self.object.pk)
+
+            if not config.get(ACCOUNT_TOKEN, None):
+                config[ACCOUNT_TOKEN] = str(uuid4())
+
+            self.object.config = json.dumps(config)
+            self.object.save()
+
+            return super(ChannelCRUDL.ClaimTwimlApi, self).form_valid(form)
 
     class Configuration(OrgPermsMixin, SmartReadView):
 
@@ -2123,49 +2173,6 @@ class ChannelCRUDL(SmartCRUDL):
 
             # add this channel
             return Channel.add_twilio_channel(user.get_org(), user, phone_number, country)
-
-    class ClaimTwimlApi(OrgPermsMixin, SmartFormView):
-
-        class TwimlApiClaimForm(forms.Form):
-            country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"), help_text=_("The country this phone number is used in"))
-            number = forms.CharField(max_length=14, min_length=1, label=_("Number"), help_text=_("The phone number with country code or short code you are connecting."))
-            url = forms.URLField(max_length=1024, label=_("TwiML REST API Host"), help_text=_("The publicly accessible URL for your TwiML REST API instance ex: https://api.twilio.com"))
-            account_sid = forms.CharField(max_length=64, required=False, help_text=_("The Account SID to use to authenticate to the TwiML REST API"))
-            account_token = forms.CharField(max_length=64, required=False, help_text=_("The Account Token to use to authenticate to the TwiML REST API"))
-
-        title = _("Connect TwiML REST API")
-        success_url = "id@channels.channel_configuration"
-        form_class = TwimlApiClaimForm
-
-        def form_valid(self, form):
-            org = self.request.user.get_org()
-            data = form.cleaned_data
-
-            country = data['country']
-            number = data['number']
-            url = data['url']
-
-            config = {SEND_URL: url,
-                      ACCOUNT_SID: data.get('account_sid', None),
-                      ACCOUNT_TOKEN: data.get('account_token', None)}
-
-            number = phonenumbers.parse(number=number, region=country)
-            phone_number = "{0}{1}".format(str(number.country_code), str(number.national_number))
-            self.object = Channel.add_twiml_api_channel(org=org, user=self.request.user, country=country, address=phone_number, config=config)
-
-            # if they didn't set a username or password, generate them, we do this after the addition above
-            # because we use the channel id in the configuration
-            config = self.object.config_json()
-            if not config.get(ACCOUNT_SID, None):
-                config[ACCOUNT_SID] = '%s_%d' % (self.request.branding['name'].lower(), self.object.pk)
-
-            if not config.get(ACCOUNT_TOKEN, None):
-                config[ACCOUNT_TOKEN] = str(uuid4())
-
-            self.object.config = json.dumps(config)
-            self.object.save()
-
-            return super(ChannelCRUDL.ClaimTwimlApi, self).form_valid(form)
 
     class ClaimNexmo(BaseClaimNumber):
         class ClaimNexmoForm(forms.Form):

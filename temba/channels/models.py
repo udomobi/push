@@ -85,7 +85,7 @@ ENCODING = 'encoding'
 PAGE_NAME = 'page_name'
 
 DEFAULT_ENCODING = 'D'  # we just pass the text down to the endpoint
-SMART_ENCODING = 'S'  # we try simple substitutions to GSM7 then go to unicode if it still isn't GSM7
+SMART_ENCODING = 'S'    # we try simple substitutions to GSM7 then go to unicode if it still isn't GSM7
 UNICODE_ENCODING = 'U'  # we send everything as unicode
 
 ENCODING_CHOICES = ((DEFAULT_ENCODING, _("Default Encoding")),
@@ -500,8 +500,7 @@ class Channel(TembaModel):
                               name=messaging_service_sid, address=None, config=config)
 
     @classmethod
-    def add_twiml_api_channel(cls, org, user, country, address, config):
-        role = SEND + RECEIVE + CALL + ANSWER
+    def add_twiml_api_channel(cls, org, user, country, address, config, role):
         is_short_code = len(address) <= 6
 
         if is_short_code:
@@ -2144,27 +2143,30 @@ class Channel(TembaModel):
         from temba.orgs.models import ACCOUNT_SID, ACCOUNT_TOKEN
 
         callback_url = Channel.build_twilio_callback_url(msg.id)
-        client = TwilioRestClient(channel.org_config[ACCOUNT_SID], channel.org_config[ACCOUNT_TOKEN])
         start = time.time()
 
-        if channel.channel_type == TWILIO_MESSAGING_SERVICE:
-            messaging_service_sid = channel.config['messaging_service_sid']
-            client.messages.create(to=msg.urn_path,
-                                   messaging_service_sid=messaging_service_sid,
-                                   body=text,
-                                   status_callback=callback_url)
-        elif channel.channel_type == TWIML_API:
-            config = channel.config_json()
-            client = TwilioRestClient(config.get(ACCOUNT_SID), config.get(ACCOUNT_TOKEN))
+        if channel.channel_type == TWIML_API:
+            config = channel.config
+            client = TwilioRestClient(config.get(ACCOUNT_SID), config.get(ACCOUNT_TOKEN), base=config.get(SEND_URL))
             client.messages.create(to=msg.urn_path,
                                    from_=channel.address,
                                    body=text,
                                    status_callback=callback_url)
+
         else:
-            client.messages.create(to=msg.urn_path,
-                                   from_=channel.address,
-                                   body=text,
-                                   status_callback=callback_url)
+            client = TwilioRestClient(channel.org_config[ACCOUNT_SID], channel.org_config[ACCOUNT_TOKEN])
+
+            if channel.channel_type == TWILIO_MESSAGING_SERVICE:
+                messaging_service_sid = channel.config['messaging_service_sid']
+                client.messages.create(to=msg.urn_path,
+                                       messaging_service_sid=messaging_service_sid,
+                                       body=text,
+                                       status_callback=callback_url)
+            else:
+                client.messages.create(to=msg.urn_path,
+                                       from_=channel.address,
+                                       body=text,
+                                       status_callback=callback_url)
 
         Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start)
         ChannelLog.log_success(msg, "Successfully delivered message")
@@ -2666,8 +2668,8 @@ class Channel(TembaModel):
             return unicode(self.pk)
 
     def get_count(self, count_types):
-        count = ChannelCount.objects.filter(channel=self, count_type__in=count_types) \
-            .aggregate(Sum('count')).get('count__sum', 0)
+        count = ChannelCount.objects.filter(channel=self, count_type__in=count_types)\
+                                    .aggregate(Sum('count')).get('count__sum', 0)
 
         return 0 if count is None else count
 
@@ -2714,8 +2716,8 @@ class ChannelCount(models.Model):
     OUTGOING_MSG_TYPE = 'OM'  # Outgoing message
     INCOMING_IVR_TYPE = 'IV'  # Incoming IVR step
     OUTGOING_IVR_TYPE = 'OV'  # Outgoing IVR step
-    SUCCESS_LOG_TYPE = 'LS'  # ChannelLog record
-    ERROR_LOG_TYPE = 'LE'  # ChannelLog record that is an error
+    SUCCESS_LOG_TYPE = 'LS'   # ChannelLog record
+    ERROR_LOG_TYPE = 'LE'     # ChannelLog record that is an error
 
     COUNT_TYPE_CHOICES = ((INCOMING_MSG_TYPE, _("Incoming Message")),
                           (OUTGOING_MSG_TYPE, _("Outgoing Message")),
@@ -2750,8 +2752,8 @@ class ChannelCount(models.Model):
         # get the unique ids for all new ones
         start = time.time()
         squash_count = 0
-        for count in ChannelCount.objects.filter(id__gt=last_squash).order_by('channel_id', 'count_type', 'day') \
-                .distinct('channel_id', 'count_type', 'day'):
+        for count in ChannelCount.objects.filter(id__gt=last_squash).order_by('channel_id', 'count_type', 'day')\
+                                                                    .distinct('channel_id', 'count_type', 'day'):
             print "Squashing: %d %s %s" % (count.channel_id, count.count_type, count.day)
 
             # perform our atomic squash in SQL by calling our squash method
@@ -2849,6 +2851,7 @@ class ChannelEvent(models.Model):
 
 
 class SendException(Exception):
+
     def __init__(self, description, url, method, request, response, response_status, fatal=False):
         super(SendException, self).__init__(description)
 
@@ -3010,9 +3013,9 @@ class Alert(SmartModel):
     TYPE_POWER = 'P'
     TYPE_SMS = 'S'
 
-    TYPE_CHOICES = ((TYPE_POWER, _("Power")),  # channel has low power
+    TYPE_CHOICES = ((TYPE_POWER, _("Power")),                # channel has low power
                     (TYPE_DISCONNECTED, _("Disconnected")),  # channel hasn't synced in a while
-                    (TYPE_SMS, _("SMS")))  # channel has many unsent messages
+                    (TYPE_SMS, _("SMS")))                    # channel has many unsent messages
 
     channel = models.ForeignKey(Channel, verbose_name=_("Channel"),
                                 help_text=_("The channel that this alert is for"))
