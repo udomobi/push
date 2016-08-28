@@ -70,11 +70,14 @@ TELEGRAM = 'TG'
 CHIKKA = 'CK'
 JASMIN = 'JS'
 MBLOX = 'MB'
+GLOBE = 'GL'
 WHATSAPP = 'WA'
 _GCM = 'GCM'
 
 SEND_URL = 'send_url'
 SEND_METHOD = 'method'
+SEND_BODY = 'body'
+DEFAULT_SEND_BODY = 'id={{id}}&text={{text}}&to={{to}}&to_no_plus={{to_no_plus}}&from={{from}}&from_no_plus={{from_no_plus}}&channel={{channel}}'
 USERNAME = 'username'
 PASSWORD = 'password'
 KEY = 'key'
@@ -85,7 +88,7 @@ ENCODING = 'encoding'
 PAGE_NAME = 'page_name'
 
 DEFAULT_ENCODING = 'D'  # we just pass the text down to the endpoint
-SMART_ENCODING = 'S'  # we try simple substitutions to GSM7 then go to unicode if it still isn't GSM7
+SMART_ENCODING = 'S'    # we try simple substitutions to GSM7 then go to unicode if it still isn't GSM7
 UNICODE_ENCODING = 'U'  # we send everything as unicode
 
 ENCODING_CHOICES = ((DEFAULT_ENCODING, _("Default Encoding")),
@@ -112,6 +115,7 @@ CHANNEL_SETTINGS = {
     CLICKATELL: dict(scheme='tel', max_length=420),
     EXTERNAL: dict(max_length=160),
     FACEBOOK: dict(scheme='facebook', max_length=320),
+    GLOBE: dict(scheme='tel', max_length=160),
     HIGH_CONNECTION: dict(scheme='tel', max_length=320),
     HUB9: dict(scheme='tel', max_length=1600),
     INFOBIP: dict(scheme='tel', max_length=1600),
@@ -168,6 +172,7 @@ class Channel(TembaModel):
                     (CLICKATELL, "Clickatell"),
                     (EXTERNAL, "External"),
                     (FACEBOOK, "Facebook"),
+                    (GLOBE, "Globe Labs"),
                     (HIGH_CONNECTION, "High Connection"),
                     (HUB9, "Hub9"),
                     (INFOBIP, "Infobip"),
@@ -437,7 +442,7 @@ class Channel(TembaModel):
         return Channel.create(org, user, country, NEXMO, name=phone, address=phone_number, bod=nexmo_phone_number)
 
     @classmethod
-    def add_twilio_channel(cls, org, user, phone_number, country):
+    def add_twilio_channel(cls, org, user, phone_number, country, role):
         client = org.get_twilio_client()
         twilio_phones = client.phone_numbers.list(phone_number=phone_number)
 
@@ -455,7 +460,6 @@ class Channel(TembaModel):
             raise Exception(_("Your Twilio account is no longer connected. "
                               "First remove your Twilio account, reconnect it and try again."))
 
-        role = SEND + RECEIVE + CALL + ANSWER
         is_short_code = len(phone_number) <= 6
 
         if is_short_code:
@@ -1398,19 +1402,26 @@ class Channel(TembaModel):
 
         # build our send URL
         url = Channel.build_send_url(channel.config[SEND_URL], payload)
-        log_payload = None
         start = time.time()
 
+        method = channel.config.get(SEND_METHOD, 'POST')
+
+        headers = TEMBA_HEADERS.copy()
+        if method in ('POST', 'PUT'):
+            body = channel.config.get(SEND_BODY, DEFAULT_SEND_BODY)
+            body = Channel.build_send_url(body, payload)
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            log_payload = body
+        else:
+            log_payload = None
+
         try:
-            method = channel.config.get(SEND_METHOD, 'POST')
             if method == 'POST':
-                response = requests.post(url, data=payload, headers=TEMBA_HEADERS, timeout=5)
+                response = requests.post(url, data=body, headers=headers, timeout=5)
             elif method == 'PUT':
-                response = requests.put(url, data=payload, headers=TEMBA_HEADERS, timeout=5)
-                log_payload = urlencode(payload)
+                response = requests.put(url, data=body, headers=headers, timeout=5)
             else:
-                response = requests.get(url, headers=TEMBA_HEADERS, timeout=5)
-                log_payload = urlencode(payload)
+                response = requests.get(url, headers=headers, timeout=5)
 
         except Exception as e:
             raise SendException(unicode(e),
@@ -1773,6 +1784,57 @@ class Channel(TembaModel):
         ChannelLog.log_success(msg=msg,
                                description="Successfully delivered",
                                method='PUT',
+                               url=url,
+                               request=payload,
+                               response=response.text,
+                               response_status=response.status_code)
+
+    @classmethod
+    def send_globe_message(cls, channel, msg, text):
+        from temba.msgs.models import Msg, WIRED
+
+        payload = {
+            'address': msg.urn_path.lstrip('+'),
+            'message': text,
+            'passphrase': channel.config['passphrase'],
+            'app_id': channel.config['app_id'],
+            'app_secret': channel.config['app_secret']
+        }
+        headers = dict(TEMBA_HEADERS)
+
+        url = 'https://devapi.globelabs.com.ph/smsmessaging/v1/outbound/6380/requests'
+        start = time.time()
+
+        try:
+            response = requests.post(url,
+                                     data=payload,
+                                     headers=headers,
+                                     timeout=5)
+        except Exception as e:
+            raise SendException(unicode(e),
+                                method='POST',
+                                url=url,
+                                request=payload,
+                                response="",
+                                response_status=503)
+
+        if response.status_code != 200 and response.status_code != 201:
+            raise SendException("Got non-200 response [%d] from API" % response.status_code,
+                                method='POST',
+                                url=url,
+                                request=payload,
+                                response=response.text,
+                                response_status=response.status_code)
+
+        # parse our response
+        response.json()
+
+        # mark our message as sent
+        Msg.mark_sent(channel.config['r'], channel, msg, WIRED, time.time() - start)
+
+        ChannelLog.log_success(msg=msg,
+                               description="Successfully delivered",
+                               method='POST',
                                url=url,
                                request=payload,
                                response=response.text,
@@ -2547,6 +2609,7 @@ class Channel(TembaModel):
                       CLICKATELL: Channel.send_clickatell_message,
                       EXTERNAL: Channel.send_external_message,
                       FACEBOOK: Channel.send_facebook_message,
+                      GLOBE: Channel.send_globe_message,
                       HIGH_CONNECTION: Channel.send_high_connection_message,
                       HUB9: Channel.send_hub9_message,
                       INFOBIP: Channel.send_infobip_message,
@@ -2666,8 +2729,8 @@ class Channel(TembaModel):
             return unicode(self.pk)
 
     def get_count(self, count_types):
-        count = ChannelCount.objects.filter(channel=self, count_type__in=count_types) \
-            .aggregate(Sum('count')).get('count__sum', 0)
+        count = ChannelCount.objects.filter(channel=self, count_type__in=count_types)\
+                                    .aggregate(Sum('count')).get('count__sum', 0)
 
         return 0 if count is None else count
 
@@ -2688,7 +2751,6 @@ class Channel(TembaModel):
 
     class Meta:
         ordering = ('-last_seen', '-pk')
-
 
 SOURCE_AC = "AC"
 SOURCE_USB = "USB"
@@ -2714,8 +2776,8 @@ class ChannelCount(models.Model):
     OUTGOING_MSG_TYPE = 'OM'  # Outgoing message
     INCOMING_IVR_TYPE = 'IV'  # Incoming IVR step
     OUTGOING_IVR_TYPE = 'OV'  # Outgoing IVR step
-    SUCCESS_LOG_TYPE = 'LS'  # ChannelLog record
-    ERROR_LOG_TYPE = 'LE'  # ChannelLog record that is an error
+    SUCCESS_LOG_TYPE = 'LS'   # ChannelLog record
+    ERROR_LOG_TYPE = 'LE'     # ChannelLog record that is an error
 
     COUNT_TYPE_CHOICES = ((INCOMING_MSG_TYPE, _("Incoming Message")),
                           (OUTGOING_MSG_TYPE, _("Outgoing Message")),
@@ -2750,8 +2812,8 @@ class ChannelCount(models.Model):
         # get the unique ids for all new ones
         start = time.time()
         squash_count = 0
-        for count in ChannelCount.objects.filter(id__gt=last_squash).order_by('channel_id', 'count_type', 'day') \
-                .distinct('channel_id', 'count_type', 'day'):
+        for count in ChannelCount.objects.filter(id__gt=last_squash).order_by('channel_id', 'count_type', 'day')\
+                                                                    .distinct('channel_id', 'count_type', 'day'):
             print "Squashing: %d %s %s" % (count.channel_id, count.count_type, count.day)
 
             # perform our atomic squash in SQL by calling our squash method
@@ -2849,6 +2911,7 @@ class ChannelEvent(models.Model):
 
 
 class SendException(Exception):
+
     def __init__(self, description, url, method, request, response, response_status, fatal=False):
         super(SendException, self).__init__(description)
 
@@ -3010,9 +3073,9 @@ class Alert(SmartModel):
     TYPE_POWER = 'P'
     TYPE_SMS = 'S'
 
-    TYPE_CHOICES = ((TYPE_POWER, _("Power")),  # channel has low power
-                    (TYPE_DISCONNECTED, _("Disconnected")),  # channel hasn't synced in a while
-                    (TYPE_SMS, _("SMS")))  # channel has many unsent messages
+    TYPE_CHOICES = ((TYPE_POWER, _("Power")),                 # channel has low power
+                    (TYPE_DISCONNECTED, _("Disconnected")),   # channel hasn't synced in a while
+                    (TYPE_SMS, _("SMS")))                     # channel has many unsent messages
 
     channel = models.ForeignKey(Channel, verbose_name=_("Channel"),
                                 help_text=_("The channel that this alert is for"))

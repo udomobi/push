@@ -31,6 +31,7 @@ from twilio import twiml
 
 
 class TwilioHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(TwilioHandler, self).dispatch(*args, **kwargs)
@@ -246,6 +247,7 @@ class TwimlAPIHandler(View):
 
 
 class AfricasTalkingHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(AfricasTalkingHandler, self).dispatch(*args, **kwargs)
@@ -300,6 +302,7 @@ class AfricasTalkingHandler(View):
 
 
 class ZenviaHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ZenviaHandler, self).dispatch(*args, **kwargs)
@@ -395,6 +398,7 @@ class GCMHandler(View):
 
 
 class ExternalHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ExternalHandler, self).dispatch(*args, **kwargs)
@@ -471,7 +475,6 @@ class ShaqodoonHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Shaqodoon messages
     """
-
     def get_channel_type(self):
         return SHAQODOON
 
@@ -480,12 +483,12 @@ class YoHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Yo! Messages.
     """
-
     def get_channel_type(self):
         return YO
 
 
 class TelegramHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(TelegramHandler, self).dispatch(*args, **kwargs)
@@ -497,6 +500,7 @@ class TelegramHandler(View):
 
         channel_uuid = kwargs['uuid']
         channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=TELEGRAM).exclude(org=None).first()
+
         if not channel:
             return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
 
@@ -559,6 +563,7 @@ class TelegramHandler(View):
 
 
 class InfobipHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(InfobipHandler, self).dispatch(*args, **kwargs)
@@ -633,6 +638,7 @@ class InfobipHandler(View):
 
 
 class Hub9Handler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(Hub9Handler, self).dispatch(*args, **kwargs)
@@ -686,6 +692,7 @@ class Hub9Handler(View):
 
 
 class HighConnectionHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(HighConnectionHandler, self).dispatch(*args, **kwargs)
@@ -747,6 +754,7 @@ class HighConnectionHandler(View):
 
 
 class BlackmynaHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(BlackmynaHandler, self).dispatch(*args, **kwargs)
@@ -804,6 +812,7 @@ class BlackmynaHandler(View):
 
 
 class SMSCentralHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(SMSCentralHandler, self).dispatch(*args, **kwargs)
@@ -840,13 +849,13 @@ class M3TechHandler(ExternalHandler):
     """
     Exposes our API for handling and receiving messages, same as external handlers.
     """
-
     def get_channel_type(self):
         from temba.channels.models import M3TECH
         return M3TECH
 
 
 class NexmoHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(NexmoHandler, self).dispatch(*args, **kwargs)
@@ -914,6 +923,7 @@ class NexmoHandler(View):
 
 
 class VerboiceHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(VerboiceHandler, self).dispatch(*args, **kwargs)
@@ -951,6 +961,7 @@ class VerboiceHandler(View):
 
 
 class VumiHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(VumiHandler, self).dispatch(*args, **kwargs)
@@ -1038,6 +1049,7 @@ class VumiHandler(View):
 
 
 class KannelHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(KannelHandler, self).dispatch(*args, **kwargs)
@@ -1117,6 +1129,7 @@ class KannelHandler(View):
 
 
 class ClickatellHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ClickatellHandler, self).dispatch(*args, **kwargs)
@@ -1235,6 +1248,7 @@ class ClickatellHandler(View):
 
 
 class PlivoHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(PlivoHandler, self).dispatch(*args, **kwargs)
@@ -1340,6 +1354,7 @@ class PlivoHandler(View):
 
 
 class MageHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(MageHandler, self).dispatch(*args, **kwargs)
@@ -1384,6 +1399,7 @@ class MageHandler(View):
 
 
 class StartHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(StartHandler, self).dispatch(*args, **kwargs)
@@ -1431,6 +1447,7 @@ class StartHandler(View):
 
 
 class ChikkaHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(ChikkaHandler, self).dispatch(*args, **kwargs)
@@ -1505,6 +1522,7 @@ class ChikkaHandler(View):
 
 
 class JasminHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(JasminHandler, self).dispatch(*args, **kwargs)
@@ -1569,6 +1587,7 @@ class JasminHandler(View):
 
 
 class MbloxHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(MbloxHandler, self).dispatch(*args, **kwargs)
@@ -1639,6 +1658,7 @@ class MbloxHandler(View):
 
 
 class FacebookHandler(View):
+
     @disable_middleware
     def dispatch(self, *args, **kwargs):
         return super(FacebookHandler, self).dispatch(*args, **kwargs)
@@ -1712,7 +1732,7 @@ class FacebookHandler(View):
                                 for attachment in envelope['message']['attachments']:
                                     if attachment['payload'] and 'url' in attachment['payload']:
                                         urls.append(attachment['payload']['url'])
-                                    elif 'url' in attachment:
+                                    elif 'url' in attachment and attachment['url']:
                                         if 'title' in attachment:
                                             urls.append(attachment['title'])
                                         urls.append(attachment['url'])
@@ -1778,6 +1798,82 @@ class FacebookHandler(View):
                 return JsonResponse(dict(status=status))
 
         return JsonResponse(dict(status=["Ignored, unknown msg"]))
+
+
+class GlobeHandler(View):
+
+    @disable_middleware
+    def dispatch(self, *args, **kwargs):
+        return super(GlobeHandler, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponse("Illegal method, must be POST", status=405)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg
+        from temba.channels.models import GLOBE
+
+        # Sample request body for incoming message
+        # {
+        #     "inboundSMSMessageList":{
+        #         "inboundSMSMessage": [
+        #             {
+        #                 "dateTime": "Fri Nov 22 2013 12:12:13 GMT+0000 (UTC)",
+        #                 "destinationAddress": "21581234",
+        #                 "messageId": null,
+        #                 "message": "Hello",
+        #                 "resourceURL": null,
+        #                 "senderAddress": "9171234567"
+        #             }
+        #         ],
+        #         "numberOfMessagesInThisBatch": 1,
+        #         "resourceURL": null,
+        #         "totalNumberOfPendingMessages": null
+        #     }
+        #
+        # }
+        action = kwargs['action'].lower()
+        request_uuid = kwargs['uuid']
+
+        # look up the channel
+        channel = Channel.objects.filter(uuid=request_uuid, is_active=True, channel_type=GLOBE).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel not found for id: %s" % request_uuid, status=400)
+
+        # parse our JSON
+        try:
+            body = json.loads(request.body)
+        except Exception as e:
+            return HttpResponse("Invalid JSON: %s" % unicode(e), status=400)
+
+        # needs to contain our message list and inboundSMS message
+        if 'inboundSMSMessageList' not in body or 'inboundSMSMessage' not in body['inboundSMSMessageList']:
+            return HttpResponse("Invalid request, missing inboundSMSMessageList or inboundSMSMessage", status=400)
+
+        # this is a callback for a message we sent
+        if action == 'receive':
+            msgs = []
+            for inbound_msg in body['inboundSMSMessageList']['inboundSMSMessage']:
+                if not all(field in inbound_msg for field in ('dateTime', 'senderAddress', 'message', 'messageId', 'destinationAddress')):
+                    return HttpResponse("Missing one of dateTime, senderAddress, message, messageId or destinationAddress in message", status=400)
+
+                destination = inbound_msg['destinationAddress']
+                if destination != channel.address:
+                    return HttpResponse("Invalid request, channel address: %s mismatch with destinationAddress: %s" % (channel.address, destination), status=400)
+
+                # dates come in the format "2014-04-18 03:54:20.570618" GMT
+                sms_date = datetime.strptime(inbound_msg['dateTime'], "%a %b %d %Y %H:%M:%S GMT+0000 (UTC)")
+                gmt_date = pytz.timezone('GMT').localize(sms_date)
+
+                msg = Msg.create_incoming(channel, URN.from_tel(inbound_msg['senderAddress']), inbound_msg['message'], date=gmt_date)
+
+                # use an update so there is no race with our handling
+                Msg.all_messages.filter(pk=msg.id).update(external_id=inbound_msg['messageId'])
+                msgs.append(msg)
+
+            return HttpResponse("Msgs Accepted: %s" % ", ".join([str(m.id) for m in msgs]))
+        else:  # pragma: no cover
+            return HttpResponse("Not handled", status=400)
 
 
 class WhatsappHandler(View):
