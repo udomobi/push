@@ -1136,7 +1136,6 @@ class Channel(TembaModel):
     @classmethod
     def send_facebook_message(cls, channel, msg, text):
         from temba.msgs.models import Msg, WIRED
-        from temba.flows.models import RuleSet
         from temba.utils.fb_payload import get_fb_payload
 
         # build our payload

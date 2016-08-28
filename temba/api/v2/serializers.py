@@ -9,7 +9,7 @@ from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel, ChannelEvent, ANDROID
 
 from temba.contacts.models import Contact, ContactField, ContactGroup, URN
-from temba.flows.models import Flow, FlowRun, FlowStep, FlowStart
+from temba.flows.models import Flow, FlowRun, FlowStep, FlowStart, RuleSet
 from temba.locations.models import AdminBoundary
 from temba.msgs.models import Broadcast, Msg, Label, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED

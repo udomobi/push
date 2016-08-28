@@ -3,11 +3,9 @@ from __future__ import absolute_import, unicode_literals
 import json
 from paypalrestsdk.exceptions import ResourceNotFound
 import plivo
-import regex
 import six
 import logging
 
-import requests
 from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
@@ -38,13 +36,12 @@ from temba.channels.models import Channel, PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN
 from temba.formax import FormaxMixin
 from temba.middleware import BrandingMiddleware
 from temba.nexmo import NexmoClient, NexmoValidationError
-from temba.orgs.models import get_stripe_credentials, NEXMO_UUID, NEXMO_SECRET, NEXMO_KEY
 from temba.utils import analytics, build_json_response, languages
 from temba.utils.middleware import disable_middleware
 from timezones.forms import TimeZoneField
 from twilio.rest import TwilioRestClient
 from .bundles import WELCOME_TOPUP_SIZE
-from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, get_stripe_credentials, OrderPayment
+from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, OrderPayment, get_stripe_credentials
 from .models import MT_SMS_EVENTS, MO_SMS_EVENTS, MT_CALL_EVENTS, MO_CALL_EVENTS, ALARM_EVENTS
 from .models import SUSPENDED, WHITELISTED, RESTORED, NEXMO_UUID, NEXMO_SECRET, NEXMO_KEY
 from .models import TRANSFERTO_AIRTIME_API_TOKEN, TRANSFERTO_ACCOUNT_LOGIN

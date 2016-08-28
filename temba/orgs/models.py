@@ -10,7 +10,6 @@ import random
 import regex
 import stripe
 import traceback
-import time
 
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -2074,7 +2073,6 @@ class TopUpCredits(models.Model):
         max_id = TopUpCredits.objects.all().order_by('-id').first()
         if max_id:
             r.set(TopUpCredits.LAST_SQUASH_KEY, max_id.id)
-
 
 
 class OrderPayment(SmartModel):

@@ -12,7 +12,7 @@ from django.core.files import File
 from django.core.files.temp import NamedTemporaryFile
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
-from temba.contacts.models import Contact, URN, TEL_SCHEME
+from temba.contacts.models import Contact, URN
 from temba.flows.models import Flow
 from temba.ivr.models import IN_PROGRESS
 from twilio import TwilioRestException
@@ -42,7 +42,6 @@ class TwilioClient(TwilioRestClient):
                                             from_=call.channel.address,
                                             url=url,
                                             status_callback=status_callback)
-            
             call.external_id = unicode(twilio_call.sid)
             call.save()
         except TwilioRestException as twilio:

@@ -1593,6 +1593,7 @@ URN_SCHEMES_EXPORT_FIELDS = {
     GCM_SCHEME: dict(label='GCM', key=None, id=0, field=None, urn_scheme=GCM_SCHEME),
 }
 
+
 class ContactURN(models.Model):
     """
     A Universal Resource Name used to uniquely identify contacts, e.g. tel:+1234567890 or twitter:example
@@ -1613,7 +1614,7 @@ class ContactURN(models.Model):
         EMAIL_SCHEME: dict(label="Email", key=None, id=0, field=None, urn_scheme=EMAIL_SCHEME),
         TELEGRAM_SCHEME: dict(label="Telegram", key=None, id=0, field=None, urn_scheme=TELEGRAM_SCHEME),
         FACEBOOK_SCHEME: dict(label="Facebook", key=None, id=0, field=None, urn_scheme=FACEBOOK_SCHEME),
-		GCM_SCHEME: dict(label='GCM', key=None, id=0, field=None, urn_scheme=GCM_SCHEME),
+        GCM_SCHEME: dict(label='GCM', key=None, id=0, field=None, urn_scheme=GCM_SCHEME),
     }
 
     PRIORITY_LOWEST = 1

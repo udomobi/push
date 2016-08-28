@@ -54,6 +54,7 @@ ACTION_SET = 'A'
 STEP_TYPE_CHOICES = ((RULE_SET, "RuleSet"),
                      (ACTION_SET, "ActionSet"))
 
+
 class FlowException(Exception):
     def __init__(self, *args, **kwargs):
         super(FlowException, self).__init__(*args, **kwargs)

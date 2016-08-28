@@ -24,10 +24,10 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django_countries.data import COUNTRIES
 from phonenumbers.phonenumberutil import region_code_for_number
-from smartmin.views import SmartCRUDL, SmartReadView, SmartModelFormView
+from smartmin.views import SmartCRUDL, SmartReadView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
-from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, FACEBOOK_SCHEME, ContactURN, WHATSAPP_SCHEME, GCM_SCHEME, URN
-from temba.msgs.models import Broadcast, Call, Msg, SystemLabel, QUEUED, PENDING
+from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, ContactURN, WHATSAPP_SCHEME, GCM_SCHEME, URN
+from temba.msgs.models import Broadcast, Msg, SystemLabel, QUEUED, PENDING
 from temba.orgs.models import Org, ACCOUNT_SID, ACCOUNT_TOKEN
 from temba.msgs.views import InboxView
 from temba.orgs.views import OrgPermsMixin, OrgObjPermsMixin, ModalMixin

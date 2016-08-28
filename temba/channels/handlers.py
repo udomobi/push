@@ -9,16 +9,14 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.files import File
-from django.core.files.temp import NamedTemporaryFile
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.generic import View
 from temba.api.models import WebHookEvent, SMS_RECEIVED
-from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN, TELEGRAM, TWIML_API
-from temba.contacts.models import Contact, URN, ContactURN, TEL_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME, WHATSAPP_SCHEME
+from temba.channels.models import Channel, PLIVO, SHAQODOON, YO, TWILIO_MESSAGING_SERVICE, AUTH_TOKEN, TWIML_API
+from temba.contacts.models import Contact, URN, TEL_SCHEME, WHATSAPP_SCHEME
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT
@@ -375,7 +373,7 @@ class GCMHandler(View):
         return self.post(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg, SENT, FAILED, DELIVERED
+        from temba.msgs.models import Msg
         from temba.channels.models import _GCM
 
         channel_uuid = kwargs['uuid']

@@ -27,12 +27,11 @@ from mock import patch
 from redis_cache import get_redis_connection
 from smartmin.tests import SmartminTest
 from temba.api.models import WebHookEvent, SMS_RECEIVED
-from temba.channels.views import TWILIO_SUPPORTED_COUNTRIES
 from temba.contacts.models import Contact, ContactGroup, ContactURN, URN, TEL_SCHEME, TWITTER_SCHEME, EXTERNAL_SCHEME
 from temba.contacts.models import TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME
 from temba.ivr.models import IVRCall, PENDING, RINGING
 from temba.middleware import BrandingMiddleware
-from temba.msgs.models import Broadcast, Call, Msg, IVR, WIRED, FAILED, SENT, DELIVERED, ERRORED, INCOMING
+from temba.msgs.models import Broadcast, Msg, IVR, WIRED, FAILED, SENT, DELIVERED, ERRORED, INCOMING
 from temba.msgs.models import MSG_SENT_KEY, SystemLabel
 from temba.orgs.models import Org, ALL_EVENTS, ACCOUNT_SID, ACCOUNT_TOKEN, APPLICATION_SID, NEXMO_KEY, NEXMO_SECRET, FREE_PLAN
 from temba.tests import TembaTest, MockResponse, MockTwilioClient, MockRequestValidator
@@ -43,7 +42,7 @@ from twilio import TwilioRestException
 from twilio.util import RequestValidator
 from twython import TwythonError
 from urllib import urlencode
-from .models import Channel, ChannelCount, ChannelEvent, SyncEvent, Alert, ChannelLog, CHIKKA, TELEGRAM
+from .models import Channel, ChannelCount, ChannelEvent, SyncEvent, Alert, ChannelLog, CHIKKA
 from .models import PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN, PLIVO_APP_ID, TEMBA_HEADERS, GLOBE
 from .models import TWILIO, ANDROID, TWITTER, API_ID, USERNAME, PASSWORD, PAGE_NAME, AUTH_TOKEN
 from .models import ENCODING, SMART_ENCODING, SEND_URL, SEND_METHOD, NEXMO_UUID, UNICODE_ENCODING, NEXMO
@@ -5845,15 +5844,14 @@ class TwitterTest(TembaTest):
 class GCMTest(TembaTest):
 
     def setUp(self):
+
         super(GCMTest, self).setUp()
-        
         self.channel.delete()
 
         from temba.channels.models import _GCM
         self.channel = Channel.create(self.org, self.user, None, _GCM, 'gcm-channel', config={'api_key': '12345', 'notification_title': 'Notification title'}, uuid='00000000-0000-0000-0000-000000002345')
 
     def test_send(self):
-        import time
 
         joe = self.create_contact("Joe", urn=(GCM_SCHEME, '1234'))
         bcast = joe.send("Test message", self.admin, trigger_send=False)

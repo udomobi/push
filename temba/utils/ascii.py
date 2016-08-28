@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
+from unidecode import unidecode
 
 __author__ = 'teehamaral'
-
-from unidecode import unidecode
 
 
 def to_ascii(text):
