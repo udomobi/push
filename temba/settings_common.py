@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 import djcelery
 import iptools
 import os
@@ -67,7 +68,6 @@ LANGUAGE_CODE = 'en-us'
 # -----------------------------------------------------------------------------------
 # Available languages for translation
 # -----------------------------------------------------------------------------------
-gettext = lambda s: s
 LANGUAGES = (
     ('en-us', _("English")),
     ('pt-br', _("Portuguese")),
@@ -86,10 +86,6 @@ USE_I18N = True
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale
 USE_L10N = True
-
-# number of credits before they get user management
-MULTI_USER_THRESHOLD = 0
-MULTI_ORG_THRESHOLD = 0
 
 # URL prefix for admin static files -- CSS, JavaScript and images.
 # Make sure to use a trailing slash.
@@ -136,7 +132,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 if TESTING:
-    TEMPLATE_CONTEXT_PROCESSORS += ('temba.tests.add_testing_flag_to_context',)
+    TEMPLATE_CONTEXT_PROCESSORS += ('temba.tests.add_testing_flag_to_context', )
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
@@ -263,13 +259,12 @@ LOGGING = {
 # -----------------------------------------------------------------------------------
 # Branding Configuration
 # -----------------------------------------------------------------------------------
-from django.utils.translation import ugettext_lazy as _
-
 BRANDING = {
     'rapidpro.io': {
         'slug': 'rapidpro',
         'name': 'RapidPro',
         'org': 'UNICEF',
+        'colors': dict(primary='#0c6596'),
         'styles': ['brands/rapidpro/font/style.css', 'brands/rapidpro/less/style.less'],
         'welcome_topup': 1000,
         'email': 'join@rapidpro.io',
@@ -282,6 +277,8 @@ BRANDING = {
         'splash': '/brands/rapidpro/splash.jpg',
         'logo': '/brands/rapidpro/logo.png',
         'allow_signups': True,
+        'tiers': dict(multi_user=0, multi_org=0),
+        'bundles': [],
         'welcome_packs': [dict(size=5000, name="Demo Account"), dict(size=100000, name="UNICEF Account")],
         'description': _("Visually build nationally scalable mobile applications from anywhere in the world."),
         'credits': _("Copyright &copy; 2012-2015 UNICEF, Nyaruka. All Rights Reserved.")
@@ -298,7 +295,7 @@ RESOURCES_DIR = os.path.join(PROJECT_DIR, '../resources')
 FIXTURE_DIRS = (os.path.join(PROJECT_DIR, '../fixtures'),)
 TESTFILES_DIR = os.path.join(PROJECT_DIR, '../testfiles')
 TEMPLATE_DIRS = (os.path.join(PROJECT_DIR, '../templates'),)
-STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'),)
+STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'), )
 STATIC_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
 STATIC_URL = '/static/'
 COMPRESS_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
@@ -312,10 +309,10 @@ MEDIA_URL = "/media/"
 # this lets us easily create new permissions across our objects
 PERMISSIONS = {
     '*': ('create',  # can create an object
-          'read',  # can read an object, viewing it's details
+          'read',    # can read an object, viewing it's details
           'update',  # can update an object
           'delete',  # can delete an object,
-          'list'),  # can view a list of the objects
+          'list'),   # can view a list of the objects
 
     'api.apitoken': ('refresh',),
 
@@ -330,6 +327,7 @@ PERMISSIONS = {
                            ),
 
     'campaigns.campaignevent': ('api',),
+
 
     'contacts.contact': ('api',
                          'block',
@@ -398,6 +396,7 @@ PERMISSIONS = {
 
     'orgs.usersettings': ('phone',),
 
+
     'channels.channel': ('api',
                          'bulk_sender_options',
                          'claim',
@@ -429,6 +428,8 @@ PERMISSIONS = {
                          'claim_twitter',
                          'claim_whatsapp',
                          'claim_verboice',
+                         'claim_viber',
+                         'create_viber',
                          'claim_vumi',
                          'claim_yo',
                          'claim_zenvia',
@@ -664,6 +665,8 @@ GROUP_PERMISSIONS = {
         'channels.channel_claim_twitter',
         'channels.channel_claim_gcm',
         'channels.channel_claim_verboice',
+        'channels.channel_claim_viber',
+        'channels.channel_create_viber',
         'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
         'channels.channel_claim_yo',
@@ -802,6 +805,8 @@ GROUP_PERMISSIONS = {
         'channels.channel_claim_twitter',
         'channels.channel_claim_gcm',
         'channels.channel_claim_verboice',
+        'channels.channel_claim_viber',
+        'channels.channel_create_viber',
         'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
         'channels.channel_claim_yo',
@@ -931,7 +936,7 @@ AUTHENTICATION_BACKENDS = (
     'guardian.backends.ObjectPermissionBackend',
 )
 
-ANONYMOUS_USER_ID = -1
+ANONYMOUS_USER_NAME = 'AnonymousUser'
 
 # -----------------------------------------------------------------------------------
 # Our test runner is standard but with ability to exclude apps
@@ -942,8 +947,6 @@ TEST_EXCLUDE = ('smartmin',)
 # -----------------------------------------------------------------------------------
 # Debug Toolbar
 # -----------------------------------------------------------------------------------
-import iptools
-
 INTERNAL_IPS = iptools.IpRangeList(
     '127.0.0.1',
     '192.168.0.10',
@@ -958,30 +961,26 @@ DEBUG_TOOLBAR_CONFIG = {
 # -----------------------------------------------------------------------------------
 # Crontab Settings ..
 # -----------------------------------------------------------------------------------
-
-from datetime import timedelta
-from celery.schedules import crontab
-
 CELERYBEAT_SCHEDULE = {
     "retry-webhook-events": {
         'task': 'retry_events_task',
-        'schedule': timedelta(seconds=10),
+        'schedule': timedelta(seconds=300),
     },
     "check-channels": {
         'task': 'check_channels_task',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=300),
     },
     "schedules": {
         'task': 'check_schedule_task',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=60),
     },
     "campaigns": {
         'task': 'check_campaigns_task',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=60),
     },
     "check-flows": {
         'task': 'check_flows_task',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=60),
     },
     "check-flow-timeouts": {
         'task': 'check_flow_timeouts_task',
@@ -989,11 +988,11 @@ CELERYBEAT_SCHEDULE = {
     },
     "check-credits": {
         'task': 'check_credits_task',
-        'schedule': timedelta(seconds=5)
+        'schedule': timedelta(seconds=900)
     },
     "check-messages-task": {
         'task': 'check_messages_task',
-        'schedule': timedelta(seconds=5)
+        'schedule': timedelta(seconds=300)
     },
     "fail-old-messages": {
         'task': 'fail_old_messages',
@@ -1009,19 +1008,19 @@ CELERYBEAT_SCHEDULE = {
     },
     "squash-flowruncounts": {
         'task': 'squash_flowruncounts',
-        'schedule': timedelta(seconds=7),
+        'schedule': timedelta(seconds=300),
     },
     "squash-channelcounts": {
         'task': 'squash_channelcounts',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=300),
     },
     "squash-systemlabels": {
         'task': 'squash_systemlabels',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=300),
     },
     "squash-topupcredits": {
         'task': 'squash_topupcredits',
-        'schedule': timedelta(seconds=5),
+        'schedule': timedelta(seconds=300),
     },
     "squash-contactgroupcounts": {
         'task': 'squash_contactgroupcounts',
@@ -1043,8 +1042,6 @@ CELERY_TASK_MAP = {
 # -----------------------------------------------------------------------------------
 # Async tasks with django-celery
 # -----------------------------------------------------------------------------------
-import djcelery
-
 djcelery.setup_loader()
 
 REDIS_HOST = 'localhost'
@@ -1181,6 +1178,15 @@ SEGMENT_IO_KEY = os.environ.get('SEGMENT_IO_KEY', '')
 
 LIBRATO_USER = os.environ.get('LIBRATO_USER', '')
 LIBRATO_TOKEN = os.environ.get('LIBRATO_TOKEN', '')
+
+# -----------------------------------------------------------------------------------
+# IP Addresses
+# These are the externally accessible IP addresses of the servers running RapidPro.
+# Needed for channel types that authenticate by whitelisting public IPs.
+#
+# You need to change these to real addresses to work with these.
+# -----------------------------------------------------------------------------------
+IP_ADDRESSES = ('172.16.10.10', '162.16.10.20')
 
 BILLING_PLANS = {
     'basic': {
