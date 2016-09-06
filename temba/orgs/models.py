@@ -39,7 +39,6 @@ from twilio.rest import TwilioRestClient
 from urlparse import urlparse
 from uuid import uuid4
 
-
 UNREAD_INBOX_MSGS = 'unread_inbox_msgs'
 UNREAD_FLOW_MSGS = 'unread_flow_msgs'
 
@@ -816,14 +815,18 @@ class Org(SmartModel):
         from temba.channels.models import SEND_URL, TWIML_API
         from temba.ivr.clients import TwilioClient
         channel = self.channels.filter(channel_type=TWIML_API).first()
-        config = channel.config_json()
+
+        try:
+            config = channel.config_json()
+        except:
+            config = None
 
         if config:
             account_sid = config.get(ACCOUNT_SID, None)
             auth_token = config.get(ACCOUNT_TOKEN, None)
-            twiml_api = config.get(SEND_URL, None)
+            base = config.get(SEND_URL, None)
             if account_sid and auth_token:
-                return TwilioClient(account_sid, auth_token, org=self, twiml_api=twiml_api)
+                return TwilioClient(account_sid, auth_token, org=self, base=base)
         return None
 
     def get_nexmo_client(self):

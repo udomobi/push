@@ -515,8 +515,7 @@ class Channel(TembaModel):
                               name=messaging_service_sid, address=None, config=config)
 
     @classmethod
-    def add_twiml_api_channel(cls, org, user, country, address, config):
-        role = Channel.ROLE_SEND + Channel.ROLE_RECEIVE + Channel.ROLE_CALL + Channel.ROLE_ANSWER
+    def add_twiml_api_channel(cls, org, user, country, address, config, role):
         is_short_code = len(address) <= 6
 
         if is_short_code:

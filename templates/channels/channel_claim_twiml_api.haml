@@ -7,6 +7,7 @@
   :javascript
     $(function(){
       $("#id_country").select2();
+      $('#id_role').select2({ minimumResultsForSearch: -1, width: '150px' });
     });
 
 -block title
@@ -19,8 +20,7 @@
   .info
     %p
       -blocktrans
-        You can add your Twilio Messaging SID as a channel. You can get your messaging Service SID
-        or create a new messaging service from <a href="https://www.twilio.com/user/account/messaging/services">Twilio Console</a>.
+        You can add a TwiML REST API as a channel using your TwiML instance.
 
 
 -block extra-style
