@@ -2852,6 +2852,7 @@ SEND_FUNCTIONS = {Channel.TYPE_AFRICAS_TALKING: Channel.send_africas_talking_mes
                   Channel.TYPE_HUB9: Channel.send_hub9_message,
                   Channel.TYPE_INFOBIP: Channel.send_infobip_message,
                   Channel.TYPE_JASMIN: Channel.send_jasmin_message,
+                  Channel.TYPE_LINE: Channel.send_line_message,
                   Channel.TYPE_KANNEL: Channel.send_kannel_message,
                   Channel.TYPE_M3TECH: Channel.send_m3tech_message,
                   Channel.TYPE_MBLOX: Channel.send_mblox_message,
@@ -2868,7 +2869,9 @@ SEND_FUNCTIONS = {Channel.TYPE_AFRICAS_TALKING: Channel.send_africas_talking_mes
                   Channel.TYPE_VIBER: Channel.send_viber_message,
                   Channel.TYPE_VUMI: Channel.send_vumi_message,
                   Channel.TYPE_YO: Channel.send_yo_message,
-                  Channel.TYPE_ZENVIA: Channel.send_zenvia_message}
+                  Channel.TYPE_ZENVIA: Channel.send_zenvia_message,
+                  Channel.TYPE_GCM: Channel.send_gcm_notify,
+                  Channel.TYPE_WHATSAPP: Channel.send_whatsapp_message}
 
 
 class ChannelCount(models.Model):
