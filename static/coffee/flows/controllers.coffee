@@ -899,6 +899,9 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
 
   formData.rulesetConfig = Flow.getRulesetConfig({type:ruleset.ruleset_type})
 
+  $scope.getTranslatedText = (language_dict) ->
+    return language_dict[Flow.flow.base_language]
+
   $scope.updateActionForm = (config) ->
 
     # emails are not localized, if our msg is localized, grab the base text
@@ -1338,7 +1341,7 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
     otherCategory[Flow.flow.base_language] = 'Other'
 
     # add an always true rule if not configured
-    if not rulesetConfig.rules and not rulesetConfig.hide_other
+    if not rulesetConfig.rules
       rules.push
         _config: Flow.getOperatorConfig("true")
         test:
