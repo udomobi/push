@@ -150,6 +150,7 @@ class Channel(TembaModel):
         TYPE_HIGH_CONNECTION: dict(scheme='tel', max_length=320),
         TYPE_HUB9: dict(scheme='tel', max_length=1600),
         TYPE_INFOBIP: dict(scheme='tel', max_length=1600),
+        TYPE_GCM: dict(scheme='gcm', max_length=1600),
         TYPE_JASMIN: dict(scheme='tel', max_length=1600),
         TYPE_KANNEL: dict(scheme='tel', max_length=1600),
         TYPE_LINE: dict(scheme='line', max_length=1600),
@@ -170,6 +171,7 @@ class Channel(TembaModel):
         TYPE_VUMI: dict(scheme='tel', max_length=1600),
         TYPE_YO: dict(scheme='tel', max_length=1600),
         TYPE_ZENVIA: dict(scheme='tel', max_length=150),
+        TYPE_WHATSAPP: dict(scheme='wa', max_length=150),
     }
 
     TYPE_CHOICES = ((TYPE_AFRICAS_TALKING, "Africa's Talking"),
@@ -201,7 +203,9 @@ class Channel(TembaModel):
                     (TYPE_VIBER, "Viber"),
                     (TYPE_VUMI, "Vumi"),
                     (TYPE_YO, "Yo!"),
-                    (TYPE_ZENVIA, "Zenvia"))
+                    (TYPE_ZENVIA, "Zenvia"),
+                    (TYPE_GCM, "GCM"),
+                    (TYPE_WHATSAPP, "WhatsApp"))
 
     GET_STARTED = 'get_started'
     VIBER_NO_SERVICE_ID = 'no_service_id'
