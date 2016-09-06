@@ -21,7 +21,7 @@ from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT
 from temba.triggers.models import Trigger
-from temba.utils import json_date_to_datetime
+from temba.utils import json_date_to_datetime, ms_to_datetime
 from temba.utils.middleware import disable_middleware
 from temba.utils.queues import push_task
 from .tasks import fb_channel_subscribe
@@ -1926,6 +1926,43 @@ class ViberHandler(View):
 
         else:
             return HttpResponse("Not handled, unknown action", status=400)
+
+
+class LINEHandler(View):
+
+    @disable_middleware
+    def dispatch(self, *args, **kwargs):
+        return super(LINEHandler, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg
+        from linebot.receives import Receive
+
+        channel_uuid = kwargs['uuid']
+
+        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=Channel.TYPE_LINE).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+        try:
+            data = request.body.decode('utf-8', errors='ignore')
+            receive = Receive(data)
+
+            for r in receive:
+                data = r._Message__data
+                content = data.get('content')
+                text = content.content.get('text')
+                date = ms_to_datetime(data.get('created_time'))
+                from_mid = data.get('from_mid').encode('utf-8')
+                Msg.create_incoming(channel=channel, urn=URN.from_line(from_mid), text=text, date=date)
+
+            return HttpResponse("SMS Accepted")
+
+        except Exception as e:
+            return HttpResponse("Not handled. Error: %s" % e.args, status=400)
 
 
 class WhatsappHandler(View):

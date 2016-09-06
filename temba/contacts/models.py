@@ -51,6 +51,7 @@ FACEBOOK_SCHEME = 'facebook'
 TELEGRAM_SCHEME = 'telegram'
 EMAIL_SCHEME = 'mailto'
 EXTERNAL_SCHEME = 'ext'
+LINE_SCHEME = 'line'
 GCM_SCHEME = 'gcm'
 
 # Scheme, Label, Export/Import Header, Context Key
@@ -60,6 +61,7 @@ URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (EMAIL_SCHEME, _("Email address"), 'email', EMAIL_SCHEME),
                      (FACEBOOK_SCHEME, _("Facebook identifier"), 'facebook', FACEBOOK_SCHEME),
                      (EXTERNAL_SCHEME, _("External identifier"), 'external', EXTERNAL_SCHEME),
+                     (LINE_SCHEME, _("LINE identifier"), 'line', LINE_SCHEME),
                      (WHATSAPP_SCHEME, _("WhatsApp number"), 'whatsapp', 'whatsapp'),
                      (GCM_SCHEME, _("GCM identifier"), 'gcm', 'gcm'))
 
@@ -168,7 +170,7 @@ class URN(object):
             if norm_path[0:1] == '@':  # strip @ prefix if provided
                 norm_path = norm_path[1:]
             norm_path = norm_path.lower()  # Twitter handles are case-insensitive, so we always store as lowercase
-        elif scheme == EMAIL_SCHEME:
+        elif scheme == EMAIL_SCHEME or scheme == LINE_SCHEME:
             norm_path = norm_path.lower()
 
         return cls.from_parts(scheme, norm_path)
@@ -228,6 +230,10 @@ class URN(object):
         return cls.from_parts(FACEBOOK_SCHEME, path)
 
     @classmethod
+    def from_line(cls, path):
+        return cls.from_parts(LINE_SCHEME, path)
+
+    @classmethod
     def from_telegram(cls, path):
         return cls.from_parts(TELEGRAM_SCHEME, path)
 
@@ -242,15 +248,6 @@ class URN(object):
     @classmethod
     def from_whatsapp(cls, path):
         return cls.from_parts(WHATSAPP_SCHEME, path)
-
-
-URN_SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
-
-IMPORT_HEADER_TO_SCHEME = {s[0]: s[1] for s in IMPORT_HEADERS}
-
-URN_CONTEXT_KEYS_TO_SCHEME = {c[3]: c[0] for c in URN_SCHEME_CONFIG}
-
-URN_CONTEXT_KEYS_TO_LABEL = {c[3]: c[1] for c in URN_SCHEME_CONFIG}
 
 
 class ContactField(SmartModel):
