@@ -497,7 +497,10 @@ class GCMHandler(View):
             contact.update_urns(user=channel.created_by, urns=urns)
 
             sms = Msg.create_incoming(channel, gcm_urn, request.REQUEST['msg'], date=date, contact=contact)
-            return HttpResponse("SMS Accepted: %d" % sms.id)
+            response = contact.as_json()
+            response['msg'] = sms.id
+            return HttpResponse(json.dumps(response), content_type='application/json')
+
         except Exception as e:
             return HttpResponse(e.args, status=400)
 
