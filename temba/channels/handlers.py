@@ -17,7 +17,7 @@ from django.views.generic import View
 from guardian.utils import get_anonymous_user
 from temba.api.models import WebHookEvent, SMS_RECEIVED
 from temba.channels.models import Channel
-from temba.contacts.models import Contact, URN
+from temba.contacts.models import Contact, URN, ContactURN
 from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT, INTERRUPTED
@@ -400,10 +400,26 @@ class GCMHandler(View):
             date = request.REQUEST.get('date', request.REQUEST.get('time', None))
             if date:
                 date = json_date_to_datetime(date)
-            sms = Msg.create_incoming(channel, URN.from_gcm(request.REQUEST['from']), request.REQUEST['msg'], date=date)
-            return HttpResponse("SMS Accepted: %d" % sms.id)
-        except:
-            return HttpResponse("Not handled", status=400)
+
+            contact_uuid = request.REQUEST.get('contact_uuid', None)
+            gcm_urn = URN.from_gcm(request.REQUEST['from'])
+
+            contact = Contact.get_or_create(channel.org, channel.created_by, uuid=contact_uuid, name=request.REQUEST.get('name', None), urns=[gcm_urn], channel=channel)
+            contact_urns = contact.urns.all()
+
+            for item in contact_urns.filter(scheme='gcm'):
+                item.delete()
+
+            urns = [item.urn for item in contact_urns]
+            contact.update_urns(user=channel.created_by, urns=urns)
+
+            sms = Msg.create_incoming(channel, gcm_urn, request.REQUEST['msg'], date=date, contact=contact)
+            response = contact.as_json()
+            response['msg'] = sms.id
+            return HttpResponse(json.dumps(response), content_type='application/json')
+
+        except Exception as e:
+            return HttpResponse(e.args, status=400)
 
 
 class ExternalHandler(View):
