@@ -146,22 +146,6 @@
 
     %hr
 
-  -elif object.channel_type == 'WA'
-    %h4
-      -trans "You finished to configure your WhatsApp channel."
-
-    .clearfix
-      .config-value
-        .name
-          -trans "Name:"
-        .value {{ object.name }}
-      .config-value
-        .name
-          -trans "Phone:"
-        .value {{ object.config_json.phone }}
-
-    %hr
-
   -elif object.channel_type == 'NX'
     %h4
       -trans "Your Nexmo configuration URLs are as follows. These should have been set up automatically when claiming your number, but if not you can set them from your Nexmo dashboard."
@@ -290,7 +274,7 @@
 
     %p
       -blocktrans
-        The below endpoint should receive message this channel.
+        The endpoint which will receive Twilio API requests for this channel
 
     %code
       {{ object.config_json.send_url }}
@@ -300,7 +284,7 @@
 
     %p
       -blocktrans
-        Outgoing messages for this channel will be sent to this endpoint.
+        Incoming messages for this channel will be sent to this endpoint.
 
     %code
       https://{{ domain }}{% url 'handlers.twiml_api_handler' object.uuid %}
@@ -484,7 +468,7 @@
 
     %hr
 
-  -elif object.channel_type == 'VM'
+  -elif object.channel_type == 'VM' or object.channel_type == 'VMU'
     %h4
       -blocktrans
         To finish configuring your Vumi connection you'll need to set the following parameters on your Vumi conversation:
@@ -678,18 +662,6 @@
     %code
       https://{{ domain }}{% url 'handlers.viber_handler' 'receive' object.uuid %}
 
-
-  -elif object.channel_type == 'LN'
-    %h4
-      -blocktrans
-        To finish configuring your Line channel you'll need to set the following callback URL on your LINE Channel
-        page.
-
-    %h4
-      -trans "Callback URL"
-
-    %code
-      https://{{ domain }}{% url 'handlers.line_handler' object.uuid %}
 
   -elif object.channel_type == 'GL'
     %h4

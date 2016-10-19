@@ -26,7 +26,7 @@ from django_countries.data import COUNTRIES
 from phonenumbers.phonenumberutil import region_code_for_number
 from smartmin.views import SmartCRUDL, SmartReadView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
-from temba.contacts.models import ContactURN, URN, TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME, WHATSAPP_SCHEME
+from temba.contacts.models import ContactURN, URN, TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME
 from temba.msgs.models import Broadcast, Msg, SystemLabel, QUEUED, PENDING, WIRED
 from temba.msgs.views import InboxView
 from temba.orgs.models import Org, ACCOUNT_SID, ACCOUNT_TOKEN
@@ -42,19 +42,17 @@ RELAYER_TYPE_ICONS = {Channel.TYPE_ANDROID: "icon-channel-android",
                       Channel.TYPE_CHIKKA: "icon-channel-external",
                       Channel.TYPE_EXTERNAL: "icon-channel-external",
                       Channel.TYPE_KANNEL: "icon-channel-kannel",
-                      Channel.TYPE_LINE: "icon-line",
                       Channel.TYPE_NEXMO: "icon-channel-nexmo",
                       Channel.TYPE_VERBOICE: "icon-channel-external",
                       Channel.TYPE_TWILIO: "icon-channel-twilio",
+                      Channel.TYPE_TWIML: "icon-channel-twilio",
                       Channel.TYPE_TWILIO_MESSAGING_SERVICE: "icon-channel-twilio",
-                      Channel.TYPE_TWIML_API: "icon-channel-twilio",
                       Channel.TYPE_PLIVO: "icon-channel-plivo",
                       Channel.TYPE_CLICKATELL: "icon-channel-clickatell",
                       Channel.TYPE_TWITTER: "icon-twitter",
                       Channel.TYPE_TELEGRAM: "icon-telegram",
                       Channel.TYPE_FACEBOOK: "icon-facebook-official",
                       Channel.TYPE_VIBER: "icon-viber",
-                      Channel.TYPE_WHATSAPP: "icon-whatsapp",
                       Channel.TYPE_GCM: "icon-gcm"}
 
 SESSION_TWITTER_TOKEN = 'twitter_oauth_token'
@@ -212,10 +210,6 @@ def channel_status_processor(request):
         if not send_channel:
             send_channel = org.get_send_channel(scheme=GCM_SCHEME)
 
-        # as is whatsapp
-        if not send_channel:
-            send_channel = org.get_send_channel(scheme=WHATSAPP_SCHEME)
-
         # and facebook
         if not send_channel:
             send_channel = org.get_send_channel(scheme=FACEBOOK_SCHEME)
@@ -223,6 +217,7 @@ def channel_status_processor(request):
         status['send_channel'] = send_channel
         status['call_channel'] = call_channel
         status['has_outgoing_channel'] = send_channel or call_channel
+        status['is_ussd_channel'] = send_channel.is_ussd() if send_channel else False
 
         channels = org.channels.filter(is_active=True)
         for channel in channels:
@@ -257,8 +252,8 @@ def get_commands(channel, commands, sync_event=None):
         retry_msgs = sync_event.get_retry_messages()
 
     # messages without broadcast
-    msgs = list(Msg.all_messages.filter(status__in=(PENDING, QUEUED, WIRED), channel=channel,
-                                        broadcast=None).select_related('contact_urn').order_by('text', 'pk'))
+    msgs = list(Msg.objects.filter(status__in=(PENDING, QUEUED, WIRED), channel=channel,
+                                   broadcast=None).select_related('contact_urn').order_by('text', 'pk'))
 
     # all outgoing messages for our channel that are queued up
     broadcasts = Broadcast.objects.filter(status__in=[QUEUED, PENDING], schedule=None,
@@ -276,7 +271,7 @@ def get_commands(channel, commands, sync_event=None):
 
         outgoing_messages += len(msgs)
 
-    msgs = Msg.all_messages.filter(pk__in=[m.id for m in msgs]).exclude(contact__is_test=True).exclude(topup=None)
+    msgs = Msg.objects.filter(pk__in=[m.id for m in msgs]).exclude(contact__is_test=True).exclude(topup=None)
 
     if sync_event:
         msgs = msgs.exclude(pk__in=pending_msgs).exclude(pk__in=retry_msgs)
@@ -355,7 +350,7 @@ def sync(request, channel_id):
 
                     # catchall for commands that deal with a single message
                     if 'msg_id' in cmd:
-                        msg = Msg.all_messages.filter(pk=cmd['msg_id'], org=channel.org)
+                        msg = Msg.objects.filter(pk=cmd['msg_id'], org=channel.org)
                         if msg:
                             msg = msg[0]
                             handled = msg.update(cmd)
@@ -509,16 +504,6 @@ class ClaimAndroidForm(forms.Form):
         return number
 
 
-class WhatsappClaimForm(forms.Form):
-    country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"), help_text=_("The country this phone number is used in"))
-    phone_number = forms.CharField(max_length=14, min_length=1, label=_("Phone number"), help_text=_("The phone number with code location and without ninth digit (Ex.: 8200000000)"))
-    password = forms.CharField(label=_('Password'), help_text=_("Password genarate by App. Case sensitive."))
-
-    def __init__(self, *args, **kwargs):
-        self.org = kwargs.pop('org')
-        super(WhatsappClaimForm, self).__init__(*args, **kwargs)
-
-
 class UpdateChannelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.object = kwargs['object']
@@ -563,11 +548,11 @@ class ChannelCRUDL(SmartCRUDL):
     actions = ('list', 'claim', 'update', 'read', 'delete', 'search_numbers', 'claim_twilio',
                'claim_android', 'claim_africas_talking', 'claim_chikka', 'configuration', 'claim_external',
                'search_nexmo', 'claim_nexmo', 'bulk_sender_options', 'create_bulk_sender', 'claim_infobip',
-               'claim_hub9', 'claim_vumi', 'create_caller', 'claim_kannel', 'claim_twitter', 'claim_shaqodoon',
+               'claim_hub9', 'claim_vumi', 'claim_vumi_ussd', 'create_caller', 'claim_kannel', 'claim_twitter', 'claim_shaqodoon',
                'claim_verboice', 'claim_clickatell', 'claim_plivo', 'search_plivo', 'claim_high_connection', 'claim_blackmyna',
                'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo', 'claim_viber', 'create_viber',
                'claim_twilio_messaging_service', 'claim_zenvia', 'claim_jasmin', 'claim_mblox', 'claim_facebook', 'claim_globe',
-               'claim_line', 'claim_whatsapp', 'claim_gcm', 'claim_twiml_api')
+               'claim_twiml_api', 'claim_gcm')
     permissions = True
 
     class AnonMixin(OrgPermsMixin):
@@ -588,19 +573,11 @@ class ChannelCRUDL(SmartCRUDL):
                 return super(ChannelCRUDL.AnonMixin, self).has_permission(request, *args, **kwargs)
 
     class Read(OrgObjPermsMixin, SmartReadView):
+        slug_url_kwarg = 'uuid'
         exclude = ('id', 'is_active', 'created_by', 'modified_by', 'modified_on', 'gcm_id')
 
-        @classmethod
-        def derive_url_pattern(cls, path, action):
-            # overloaded to have uuid pattern instead of integer id
-            return r'^%s/%s/(?P<uuid>[^/]+)/$' % (path, action)
-
-        def get_object(self, queryset=None):
-            uuid = self.kwargs.get('uuid')
-            channel = Channel.objects.filter(uuid=uuid, is_active=True).first()
-            if channel is None:
-                raise Http404("No active channel with that UUID")
-            return channel
+        def get_queryset(self):
+            return Channel.objects.filter(is_active=True)
 
         def get_gear_links(self):
             links = []
@@ -1567,7 +1544,7 @@ class ChannelCRUDL(SmartCRUDL):
                                           help_text=_("Your Vumi account key as found under Account -> Details"))
             conversation_key = forms.CharField(label=_("Conversation Key"),
                                                help_text=_("The key for your Vumi conversation, can be found in the URL"))
-            transport_name = forms.CharField(label=_("Transport Name"),
+            transport_name = forms.CharField(label=_("Transport Name"), required=False,
                                              help_text=_("The name of the Vumi transport you will use to send and receive messages"))
 
         title = _("Connect Vumi")
@@ -1583,13 +1560,16 @@ class ChannelCRUDL(SmartCRUDL):
 
             data = form.cleaned_data
             self.object = Channel.add_config_external_channel(org, self.request.user,
-                                                              data['country'], data['number'], Channel.TYPE_VUMI,
+                                                              data['country'], data['number'], self.channel_type,
                                                               dict(account_key=data['account_key'],
                                                                    access_token=str(uuid4()),
                                                                    transport_name=data['transport_name'],
                                                                    conversation_key=data['conversation_key']))
 
             return super(ChannelCRUDL.ClaimAuthenticatedExternal, self).form_valid(form)
+
+    class ClaimVumiUssd(ClaimVumi):
+        channel_type = Channel.TYPE_VUMI_USSD
 
     class ClaimClickatell(ClaimAuthenticatedExternal):
         class ClickatellForm(forms.Form):
@@ -1720,7 +1700,7 @@ class ChannelCRUDL(SmartCRUDL):
                 (Channel.ROLE_SEND + Channel.ROLE_RECEIVE + Channel.ROLE_CALL + Channel.ROLE_ANSWER, _('Both')),
             )
             country = forms.ChoiceField(choices=ALL_COUNTRIES, label=_("Country"), help_text=_("The country this phone number is used in"))
-            number = forms.CharField(max_length=14, min_length=1, label=_("Number"), help_text=_("The phone number with country code or short code you are connecting."))
+            number = forms.CharField(max_length=14, min_length=1, label=_("Number"), help_text=_("The phone number without country code or short code you are connecting."))
             url = forms.URLField(max_length=1024, label=_("TwiML REST API Host"), help_text=_("The publicly accessible URL for your TwiML REST API instance ex: https://api.twilio.com"))
             role = forms.ChoiceField(choices=ROLES, label=_("Role"), help_text=_("Choose the role that this channel supports"))
             account_sid = forms.CharField(max_length=64, required=False, help_text=_("The Account SID to use to authenticate to the TwiML REST API"), widget=forms.TextInput(attrs={'autocomplete': 'off'}))
@@ -1734,18 +1714,22 @@ class ChannelCRUDL(SmartCRUDL):
             org = self.request.user.get_org()
             data = form.cleaned_data
 
-            country = data['country']
-            number = data['number']
-            url = data['url']
-            role = data['role']
+            country = data.get('country')
+            number = data.get('number')
+            url = data.get('url')
+            role = data.get('role')
 
             config = {Channel.CONFIG_SEND_URL: url,
                       ACCOUNT_SID: data.get('account_sid', None),
                       ACCOUNT_TOKEN: data.get('account_token', None)}
 
-            number = phonenumbers.parse(number=number, region=country)
-            phone_number = "{0}{1}".format(str(number.country_code), str(number.national_number))
-            self.object = Channel.add_twiml_api_channel(org=org, user=self.request.user, country=country, address=phone_number, config=config, role=role)
+            is_short_code = len(number) <= 6
+
+            if not is_short_code:
+                phone_number = phonenumbers.parse(number=number, region=country)
+                number = "{0}{1}".format(str(phone_number.country_code), str(phone_number.national_number))
+
+            self.object = Channel.add_twiml_api_channel(org=org, user=self.request.user, country=country, address=number, config=config, role=role)
 
             # if they didn't set a username or password, generate them, we do this after the addition above
             # because we use the channel id in the configuration
@@ -1895,48 +1879,6 @@ class ChannelCRUDL(SmartCRUDL):
             context['twitter_auth_url'] = auth['auth_url']
             return context
 
-    class ClaimWhatsapp(OrgPermsMixin, SmartFormView):
-
-        @non_atomic_when_eager
-        def dispatch(self, *args, **kwargs):
-            """
-            Decorated with @non_atomic_when_eager so that channel object is always committed to database before Mage
-            tries to access it
-            """
-            return super(ChannelCRUDL.ClaimWhatsapp, self).dispatch(*args, **kwargs)
-
-        title = _("Connect WhatsApp")
-        fields = ('country', 'phone_number', 'password')
-        success_url = "id@channels.channel_configuration"
-        form_class = WhatsappClaimForm
-
-        def get_form_kwargs(self):
-            kwargs = super(ChannelCRUDL.ClaimWhatsapp, self).get_form_kwargs()
-            kwargs['org'] = self.request.user.get_org()
-            return kwargs
-
-        def form_valid(self, form):
-
-            org = self.request.user.get_org()
-
-            if not org:  # pragma: no cover
-                raise Exception(_("No org for this user, cannot claim"))
-
-            try:
-                data = form.cleaned_data
-                number = phonenumbers.parse(data['phone_number'], data['country'])
-                cc = str(number.country_code)
-                phone = "{0}{1}".format(cc, str(number.national_number))
-                self.object = Channel.add_whatsapp_channel(org, self.request.user, cc=cc, phone=phone, password=data['password'])
-
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                messages.error(self.request, _('Error! Reason: {0}. Try again later.'.format(e)))
-                return redirect(self.request.META.get('HTTP_REFERER'))
-
-            return super(ChannelCRUDL.ClaimWhatsapp, self).form_valid(form)
-
     class ClaimGcm(OrgPermsMixin, SmartFormView):
         class ClaimGCMForm(forms.Form):
             notification_title = forms.CharField(label=_('Notification title'), help_text=_("The title of the notification that reaches the device."))
@@ -1992,55 +1934,6 @@ class ChannelCRUDL(SmartCRUDL):
                                                    page['name'], page['id'], form.cleaned_data['page_access_token'])
 
             return HttpResponseRedirect(reverse('channels.channel_configuration', args=[channel.id]))
-
-    class ClaimLine(OrgPermsMixin, SmartFormView):
-        class LineForm(forms.Form):
-            channel_id = forms.CharField(label=_("Channel ID"), required=True, help_text=_("The ID of the your Channel on Business LINE"))
-            channel_secret = forms.CharField(label=_("Channel Secret"), required=True, help_text=_("The Secret of the your Channel on Business LINE"))
-            channel_mid = forms.CharField(label=_("Channel MID"), required=True, help_text=_("The MID of the your Channel on Business LINE"))
-
-            def clean(self):
-                from linebot.client import LineBotClient
-
-                channel_id = self.cleaned_data.get('channel_id')
-                channel_secret = self.cleaned_data.get('channel_secret')
-                channel_mid = self.cleaned_data.get('channel_mid')
-
-                credentials = {
-                    'channel_id': channel_id,
-                    'channel_secret': channel_secret,
-                    'channel_mid': channel_mid,
-                }
-
-                line_bot_client = LineBotClient(**credentials)
-                try:
-                    users = line_bot_client.get_user_profile(channel_mid)
-                    profile = [
-                        {'mid': user._UserProfile__profile.get('mid'),
-                         'picture_url': user._UserProfile__profile.get('picture_url'),
-                         'display_name': user._UserProfile__profile.get('display_name'),
-                         'status_message': user._UserProfile__profile.get('status_message')} for user in users]
-
-                    credentials['profile'] = profile[0]
-                except:
-                    raise ValidationError(_("Profile not found, please check it and try again."))
-
-                return credentials
-
-        form_class = LineForm
-        title = _("Line Channel")
-        fields = ('channel_id', 'channel_secret', 'channel_mid')
-        success_url = "id@channels.channel_configuration"
-
-        def form_valid(self, form):
-
-            profile = form.cleaned_data.get('profile')
-            credentials = form.cleaned_data
-            credentials.pop('profile')
-
-            self.object = Channel.add_line_channel(org=self.request.user.get_org(), user=self.request.user, credentials=credentials, name=profile.get('display_name'))
-
-            return super(ChannelCRUDL.ClaimLine, self).form_valid(form)
 
     class List(OrgPermsMixin, SmartListView):
         title = _("Channels")

@@ -277,7 +277,7 @@ BRANDING = {
         'splash': '/brands/rapidpro/splash.jpg',
         'logo': '/brands/rapidpro/logo.png',
         'allow_signups': True,
-        'tiers': dict(multi_user=0, multi_org=0),
+        'tiers': dict(import_flows=0, multi_user=0, multi_org=0),
         'bundles': [],
         'welcome_packs': [dict(size=5000, name="Demo Account"), dict(size=100000, name="UNICEF Account")],
         'description': _("Visually build nationally scalable mobile applications from anywhere in the world."),
@@ -432,6 +432,7 @@ PERMISSIONS = {
                          'claim_viber',
                          'create_viber',
                          'claim_vumi',
+                         'claim_vumi_ussd',
                          'claim_yo',
                          'claim_zenvia',
                          'configuration',
@@ -671,6 +672,7 @@ GROUP_PERMISSIONS = {
         'channels.channel_create_viber',
         'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
+        'channels.channel_claim_vumi_ussd',
         'channels.channel_claim_yo',
         'channels.channel_claim_zenvia',
         'channels.channel_configuration',
@@ -812,6 +814,7 @@ GROUP_PERMISSIONS = {
         'channels.channel_create_viber',
         'channels.channel_claim_whatsapp',
         'channels.channel_claim_vumi',
+        'channels.channel_claim_vumi_ussd',
         'channels.channel_claim_yo',
         'channels.channel_claim_zenvia',
         'channels.channel_configuration',
@@ -1000,6 +1003,10 @@ CELERYBEAT_SCHEDULE = {
     "fail-old-messages": {
         'task': 'fail_old_messages',
         'schedule': crontab(hour=0, minute=0),
+    },
+    "clear-old-msg-external-ids": {
+        'task': 'clear_old_msg_external_ids',
+        'schedule': crontab(hour=1, minute=0),
     },
     "trim-channel-log": {
         'task': 'trim_channel_log_task',
