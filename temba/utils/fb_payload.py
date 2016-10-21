@@ -24,7 +24,7 @@ def get_fb_payload(msg, text):
 
     payload = dict(text=text)
 
-    real_msg = Msg.all_messages.filter(id=msg.id).first()
+    real_msg = Msg.objects.filter(id=msg.id).first()
     if real_msg:
         step = real_msg.get_flow_step()
         destination = step.get_step().destination
