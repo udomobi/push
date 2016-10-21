@@ -1802,7 +1802,7 @@ class FacebookHandler(View):
                                 msg_date = datetime.fromtimestamp(envelope['timestamp'] / 1000.0).replace(tzinfo=pytz.utc)
                                 msg = Msg.create_incoming(channel, urn, content, date=msg_date, contact=contact)
                                 if 'message' in envelope and 'mid' in envelope.get('message'):
-                                    Msg.all_messages.filter(pk=msg.id).update(external_id=envelope.get('message').get('mid'))
+                                    Msg.objects.filter(pk=msg.id).update(external_id=envelope.get('message').get('mid'))
                                 status.append("Msg %d accepted." % msg.id)
 
                     elif 'delivery' in envelope and 'mids' in envelope['delivery']:
