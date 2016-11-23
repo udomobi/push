@@ -24,40 +24,43 @@ def get_fb_payload(msg, text):
 
     payload = dict(text=text)
 
-    real_msg = Msg.objects.filter(id=msg.id).first()
-    if real_msg:
-        step = real_msg.get_flow_step()
-        destination = step.get_step().destination
+    try:
+        real_msg = Msg.objects.filter(id=msg.id).first()
+        if real_msg:
+            step = real_msg.get_flow_step()
+            destination = step.get_step().destination
 
-        try:
-            rule = RuleSet.objects.filter(uuid=destination).first()
-            lang = rule.flow.base_language
-            rules = rule.as_json()
-        except:
-            lang = BASE
-            rules = None
+            try:
+                rule = RuleSet.objects.filter(uuid=destination).first()
+                lang = rule.flow.base_language
+                rules = rule.as_json()
+            except:
+                lang = BASE
+                rules = None
 
-        if rules:
-            model = get_model(rules.get(RULES))
-            if model and rules.get(RULESET_TYPE) == WAIT_MESSAGE:
+            if rules:
+                model = get_model(rules.get(RULES))
+                if model and rules.get(RULESET_TYPE) == WAIT_MESSAGE:
 
-                buttons = []
-                for rule in rules.get(RULES):
-                    category, value = get_value_payload(rule, lang)
+                    buttons = []
+                    for rule in rules.get(RULES):
+                        category, value = get_value_payload(rule, lang)
 
-                    if category and value:
+                        if category and value:
+                            if model == BUTTON:
+                                buttons.append(dict(type=POSTBACK, title=category, payload=value))
+                            else:
+                                buttons.append(dict(content_type=TEXT, title=category, payload=value))
+
+                    if buttons:
                         if model == BUTTON:
-                            buttons.append(dict(type=POSTBACK, title=category, payload=value))
+                            obj_payload = dict(template_type=BUTTON, text=text, buttons=buttons)
+                            attachment = dict(type=TEMPLATE, payload=obj_payload)
+                            payload = dict(attachment=attachment)
                         else:
-                            buttons.append(dict(content_type=TEXT, title=category, payload=value))
-
-                if buttons:
-                    if model == BUTTON:
-                        obj_payload = dict(template_type=BUTTON, text=text, buttons=buttons)
-                        attachment = dict(type=TEMPLATE, payload=obj_payload)
-                        payload = dict(attachment=attachment)
-                    else:
-                        payload = dict(text=text, quick_replies=buttons)
+                            payload = dict(text=text, quick_replies=buttons)
+    except:
+        pass
 
     return payload
 
