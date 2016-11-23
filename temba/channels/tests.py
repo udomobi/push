@@ -6339,8 +6339,7 @@ class GCMTest(TembaTest):
         super(GCMTest, self).setUp()
         self.channel.delete()
 
-        from temba.channels.models import _GCM
-        self.channel = Channel.create(self.org, self.user, None, _GCM, 'gcm-channel', config={'api_key': '12345', 'notification_title': 'Notification title'}, uuid='00000000-0000-0000-0000-000000002345')
+        self.channel = Channel.create(self.org, self.user, None, Channel.TYPE_GCM, 'gcm-channel', config={'api_key': '12345', 'notification_title': 'Notification title'}, uuid='00000000-0000-0000-0000-000000002345')
 
     def test_send(self):
 
