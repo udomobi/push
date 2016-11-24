@@ -1,4 +1,7 @@
 FROM ubuntu:trusty
+
+#apt-get install
+
 RUN apt-get update && apt-get install -qyy \
     -o APT::Install-Recommends=false -o APT::Install-Suggests=false \
     build-essential python-imaging git python-setuptools  ncurses-dev python-virtualenv  python-pip postgresql-client-9.3 libpq-dev \
