@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files import File
+from django.core.files.temp import NamedTemporaryFile
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
@@ -22,7 +24,7 @@ from temba.flows.models import Flow, FlowRun
 from temba.orgs.models import NEXMO_UUID
 from temba.msgs.models import Msg, HANDLE_EVENT_TASK, HANDLER_QUEUE, MSG_EVENT, INTERRUPTED, OUTGOING
 from temba.triggers.models import Trigger
-from temba.utils import json_date_to_datetime
+from temba.utils import json_date_to_datetime, ms_to_datetime
 from temba.utils.middleware import disable_middleware
 from temba.utils.queues import push_task
 from .tasks import fb_channel_subscribe
@@ -62,7 +64,10 @@ class TwimlAPIHandler(View):
             # find a channel that knows how to answer twilio calls
             channel = self.get_ringing_channel(to_number=to_number)
             if not channel:
-                return HttpResponse("No channel to answer call for %s" % to_number, status=400)
+                response = twiml.Response()
+                response.say('Sorry, there is no channel configured to take this call. Goodbye.')
+                response.hangup()
+                return HttpResponse(unicode(response))
 
             org = channel.org
 
@@ -92,7 +97,7 @@ class TwimlAPIHandler(View):
                                        request.POST.get('CallDuration', None))
                     call.save()
 
-                    FlowRun.create(flow, contact.pk, call=call)
+                    FlowRun.create(flow, contact.pk, session=call)
                     response = Flow.handle_call(call, {})
                     return HttpResponse(unicode(response))
                 else:
@@ -518,10 +523,31 @@ class TelegramHandler(View):
     def dispatch(self, *args, **kwargs):
         return super(TelegramHandler, self).dispatch(*args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg
-        import telegram
+    @classmethod
+    def download_file(cls, channel, file_id):
+        """
+        Fetches a file from Telegram's server based on their file id
+        """
+        auth_token = channel.config_json()[Channel.CONFIG_AUTH_TOKEN]
+        url = 'https://api.telegram.org/bot%s/getFile' % auth_token
+        response = requests.post(url, {'file_id': file_id})
 
+        if response.status_code == 200:
+            if json:
+                response_json = response.json()
+                if response_json['ok']:
+                    url = 'https://api.telegram.org/file/bot%s/%s' % (auth_token, response_json['result']['file_path'])
+                    extension = url.rpartition('.')[2]
+                    response = requests.get(url)
+                    content_type = response.headers['Content-Type']
+
+                    temp = NamedTemporaryFile(delete=True)
+                    temp.write(response.content)
+                    temp.flush()
+
+                    return '%s:%s' % (content_type, channel.org.save_media(File(temp), extension))
+
+    def post(self, request, *args, **kwargs):
         channel_uuid = kwargs['uuid']
         channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=Channel.TYPE_TELEGRAM).exclude(org=None).first()
 
@@ -530,33 +556,8 @@ class TelegramHandler(View):
 
         body = json.loads(request.body)
 
-        # skip if there is no message block (could be a sticker or voice)
-        if 'photo' in body['message'] or 'document' in body['message'] or 'video' in body['message']:
-            bot = telegram.Bot(token=channel.config_json()[Channel.CONFIG_AUTH_TOKEN])
-
-            if 'photo' in body['message']:
-                telegram_file = bot.getFile(file_id=body['message']['photo'][-1]['file_id'])
-                text = telegram_file.file_path
-
-            elif 'document' in body['message']:
-                telegram_file = bot.getFile(file_id=body['message']['document']['file_id'])
-                text = telegram_file.file_path
-
-            else:
-                telegram_file = bot.getFile(file_id=body['message']['video']['file_id'])
-                text = telegram_file.file_path
-
-        elif 'text' in body['message']:
-            text = body['message']['text']
-
-        elif 'location' in body['message']:
-            text = "{0},{1}".format(body['message']['location']['latitude'], body['message']['location']['longitude'])
-
-        elif 'contact' in body['message']:
-            text = "{0} {1} - {2}".format(body['message']['contact'].get('first_name', ''), body['message']['contact'].get('last_name', ''), body['message']['contact'].get('phone_number', ''))
-
-        else:
-            return HttpResponse("No message text, photo, video, location or contact, ignored.")
+        if 'message' not in body:
+            return HttpResponse("No 'message' found in payload", status=400)
 
         # look up the contact
         telegram_id = str(body['message']['from']['id'])
@@ -581,9 +582,74 @@ class TelegramHandler(View):
                 Contact.get_or_create(channel.org, channel.created_by, name, urns=[urn])
 
         msg_date = datetime.utcfromtimestamp(body['message']['date']).replace(tzinfo=pytz.utc)
-        sms = Msg.create_incoming(channel, urn, text, date=msg_date)
 
-        return HttpResponse("SMS Accepted: %d" % sms.id)
+        def create_media_message(body, name):
+            # if we have a caption add it
+            if 'caption' in body['message']:
+                Msg.create_incoming(channel, urn, body['message']['caption'], date=msg_date)
+
+            # pull out the media body, download it and create our msg
+            if name in body['message']:
+                attachment = body['message'][name]
+                if isinstance(attachment, list):
+                    attachment = attachment[-1]
+                    if isinstance(attachment, list):
+                        attachment = attachment[0]
+
+                media_url = TelegramHandler.download_file(channel, attachment['file_id'])
+
+                # if we got a media URL for this attachment, save it away
+                if media_url:
+                    url = media_url.partition(':')[2]
+                    Msg.create_incoming(channel, urn, url, date=msg_date, media=media_url)
+
+            return HttpResponse("Message Accepted")
+
+        if 'sticker' in body['message']:
+            return create_media_message(body, 'sticker')
+
+        if 'video' in body['message']:
+            return create_media_message(body, 'video')
+
+        if 'voice' in body['message']:
+            return create_media_message(body, 'voice')
+
+        if 'document' in body['message']:
+            return create_media_message(body, 'document')
+
+        if 'location' in body['message']:
+            location = body['message']['location']
+            location = '%s,%s' % (location['latitude'], location['longitude'])
+
+            msg_text = location
+            if 'venue' in body['message']:
+                if 'title' in body['message']['venue']:
+                    msg_text = '%s (%s)' % (msg_text, body['message']['venue']['title'])
+            media_url = 'geo:%s' % location
+            msg = Msg.create_incoming(channel, urn, msg_text, date=msg_date, media=media_url)
+            return HttpResponse("Message Accepted: %d" % msg.id)
+
+        if 'photo' in body['message']:
+            create_media_message(body, 'photo')
+
+        if 'contact' in body['message']:
+            contact = body['message']['contact']
+
+            if 'first_name' in contact and 'phone_number' in contact:
+                body['message']['text'] = '%(first_name)s (%(phone_number)s)' % contact
+
+            elif 'first_name' in contact:
+                body['message']['text'] = '%(first_name)s' % contact
+
+            elif 'phone_number' in contact:
+                body['message']['text'] = '%(phone_number)s' % contact
+
+        # skip if there is no message block (could be a sticker or voice)
+        if 'text' in body['message']:
+            msg = Msg.create_incoming(channel, urn, body['message']['text'], date=msg_date)
+            return HttpResponse("Message Accepted: %d" % msg.id)
+
+        return HttpResponse("No message, ignored.")
 
 
 class InfobipHandler(View):
@@ -1975,3 +2041,46 @@ class ViberHandler(View):
 
         else:  # pragma: no cover
             return HttpResponse("Not handled, unknown action", status=400)
+
+
+class LineHandler(View):
+
+    @disable_middleware
+    def dispatch(self, *args, **kwargs):
+        return super(LineHandler, self).dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg
+
+        channel_uuid = kwargs['uuid']
+
+        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True, channel_type=Channel.TYPE_LINE).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+        try:
+            data = json.loads(request.body)
+            events = data.get('events')
+
+            for item in events:
+
+                if 'source' not in item or 'message' not in item or 'type' not in item.get('message'):
+                    return HttpResponse("Missing message, source or type in the event", status=400)
+
+                source = item.get('source')
+                message = item.get('message')
+
+                if message.get('type') == 'text':
+                    text = message.get('text')
+                    user_id = source.get('userId')
+                    date = ms_to_datetime(item.get('timestamp'))
+                    Msg.create_incoming(channel=channel, urn=URN.from_line(user_id), text=text, date=date)
+                    return HttpResponse("Msg Accepted")
+                else:
+                    return HttpResponse("Msg Ignored")
+
+        except Exception as e:
+            return HttpResponse("Not handled. Error: %s" % e.args, status=400)

@@ -8,7 +8,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('channels', '0040_merge'),
-        ('channels', '0035_auto_20160830_1727'),
     ]
 
     operations = [
