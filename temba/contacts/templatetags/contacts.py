@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django import template
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from temba.contacts.models import Contact, ContactURN, EMAIL_SCHEME, EXTERNAL_SCHEME, FACEBOOK_SCHEME, WHATSAPP_SCHEME
+from temba.contacts.models import Contact, ContactURN, EMAIL_SCHEME, EXTERNAL_SCHEME, FACEBOOK_SCHEME, GCM_SCHEME
 from temba.contacts.models import TELEGRAM_SCHEME, TEL_SCHEME, TWITTER_SCHEME, TWILIO_SCHEME
 
 register = template.Library()
@@ -15,8 +15,8 @@ URN_SCHEME_ICONS = {
     EMAIL_SCHEME: 'icon-envelop',
     FACEBOOK_SCHEME: 'icon-facebook',
     TELEGRAM_SCHEME: 'icon-telegram',
-    WHATSAPP_SCHEME: 'icon-whatsapp',
-    EXTERNAL_SCHEME: 'icon-channel-external'
+    EXTERNAL_SCHEME: 'icon-channel-external',
+    GCM_SCHEME: 'icon-gcm'
 }
 
 ACTIVITY_ICONS = {
@@ -94,7 +94,7 @@ def location(geo_url):
 def media_url(media):
     if media:
         # TODO: remove after migration msgs.0053
-        if media.startswith('http'):
+        if media.startswith('http'):  # pragma: needs cover
             return media
         return media.partition(':')[2]
 
@@ -103,7 +103,7 @@ def media_url(media):
 def media_content_type(media):
     if media:
         # TODO: remove after migration msgs.0053
-        if media.startswith('http'):
+        if media.startswith('http'):  # pragma: needs cover
             return 'audio/x-wav'
         return media.partition(':')[0]
 
@@ -111,15 +111,15 @@ def media_content_type(media):
 @register.filter
 def media_type(media):
     type = media_content_type(media)
-    if type == 'application/octet-stream' and media.endswith('.oga'):
+    if type == 'application/octet-stream' and media.endswith('.oga'):  # pragma: needs cover
         return 'audio'
-    if type and '/' in type:
+    if type and '/' in type:  # pragma: needs cover
         type = type.split('/')[0]
     return type
 
 
 @register.filter
-def is_supported_audio(content_type):
+def is_supported_audio(content_type):  # pragma: needs cover
     return content_type in ['audio/wav', 'audio/x-wav', 'audio/vnd.wav', 'application/octet-stream']
 
 
@@ -130,16 +130,22 @@ def is_document(media_url):
 
 
 @register.filter
-def extension(url):
+def extension(url):  # pragma: needs cover
     return url.rpartition('.')[2]
 
 
 @register.filter
 def activity_icon(item):
     name = type(item).__name__
-    if name == 'Msg':
+
+    if name == 'Broadcast':
+        if item.purged_status in ('E', 'F'):
+            name = 'Failed'
+    elif name == 'Msg':
         if item.broadcast and item.broadcast.recipient_count > 1:
             name = 'Broadcast'
+            if item.status in ('E', 'F'):
+                name = 'Failed'
         elif item.msg_type == 'V':
             if item.direction == 'I':
                 name = 'DTMF'

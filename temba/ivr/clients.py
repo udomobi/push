@@ -25,22 +25,19 @@ class IVRException(Exception):
 
 
 class TwilioClient(TwilioRestClient):
-    def __init__(self, account, token, org=None, twiml_api=None, **kwargs):
+
+    def __init__(self, account, token, org=None, **kwargs):
         self.org = org
-        self.twiml_api = twiml_api
         super(TwilioClient, self).__init__(account=account, token=token, **kwargs)
 
     def start_call(self, call, to, from_, status_callback):
+        if not settings.SEND_CALLS:
+            raise IVRException("SEND_CALLS set to False, skipping call start")
 
         try:
-            url = status_callback
-
-            if self.twiml_api:
-                url = self.twiml_api
-
             twilio_call = self.calls.create(to=to,
                                             from_=call.channel.address,
-                                            url=url,
+                                            url=status_callback,
                                             status_callback=status_callback)
             call.external_id = unicode(twilio_call.sid)
             call.save()
@@ -51,7 +48,7 @@ class TwilioClient(TwilioRestClient):
 
             raise IVRException(message)
 
-    def validate(self, request):
+    def validate(self, request):  # pragma: needs cover
         validator = RequestValidator(self.auth[1])
         signature = request.META.get('HTTP_X_TWILIO_SIGNATURE', '')
 
@@ -97,10 +94,11 @@ class TwilioClient(TwilioRestClient):
 
             return '%s:%s' % (content_type, self.org.save_media(File(temp), extension))
 
-        return None
+        return None  # pragma: needs cover
 
 
-class VerboiceClient:
+class VerboiceClient:  # pragma: needs cover
+
     def __init__(self, channel):
         self.endpoint = 'https://verboice.instedd.org/api/call'
 
@@ -115,6 +113,9 @@ class VerboiceClient:
         return True
 
     def start_call(self, call, to, from_, status_callback):
+        if not settings.SEND_CALLS:
+            raise IVRException("SEND_CALLS set to False, skipping call start")
+
         channel = call.channel
         Contact.get_or_create(channel.org, channel.created_by, urns=[URN.from_tel(to)])
 

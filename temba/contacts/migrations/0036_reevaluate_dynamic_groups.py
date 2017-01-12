@@ -20,10 +20,10 @@ def reevaluate_dynamic_groups(apps, schema_editor):
         member_ids = set(group.contacts.all().values_list('pk', flat=True))
 
         if qualifier_ids != member_ids:
-            print("Fixing member inconsistency for dynamic group '%s' [%d] in org '%s' [%d]..."
-                  % (group.name, group.pk, org.name, org.pk))
-            print(" > Group set contains %d contacts (count field is %d)" % (len(member_ids), group.count))
-            print(" > Query '%s' returns %d contacts" % (group.query, len(qualifier_ids)))
+            # print("Fixing member inconsistency for dynamic group '%s' [%d] in org '%s' [%d]..."
+            #      % (group.name, group.pk, org.name, org.pk))
+            # print(" > Group set contains %d contacts (count field is %d)" % (len(member_ids), group.count))
+            # print(" > Query '%s' returns %d contacts" % (group.query, len(qualifier_ids)))
 
             missing_ids = qualifier_ids - member_ids
             extra_ids = member_ids - qualifier_ids
@@ -39,7 +39,8 @@ class Migration(migrations.Migration):
     dependencies = [
         ('contacts', '0035_auto_20160414_0642'),
         ('orgs', '0019_org_surveyor_password'),
-        ('orgs', '0022_auto_20160815_1726')
+        ('orgs', '0022_auto_20160815_1726'),
+        ('orgs', '0028_org_is_purgeable')
     ]
 
     operations = [
