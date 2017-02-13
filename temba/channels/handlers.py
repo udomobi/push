@@ -2095,16 +2095,21 @@ class FacebookHandler(BaseChannelHandler):
                             if 'text' in envelope['message']:
                                 content = envelope['message']['text']
                             elif 'attachments' in envelope['message']:
-                                urls = []
+                                items = []
                                 for attachment in envelope['message']['attachments']:
-                                    if attachment['payload'] and 'url' in attachment['payload']:
-                                        urls.append(attachment['payload']['url'])
+                                    if 'payload' in attachment and 'type' in attachment \
+                                            and attachment['type'] == 'location':
+                                        location = "%s,%s" % (attachment['payload']['coordinates']['lat'],
+                                                              attachment['payload']['coordinates']['long'])
+                                        items.append(location)
+                                    elif attachment['payload'] and 'url' in attachment['payload']:
+                                        items.append(attachment['payload']['url'])
                                     elif 'url' in attachment and attachment['url']:
                                         if 'title' in attachment and attachment['title']:
-                                            urls.append(attachment['title'])
-                                        urls.append(attachment['url'])
+                                            items.append(attachment['title'])
+                                        items.append(attachment['url'])
 
-                                content = '\n'.join(urls)
+                                content = '\n'.join(items)
 
                         elif 'postback' in envelope:
                             postback = envelope['postback']['payload']
