@@ -442,58 +442,6 @@ class ZenviaHandler(BaseChannelHandler):
             return HttpResponse("Not handled", status=400)
 
 
-class GCMHandler(BaseChannelHandler):
-
-    url = r'^gcm/(?P<uuid>[a-z0-9\-]+)/?$'
-    url_name = 'handlers.gcm_handler'
-
-    def get(self, request, *args, **kwargs):
-        return self.post(request, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        from temba.msgs.models import Msg
-
-        channel_uuid = kwargs['uuid']
-
-        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True,
-                                         channel_type=Channel.TYPE_GCM).exclude(org=None).first()
-        if not channel:
-            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
-
-        if not self.get_param('from') or not self.get_param('msg'):
-            return HttpResponse("Missing parameters, requires 'from' and 'msg'", status=400)
-
-        try:
-            date = self.get_param('date', default=self.get_param('time', default=None))
-            if date:
-                date = json_date_to_datetime(date)
-
-            contact_uuid = self.get_param('contact_uuid', None)
-            gcm_urn = URN.from_gcm(self.get_param('from'))
-
-            if contact_uuid:
-                contact = Contact.get_or_create(channel.org, channel.created_by, uuid=contact_uuid,
-                                                name=self.get_param('name', default=None))
-                contact_urn = contact.urns.filter(scheme='gcm').first()
-                if contact_urn.urn != gcm_urn:
-                    contact_urn.urn = gcm_urn
-                    contact_urn.path = self.get_param('from')
-                    contact_urn.save()
-            else:
-                contact = Contact.get_or_create(channel.org, channel.created_by, uuid=contact_uuid,
-                                                name=self.get_param('name', default=None), urns=[gcm_urn],
-                                                channel=channel)
-
-            sms = Msg.create_incoming(channel, gcm_urn, self.get_param('msg'), date=date, contact=contact)
-
-            response = contact.as_json()
-            response['msg'] = sms.id
-            return HttpResponse(json.dumps(response), content_type='application/json')
-
-        except Exception as e:
-            return HttpResponse(e.args, status=400)
-
-
 class ExternalHandler(BaseChannelHandler):
 
     url = r'^external/(?P<action>sent|delivered|failed|received)/(?P<uuid>[a-z0-9\-]+)/$'
@@ -2618,3 +2566,55 @@ class ViberPublicHandler(BaseChannelHandler):
 
         else:  # pragma: no cover
             return HttpResponse("Not handled, unknown event: %s" % event, status=400)
+
+
+class GCMHandler(BaseChannelHandler):
+
+    url = r'^gcm/(?P<uuid>[a-z0-9\-]+)/?$'
+    url_name = 'handlers.gcm_handler'
+
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg
+
+        channel_uuid = kwargs['uuid']
+
+        channel = Channel.objects.filter(uuid=channel_uuid, is_active=True,
+                                         channel_type=Channel.TYPE_GCM).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid: %s not found." % channel_uuid, status=404)
+
+        if not self.get_param('from') or not self.get_param('msg'):
+            return HttpResponse("Missing parameters, requires 'from' and 'msg'", status=400)
+
+        try:
+            date = self.get_param('date', default=self.get_param('time', default=None))
+            if date:
+                date = json_date_to_datetime(date)
+
+            contact_uuid = self.get_param('contact_uuid', None)
+            gcm_urn = URN.from_gcm(self.get_param('from'))
+
+            if contact_uuid:
+                contact = Contact.get_or_create(channel.org, channel.created_by, uuid=contact_uuid,
+                                                name=self.get_param('name', default=None))
+                contact_urn = contact.urns.filter(scheme='gcm').first()
+                if contact_urn.urn != gcm_urn:
+                    contact_urn.urn = gcm_urn
+                    contact_urn.path = self.get_param('from')
+                    contact_urn.save()
+            else:
+                contact = Contact.get_or_create(channel.org, channel.created_by, uuid=contact_uuid,
+                                                name=self.get_param('name', default=None), urns=[gcm_urn],
+                                                channel=channel)
+
+            sms = Msg.create_incoming(channel, gcm_urn, self.get_param('msg'), date=date, contact=contact)
+
+            response = contact.as_json()
+            response['msg'] = sms.id
+            return HttpResponse(json.dumps(response), content_type='application/json')
+
+        except Exception as e:
+            return HttpResponse(e.args, status=400)
