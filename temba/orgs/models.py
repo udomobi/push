@@ -2250,42 +2250,6 @@ class TopUpCredits(SquashableModel):
         return sql, (distinct_set.topup_id,) * 2
 
 
-class OrderPayment(SmartModel):
-    """
-    Orders MoIP for payment.
-    """
-    org = models.ForeignKey(Org, related_name='payments', help_text="The organization that payment was requested")
-    value = models.FloatField(verbose_name=_("Value"), help_text=_("The value in cents of the MoIP order"))
-    credits = models.IntegerField(verbose_name=_("Number of Credits"), help_text=_("The number of credits bought in this top up"))
-    plan = models.CharField(verbose_name=_('Plan'), max_length=255, )
-    transaction_id = models.CharField(verbose_name=_('Transaction ID'), help_text=_('PayPal request transaction ID'), max_length=255, unique=True)
-    billing_agreement_id = models.CharField(verbose_name=_('Billing Agreement ID'), help_text=_('PayPal billing agreement ID'), max_length=255, null=True, )
-    status = models.CharField(verbose_name=_('Status'), max_length=255, )
-
-    @classmethod
-    def create(cls, user, value, credits, plan, transaction_id, billing_agreement_id=None, org=None, is_active=True):
-        """
-        Creates a new order payment for topup
-        """
-        if not org:
-            org = user.get_org()
-
-        return OrderPayment.objects.create(org=org, value=value, credits=credits, plan=plan, transaction_id=transaction_id, billing_agreement_id=billing_agreement_id, created_by=user, modified_by=user, is_active=is_active)
-
-    def __unicode__(self):
-        return "%s" % self.id
-
-    def active(self, is_active=True):
-        self.is_active = is_active
-        self.save()
-        return self
-
-    def set_status(self, status):
-        self.status = status
-        self.save()
-        return self
-
-
 class CreditAlert(SmartModel):
     """
     Tracks when we have sent alerts to organization admins about low credits.

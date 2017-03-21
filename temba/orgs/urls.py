@@ -1,12 +1,11 @@
 from __future__ import absolute_import, unicode_literals
 
 from django.conf.urls import url
-from .views import OrgCRUDL, UserSettingsCRUDL, TopUpCRUDL, UserCRUDL, check_login, StripeHandler, OrderPaymentCRUDL
+from .views import OrgCRUDL, UserSettingsCRUDL, TopUpCRUDL, UserCRUDL, check_login, StripeHandler
 
 urlpatterns = OrgCRUDL().as_urlpatterns()
 urlpatterns += UserSettingsCRUDL().as_urlpatterns()
 urlpatterns += TopUpCRUDL().as_urlpatterns()
-urlpatterns += OrderPaymentCRUDL().as_urlpatterns()
 urlpatterns += UserCRUDL().as_urlpatterns()
 
 urlpatterns += [

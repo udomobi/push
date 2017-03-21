@@ -4,5 +4,3 @@
       .formax-icon{class:'{{section.icon}}'}
       .formax-container{style:"position: relative"}
         {{ section.response|safe }}
-        -if section.name == 'topups'
-          %a.btn.btn-primary{ style:"position:absolute; top: 0; right: 0", href:"{% url 'orgs.topup_pricing' %}" } Add credits

@@ -41,18 +41,12 @@ from temba.utils.middleware import disable_middleware
 from temba.utils.timezones import TimeZoneFormField
 from temba.utils.email import is_valid_address
 from twilio.rest import TwilioRestClient
-from paypalrestsdk.exceptions import ResourceNotFound
 
-from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, get_stripe_credentials, OrderPayment
+from .models import Org, OrgCache, OrgEvent, TopUp, Invitation, UserSettings, get_stripe_credentials
 from .models import MT_SMS_EVENTS, MO_SMS_EVENTS, MT_CALL_EVENTS, MO_CALL_EVENTS, ALARM_EVENTS
 from .models import SUSPENDED, WHITELISTED, RESTORED, NEXMO_UUID, NEXMO_SECRET, NEXMO_KEY
 from .models import TRANSFERTO_AIRTIME_API_TOKEN, TRANSFERTO_ACCOUNT_LOGIN, SMTP_FROM_EMAIL
 from .models import SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, SMTP_PORT, SMTP_ENCRYPTION
-
-import paypalrestsdk
-from paypalrestsdk import BillingPlan, BillingAgreement
-
-paypalrestsdk.configure(settings.PAYPAL_API)
 
 
 def check_login(request):
@@ -2404,7 +2398,7 @@ class OrgCRUDL(SmartCRUDL):
 
 
 class TopUpCRUDL(SmartCRUDL):
-    actions = ('list', 'create', 'read', 'manage', 'update', 'pricing')
+    actions = ('list', 'create', 'read', 'manage', 'update')
     model = TopUp
 
     class Read(OrgPermsMixin, SmartReadView):
@@ -2525,175 +2519,6 @@ class TopUpCRUDL(SmartCRUDL):
         def derive_queryset(self):
             self.org = Org.objects.get(pk=self.request.GET['org'])
             return self.org.topups.all()
-
-    class Pricing(OrgPermsMixin, SmartTemplateView):
-        template_name = 'orgs/topup_pricing.haml'
-
-        def dispatch(self, request, *args, **kwargs):
-            org = request.user.get_org()
-            if OrderPayment.objects.filter(org=org, is_active=True).first():
-                messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
-                return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
-
-            return super(TopUpCRUDL.Pricing, self).dispatch(request, *args, **kwargs)
-
-        def post(self, request, *args, **kwargs):
-            plan = request.POST.get('plan')
-            org = request.user.get_org()
-
-            if plan in settings.BILLING_PLANS:
-                new_plan = BillingPlan({
-                    "name": settings.BILLING_PLANS[plan]['title'],
-                    "description": settings.BILLING_PLANS[plan]['title'],
-                    "type": "INFINITE",
-                    "payment_definitions": [
-                        {
-                            "name": "Regular Payments",
-                            "type": "REGULAR",
-                            "frequency": "MONTH",
-                            "frequency_interval": "1",
-                            "amount": {
-                                "value": "{0}".format(settings.BILLING_PLANS[plan]['value']),
-                                "currency": "BRL"
-                            },
-                            "cycles": "0"
-                        }
-                    ],
-                    "merchant_preferences": {
-                        "setup_fee": {
-                            "value": "0",
-                            "currency": "BRL"
-                        },
-                        "return_url": "http://{host}{reverse}".format(host=request.get_host(), reverse=reverse('orgs.orderpayment_execute')),
-                        "cancel_url": "http://{host}{reverse}".format(host=request.get_host(), reverse=reverse('orgs.orderpayment_list')),
-                        "auto_bill_amount": "YES",
-                        "initial_fail_amount_action": "CONTINUE",
-                        "max_fail_attempts": "0"
-                    }
-                })
-                if new_plan.create():
-                    try:
-                        created_plan = BillingPlan.find(new_plan.id)
-                        created_plan.activate()
-                        new_billing_agreement = BillingAgreement({
-                            "name": org.name,
-                            "description": "Agreement for {0}".format(settings.BILLING_PLANS[plan]['title']),
-                            "start_date": (datetime.now() + timedelta(minutes=1)).strftime('%Y-%m-%dT%H:%M:%SZ'),
-                            "plan": {
-                                "id": created_plan.id
-                            },
-                            "payer": {
-                                "payment_method": "paypal"
-                            },
-                            "shipping_address": {
-                                "line1": settings.PAYPAL_ADDRESS['address'],
-                                "city": settings.PAYPAL_ADDRESS['city'],
-                                "state": settings.PAYPAL_ADDRESS['state'],
-                                "postal_code": settings.PAYPAL_ADDRESS['postal_code'],
-                                "country_code": settings.PAYPAL_ADDRESS['country_code']
-                            }
-                        })
-                        if new_billing_agreement.create():
-                            for link in new_billing_agreement.links:
-                                if link.rel == "approval_url":
-                                    token = link.href.split('=')[-1]
-                                    orderpayment = OrderPayment.create(user=self.request.user, value=float(settings.BILLING_PLANS[plan]['value']), plan=plan, credits=settings.BILLING_PLANS[plan]['credits'], transaction_id=token, is_active=False)
-                                    orderpayment.set_status(status='Inactive')
-                                    return HttpResponseRedirect(link.href)
-                        else:
-                            messages.error(request, "Error on creating billing agreement: %s" % new_billing_agreement.error['details'][0]['issue'])
-
-                    except ResourceNotFound as e:
-                        messages.error(request, "Resource not found active plan: %s" % e)
-                else:
-                    messages.error(request, new_plan.error['details'][0]['issue'])
-
-            return HttpResponseRedirect(reverse('orgs.topup_pricing'))
-
-        def get_context_data(self, **kwargs):
-            import operator
-            org = self.request.user.get_org()
-            context = super(TopUpCRUDL.Pricing, self).get_context_data(**kwargs)
-            context['org'] = org
-            context['plans'] = [[plan, key['credits'], key['value'], key['each']] for plan, key in sorted(settings.BILLING_PLANS.items(), key=operator.itemgetter(1))]
-            return context
-
-
-class OrderPaymentCRUDL(SmartCRUDL):
-    actions = ('list', 'execute', 'cancel')
-    model = OrderPayment
-
-    class List(OrgPermsMixin, SmartListView):
-        def derive_queryset(self, **kwargs):
-            return OrderPayment.objects.filter(is_active=True, org=self.request.user.get_org()).order_by('-created_on')
-
-        def get_context_data(self, **kwargs):
-            context = super(OrderPaymentCRUDL.List, self).get_context_data(**kwargs)
-            context['org'] = self.request.user.get_org()
-            return context
-
-        def get_template_names(self):
-            return super(OrderPaymentCRUDL.List, self).get_template_names()
-
-    class Execute(OrgPermsMixin, SmartTemplateView):
-        template_name = 'orgs/orderpayment_create.haml'
-
-        def get(self, request, *args, **kwargs):
-            org = request.user.get_org()
-            if OrderPayment.objects.filter(org=org, is_active=True).first():
-                messages.info(request, _('This organization already has a subscription, cancel it before to subscribe again.'))
-            else:
-                transaction_id = self.request.GET.get('token')
-                billing_agreement = BillingAgreement.execute(transaction_id)
-
-                if 'id' in billing_agreement:
-                    billing_agreement_id = billing_agreement['id']
-                else:
-                    billing_agreement_id = None
-
-                if 'state' in billing_agreement:
-                    billing_agreement_state = billing_agreement['state']
-                else:
-                    messages.info(request, _('Billing agreement with state "{state}".'.format(billing_agreement['state'])))
-                    billing_agreement_state = None
-
-                if not OrderPayment.objects.filter(transaction_id=transaction_id, is_active=True).first() and billing_agreement_id and billing_agreement_state == 'Active':
-                    orderpayment = OrderPayment.objects.filter(transaction_id=transaction_id).first()
-                    orderpayment.billing_agreement_id = billing_agreement_id
-                    orderpayment.save()
-                    orderpayment.active()
-                    orderpayment.set_status(status=billing_agreement_state)
-                    expires_on = timezone.now() + timedelta(days=30)
-                    TopUp.create(user=self.request.user, price=settings.BILLING_PLANS[orderpayment.plan]['each'] * 100.0, credits=settings.BILLING_PLANS[orderpayment.plan]['credits'], expires_on=expires_on)
-                    messages.success(request, _("Thank you. Your subscription was received. If your credits still doesn't are available, please, contact administrator."))
-                else:
-                    messages.info(request, _('Unauthorized! Payment not found.'))
-
-            return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
-
-        def get_context_data(self, **kwargs):
-            kwargs = super(OrderPaymentCRUDL.Execute, self).get_context_data()
-            kwargs['org'] = self.request.user.get_org()
-            return kwargs
-
-    class Cancel(OrgPermsMixin, SmartUpdateView):
-        def get(self, request, *args, **kwargs):
-            orderpayment = OrderPayment.objects.filter(pk=kwargs['pk'], org=self.request.user.get_org(), is_active=True).first()
-            if orderpayment:
-                billing_agreement = BillingAgreement.find(orderpayment.billing_agreement_id)
-                if billing_agreement.state == 'Active':
-                    billing_agreement.cancel(attributes={'note': 'Canceling the agreement.'})
-                    orderpayment.active(is_active=False)
-                    orderpayment.set_status(status='Cancelled')
-                    messages.success(request, _('Billing agreement cancelled.'))
-                else:
-                    messages.info(request, _('Billing agreement are not active. Contact the system administrator.'))
-            return HttpResponseRedirect(reverse('orgs.orderpayment_list'))
-
-        def get_context_data(self, **kwargs):
-            kwargs = super(OrderPaymentCRUDL.Cancel, self).get_context_data()
-            kwargs['org'] = self.request.user.get_org()
-            return kwargs
 
 
 class StripeHandler(View):  # pragma: no cover
