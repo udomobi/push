@@ -783,6 +783,9 @@
 .icon-line:before {
   content: "\e905";
 }
+.icon-fcm:before {
+  content: "\e906";
+}
 .icon-gcm:before {
   content: "\e906";
 }
