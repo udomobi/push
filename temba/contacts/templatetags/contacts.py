@@ -38,6 +38,8 @@ ACTIVITY_ICONS = {
     'Completed': 'icon-checkmark'
 }
 
+MISSING_VALUE = '--'
+
 
 @register.filter
 def contact_field(contact, arg):
@@ -45,7 +47,7 @@ def contact_field(contact, arg):
     if value:
         return value
     else:  # pragma: no cover
-        return None
+        return MISSING_VALUE
 
 
 @register.filter
@@ -65,7 +67,7 @@ def name(contact, org):
     elif org.is_anon:
         return contact.anon_identifier
     else:
-        return "--"
+        return MISSING_VALUE
 
 
 @register.filter
@@ -82,7 +84,7 @@ def urn(contact, org):
     if urn:
         return format_urn(urn, org)
     else:
-        return ""
+        return MISSING_VALUE
 
 
 @register.filter
@@ -123,9 +125,6 @@ def media_url(media):
 @register.filter
 def media_content_type(media):
     if media:
-        # TODO: remove after migration msgs.0053
-        if media.startswith('http'):  # pragma: needs cover
-            return 'audio/x-wav'
         return media.partition(':')[0]
 
 
