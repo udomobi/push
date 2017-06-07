@@ -61,7 +61,8 @@ RELAYER_TYPE_ICONS = {Channel.TYPE_ANDROID: "icon-channel-android",
                       Channel.TYPE_TELEGRAM: "icon-telegram",
                       Channel.TYPE_FACEBOOK: "icon-facebook-official",
                       Channel.TYPE_FCM: "icon-fcm",
-                      Channel.TYPE_VIBER: "icon-viber"}
+                      Channel.TYPE_VIBER: "icon-viber",
+                      Channel.TYPE_WS: "icon-websocket"}
 
 SESSION_TWITTER_TOKEN = 'twitter_oauth_token'
 SESSION_TWITTER_SECRET = 'twitter_oauth_token_secret'
@@ -882,7 +883,7 @@ class ChannelCRUDL(SmartCRUDL):
                'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo', 'claim_viber', 'create_viber',
                'claim_twilio_messaging_service', 'claim_zenvia', 'claim_jasmin', 'claim_mblox', 'claim_facebook', 'claim_globe',
                'claim_twiml_api', 'claim_line', 'claim_viber_public', 'claim_dart_media', 'claim_junebug', 'facebook_whitelist',
-               'claim_red_rabbit', 'claim_macrokiosk')
+               'claim_red_rabbit', 'claim_macrokiosk', 'claim_ws')
     permissions = True
 
     class Read(OrgObjPermsMixin, SmartReadView):
@@ -2401,6 +2402,25 @@ class ChannelCRUDL(SmartCRUDL):
             self.object = Channel.add_fcm_channel(org=self.request.user.get_org(), user=self.request.user, data=data)
 
             return super(ChannelCRUDL.ClaimFcm, self).form_valid(form)
+
+    class ClaimWs(OrgPermsMixin, SmartFormView):
+        class ClaimWsForm(forms.Form):
+            url = forms.CharField(label=_('WebSocket URL'))
+
+        form_class = ClaimWsForm
+        fields = ('url',)
+        url = _("WebSocket Server URL")
+        success_url = "id@channels.channel_configuration"
+
+        def form_valid(self, form):
+            cleaned_data = form.cleaned_data
+            data = {
+                Channel.CONFIG_WS_URL: cleaned_data.get('url')
+            }
+
+            self.object = Channel.add_ws_channel(org=self.request.user.get_org(), user=self.request.user, data=data)
+
+            return super(ChannelCRUDL.ClaimWs, self).form_valid(form)
 
     class ClaimFacebook(OrgPermsMixin, SmartFormView):
         class FacebookForm(forms.Form):

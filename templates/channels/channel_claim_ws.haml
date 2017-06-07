@@ -1,0 +1,31 @@
+-extends "smartmin/form.html"
+-load i18n compress temba
+
+-block title
+  .medium-help.icon-fcm.float-left
+
+  %h2.font_normalize.header-margin
+    -trans "Connect WebSocket"
+
+-block pre-form
+  .info
+    %p
+      -blocktrans
+        description here
+
+-block extra-style
+  {{ block.super }}
+
+  :css
+    .info {
+      width: 800px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom:15px;
+    }
+
+    #id_auth_token {
+      width: 340px;
+    }

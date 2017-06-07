@@ -518,6 +518,86 @@ class ExternalHandler(BaseChannelHandler):
             return HttpResponse("Not handled", status=400)
 
 
+class WsHandler(BaseChannelHandler):
+
+    url = r'^ws/(?P<action>received|register|message-options)/(?P<uuid>[a-z0-9\-]+)/$'
+    url_name = 'handlers.ws_handler'
+
+    def get_channel_type(self):
+        return Channel.TYPE_WS
+
+    def get(self, request, *args, **kwargs):
+        return self.post(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        from temba.msgs.models import Msg
+        from temba.flows.models import RuleSet
+
+        action = kwargs['action'].lower()
+
+        uuid_or_address = kwargs['uuid']
+        if len(uuid_or_address) == 36:
+            channel_q = Q(uuid=uuid_or_address)
+        else:
+            channel_q = Q(address=uuid_or_address) | Q(address=('+' + uuid_or_address))
+
+        channel = Channel.objects.filter(channel_q).filter(is_active=True, channel_type=self.get_channel_type()).exclude(org=None).first()
+        if not channel:
+            return HttpResponse("Channel with uuid or address %s not found." % uuid_or_address, status=400)
+
+        if action == 'received':
+            sender = self.get_param('from', self.get_param('sender'))
+            if not sender:
+                return HttpResponse("Missing 'from' or 'sender' parameter, invalid call.", status=400)
+
+            text = self.get_param('text', self.get_param('message'))
+            if text is None:
+                return HttpResponse("Missing 'text' or 'message' parameter, invalid call.", status=400)
+
+            date = self.get_param('date', self.get_param('time'))
+            if date:
+                date = json_date_to_datetime(date)
+
+            urn = URN.from_parts(channel.scheme, sender)
+            sms = Msg.create_incoming(channel, urn, text, date=date)
+
+            return HttpResponse("SMS Accepted: %d" % sms.id)
+
+        elif action == 'register':
+            if not self.get_param('urn'):
+                return HttpResponse("Missing parameters, requires 'urn'", status=400)
+
+            ws_urn = URN.from_ws(self.get_param('urn'))
+            name = self.get_param('name', None)
+            contact = Contact.get_or_create(channel.org, channel.created_by, name=name, urns=[ws_urn],
+                                            channel=channel)
+            return HttpResponse(json.dumps({'contact_uuid': contact.uuid}), content_type='application/json')
+
+        elif action == 'message-options':
+            sender = self.get_param('from', self.get_param('sender'))
+            if not sender:
+                return HttpResponse("Missing 'from' or 'sender' parameter, invalid call.", status=400)
+
+            msg_id = self.get_param('id')
+            if msg_id is None:
+                return HttpResponse("Missing 'id' parameter, invalid call.", status=400)
+
+            msg = Msg.objects.filter(pk=msg_id).first()
+
+            if msg:
+                try:
+                    step = msg.get_flow_step()
+                    destination = step.get_step().destination
+                    rules = RuleSet.objects.filter(uuid=destination).first().as_json()
+                except:
+                    rules = {}
+
+            return HttpResponse(json.dumps(rules), content_type='application/json')
+
+        else:
+            return HttpResponse("Not handled", status=400)
+
+
 class ShaqodoonHandler(ExternalHandler):
     """
     Overloaded external channel for accepting Shaqodoon messages
