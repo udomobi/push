@@ -574,10 +574,6 @@ class WsHandler(BaseChannelHandler):
             return HttpResponse(json.dumps({'contact_uuid': contact.uuid}), content_type='application/json')
 
         elif action == 'message-options':
-            sender = self.get_param('from', self.get_param('sender'))
-            if not sender:
-                return HttpResponse("Missing 'from' or 'sender' parameter, invalid call.", status=400)
-
             msg_id = self.get_param('id')
             if msg_id is None:
                 return HttpResponse("Missing 'id' parameter, invalid call.", status=400)
