@@ -2787,12 +2787,13 @@ class Channel(TembaModel):
                 'Content-Type': 'application/json',
                 'Authorization': 'key={0}'.format(api_key)
             }
+            event = HttpEvent('POST', url, payload)
             try:
                 response = requests.post(url, data=payload, headers=headers, timeout=5)
                 result = json.loads(response.content)
                 if response.status_code == 200 and 'success' in result and result['success'] == 1:
                     external_id = result['multicast_id']
-                    Channel.success(channel, msg, WIRED, start, 'POST', url, payload, response, external_id)
+                    Channel.success(channel, msg, WIRED, start, events=[event], external_id=external_id)
                 else:
                     ChannelLog.log_error(msg, "Failed to send message")
 
