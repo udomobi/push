@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -qyy \
     build-essential python-imaging git python-setuptools  ncurses-dev python-virtualenv  python-pip postgresql-client-9.3 libpq-dev \
     libpython-dev lib32ncurses5-dev pypy libffi6 openssl libgeos-dev \
     coffeescript node-less yui-compressor gcc libreadline6 libreadline6-dev patch libffi-dev libssl-dev libxml2-dev libxslt1-dev  python-dev \
-    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev ccze libmagic-dev
+    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev libmagic-dev
 WORKDIR /tmp
 RUN wget http://download.osgeo.org/gdal/1.11.0/gdal-1.11.0.tar.gz
 RUN tar xvfz gdal-1.11.0.tar.gz
@@ -22,6 +22,7 @@ RUN virtualenv env
 RUN . env/bin/activate
 ADD pip-freeze.txt /udo-rapidpro/pip-freeze.txt
 RUN pip install -r pip-freeze.txt
+RUN pip install requests[security]
 RUN pip install uwsgi
 ADD . /udo-rapidpro
 COPY settings.py.pre /udo-rapidpro/temba/settings.py
