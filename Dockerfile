@@ -22,6 +22,7 @@ RUN virtualenv env
 RUN . env/bin/activate
 ADD pip-freeze.txt /udo-rapidpro/pip-freeze.txt
 RUN pip install -r pip-freeze.txt
+RUN pip install -U pip
 RUN pip install requests[security] --upgrade
 RUN pip install uwsgi
 ADD . /udo-rapidpro
