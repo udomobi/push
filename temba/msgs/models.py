@@ -1293,9 +1293,8 @@ class Msg(models.Model):
         # Task to send data to Chatbase API
         not_handled = msg.msg_type == INBOX
         if channel:
-            on_transaction_commit(lambda: send_chatbase_log.apply_async(args=(org.id, channel.name, msg.text,
-                                                                              contact.id, CHATBASE_TYPE_USER,
-                                                                              not_handled), queue='msgs'))
+            send_chatbase_log.apply_async(args=(org.id, channel.name, msg.text, contact.id, CHATBASE_TYPE_USER,
+                                                not_handled), queue='msgs')
 
         return msg
 

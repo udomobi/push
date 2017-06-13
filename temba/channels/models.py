@@ -1351,9 +1351,8 @@ class Channel(TembaModel):
                                       request_time=request_time_ms)
 
             # Send data to Chatbase API
-            on_transaction_commit(lambda: send_chatbase_log.apply_async(args=(msg.org, channel.name, msg.text,
-                                                                              msg.contact, CHATBASE_TYPE_AGENT, False),
-                                                                        queue='msgs'))
+            send_chatbase_log.apply_async(args=(msg.org, channel.name, msg.text, msg.contact, CHATBASE_TYPE_AGENT,
+                                                False), queue='msgs')
 
     @classmethod
     def send_fcm_message(cls, channel, msg, text):
@@ -3049,7 +3048,8 @@ class Channel(TembaModel):
                 if type == CHATBASE_TYPE_USER and not_handled:
                     data.update(dict(not_handled=True))
 
-                requests.post(settings.CHATBASE_API_URL, data)
+                response = requests.post(settings.CHATBASE_API_URL, data)
+                print(response.content)
 
         except Exception as e:
             import traceback
