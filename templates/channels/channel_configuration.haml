@@ -994,6 +994,22 @@
         id=2599235
     %hr
 
+  -elif object.channel_type == 'WS'
+    %h4
+      -blocktrans
+        Description here
+
+    %hr
+
+    %h4
+      -trans "Add code"
+
+    %code
+      &lt;script src=&quot;https://{{ domain }}{{ STATIC_URL }}push.js&quot;&gt;&lt;/script&gt;
+      <br/>
+      &lt;script type=&quot;text/javascript&quot;&gt; 
+      <br/>const app = new WebPush({ socketUrl: '{{ object.config_json.WS_URL }}', channelUUID: '{{ object.uuid }}', hostApi: '{{ domain }}' });<br/>&lt;/script&gt;
+
 -block extra-script
   {{ block.super }}
   <script src="{{ STATIC_URL }}rest_framework/js/prettify-min.js"></script>
