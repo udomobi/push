@@ -2,7 +2,7 @@
 -load i18n compress temba
 
 -block title
-  .medium-help.icon-fcm.float-left
+  .medium-help.icon-cog.float-left
 
   %h2.font_normalize.header-margin
     -trans "Connect WebSocket"
@@ -11,7 +11,7 @@
   .info
     %p
       -blocktrans
-        description here
+        You can connect a WebSocket service to RapidPro.
 
 -block extra-style
   {{ block.super }}
@@ -20,12 +20,4 @@
     .info {
       width: 800px;
       margin-bottom: 20px;
-    }
-
-    .form-group {
-      margin-bottom:15px;
-    }
-
-    #id_auth_token {
-      width: 340px;
     }

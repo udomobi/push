@@ -640,6 +640,20 @@
             %div
               -trans "Use our pluggable API to connect an external service you already have."
 
+    .claim-row.external-channel
+      .row
+        .span3
+          %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_ws' %}"}
+            .btn-container
+              .claim-glyph.icon-power-cord
+              %p.claim-text
+                -trans "Websocket API"
+
+        .span9
+          .claim-description
+            %div
+              -trans "Connect to a websocket service."
+
     -if org_perms.channels.channel_claim_twitter or org_perms.channels.channel_claim_telegram or org_perms.channels.channel_claim_facebook
       %h3
         -trans "Social Network Channels"
