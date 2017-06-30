@@ -62,7 +62,7 @@ RELAYER_TYPE_ICONS = {Channel.TYPE_ANDROID: "icon-channel-android",
                       Channel.TYPE_FACEBOOK: "icon-facebook-official",
                       Channel.TYPE_FCM: "icon-fcm",
                       Channel.TYPE_VIBER: "icon-viber",
-                      Channel.TYPE_WS: "icon-websocket"}
+                      Channel.TYPE_WS: "icon-channel-external"}
 
 SESSION_TWITTER_TOKEN = 'twitter_oauth_token'
 SESSION_TWITTER_SECRET = 'twitter_oauth_token_secret'
