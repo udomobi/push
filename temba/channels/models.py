@@ -188,6 +188,7 @@ class Channel(TembaModel):
     TYPE_VIBER_PUBLIC = 'VP'
     TYPE_VUMI = 'VM'
     TYPE_VUMI_USSD = 'VMU'
+    TYPE_WS = 'WS'
     TYPE_YO = 'YO'
     TYPE_ZENVIA = 'ZV'
 
@@ -220,6 +221,7 @@ class Channel(TembaModel):
     CONFIG_FCM_TITLE = 'FCM_TITLE'
     CONFIG_FCM_NOTIFICATION = 'FCM_NOTIFICATION'
     CONFIG_MAX_LENGTH = 'max_length'
+    CONFIG_WS_URL = 'WS_URL'
     CONFIG_MACROKIOSK_SENDER_ID = 'macrokiosk_sender_id'
     CONFIG_MACROKIOSK_SERVICE_ID = 'macrokiosk_service_id'
 
@@ -308,6 +310,7 @@ class Channel(TembaModel):
         TYPE_VIBER_PUBLIC: dict(scheme='viber', max_length=7000),
         TYPE_VUMI: dict(scheme='tel', max_length=1600),
         TYPE_VUMI_USSD: dict(scheme='tel', max_length=182),
+        TYPE_WS: dict(scheme='ws', max_length=10000),
         TYPE_YO: dict(scheme='tel', max_length=1600),
         TYPE_ZENVIA: dict(scheme='tel', max_length=150),
     }
@@ -349,6 +352,7 @@ class Channel(TembaModel):
                     (TYPE_VIBER_PUBLIC, "Viber Public Channels"),
                     (TYPE_VUMI, "Vumi"),
                     (TYPE_VUMI_USSD, "Vumi USSD"),
+                    (TYPE_WS, "WebSocket"),
                     (TYPE_YO, "Yo!"),
                     (TYPE_ZENVIA, "Zenvia"))
 
@@ -798,6 +802,16 @@ class Channel(TembaModel):
         config = dict(account=account, code=code)
 
         return Channel.create(org, user, 'BR', Channel.TYPE_ZENVIA, name="Zenvia: %s" % phone, address=phone, config=config)
+
+    @classmethod
+    def add_ws_channel(cls, org, user, data):
+        from temba.contacts.models import WS_SCHEME
+
+        assert Channel.CONFIG_WS_URL in data, "%s and %s are required" % (
+            Channel.CONFIG_WS_URL, Channel.CONFIG_WS_URL)
+
+        return Channel.create(org, user, None, Channel.TYPE_WS, name="WebSocket Server",
+                              address=data.get(Channel.CONFIG_WS_URL), config=data, scheme=WS_SCHEME)
 
     @classmethod
     def add_send_channel(cls, user, channel):
@@ -1483,6 +1497,43 @@ class Channel(TembaModel):
         else:
             raise SendException("Got non-200 response [%d] from Firebase Cloud Messaging" % response.status_code,
                                 event, start=start)
+
+    @classmethod
+    def send_ws_message(cls, channel, msg, text):
+        from temba.msgs.models import WIRED
+
+        data = {
+            'id': str(msg.id),
+            'text': text,
+            'to': msg.urn_path,
+            'to_no_plus': msg.urn_path.lstrip('+'),
+            'from': channel.address,
+            'from_no_plus': channel.address.lstrip('+'),
+            'channel': str(channel.id)
+        }
+
+        url = channel.config[Channel.CONFIG_WS_URL]
+        start = time.time()
+
+        headers = {'Content-Type': 'application/json'}
+        headers.update(TEMBA_HEADERS)
+
+        payload = json.dumps(data)
+        event = HttpEvent('POST', url, payload)
+
+        try:
+            response = requests.post(url, data=payload, headers=headers, timeout=5)
+            event.status_code = response.status_code
+            event.response_body = response.text
+
+        except Exception as e:
+            raise SendException(six.text_type(e), event=event, start=start)
+
+        if response.status_code != 200 and response.status_code != 201 and response.status_code != 202:
+            raise SendException("Got non-200 response [%d] from WebSocket Server" % response.status_code,
+                                event=event, start=start)
+
+        Channel.success(channel, msg, WIRED, start, event=event)
 
     @classmethod
     def send_red_rabbit_message(cls, channel, msg, text):
@@ -3202,6 +3253,7 @@ SEND_FUNCTIONS = {Channel.TYPE_AFRICAS_TALKING: Channel.send_africas_talking_mes
                   Channel.TYPE_VIBER_PUBLIC: Channel.send_viber_public_message,
                   Channel.TYPE_VUMI: Channel.send_vumi_message,
                   Channel.TYPE_VUMI_USSD: Channel.send_vumi_message,
+                  Channel.TYPE_WS: Channel.send_ws_message,
                   Channel.TYPE_YO: Channel.send_yo_message,
                   Channel.TYPE_ZENVIA: Channel.send_zenvia_message}
 

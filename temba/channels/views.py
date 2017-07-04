@@ -868,7 +868,7 @@ class ChannelCRUDL(SmartCRUDL):
                'claim_smscentral', 'claim_start', 'claim_telegram', 'claim_m3tech', 'claim_yo', 'claim_viber', 'create_viber',
                'claim_twilio_messaging_service', 'claim_zenvia', 'claim_jasmin', 'claim_mblox', 'claim_globe',
                'claim_twiml_api', 'claim_line', 'claim_viber_public', 'claim_dart_media', 'claim_junebug', 'facebook_whitelist',
-               'claim_red_rabbit', 'claim_macrokiosk', 'claim_jiochat')
+               'claim_red_rabbit', 'claim_macrokiosk', 'claim_jiochat', 'claim_ws')
     permissions = True
 
     class Read(OrgObjPermsMixin, SmartReadView):
@@ -2381,6 +2381,26 @@ class ChannelCRUDL(SmartCRUDL):
                                                   cleaned_data.get('app_secret'))
 
             return HttpResponseRedirect(reverse('channels.channel_configuration', args=[channel.id]))
+    
+    class ClaimWs(OrgPermsMixin, SmartFormView):
+        class ClaimWsForm(forms.Form):
+            url = forms.CharField(label=_('WebSocket URL'))
+
+        form_class = ClaimWsForm
+        fields = ('url',)
+        url = _("WebSocket Server URL")
+        permission = 'channels.channel_claim'
+        success_url = "id@channels.channel_configuration"
+
+        def form_valid(self, form):
+            cleaned_data = form.cleaned_data
+            data = {
+                Channel.CONFIG_WS_URL: cleaned_data.get('url')
+            }
+
+            self.object = Channel.add_ws_channel(org=self.request.user.get_org(), user=self.request.user, data=data)
+
+            return super(ChannelCRUDL.ClaimWs, self).form_valid(form)
 
     class ClaimLine(OrgPermsMixin, SmartFormView):
         class LineForm(forms.Form):
