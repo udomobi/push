@@ -1005,10 +1005,12 @@
       -trans "Javascript Code"
 
     %code
-      &lt;script src=&quot;https://{{ domain }}{{ STATIC_URL }}push.js&quot;&gt;&lt;/script&gt;
+      &lt;link rel=&quot;stylesheet&quot; href=&quot;https://s3.amazonaws.com/udo-rapidpro-static-app/push.min.css&quot;&gt;
+      &lt;script src=&quot;https://s3.amazonaws.com/udo-rapidpro-static-app/push.min.js&quot;&gt;&lt;/script&gt;
       <br/>
+
       &lt;script type=&quot;text/javascript&quot;&gt; 
-      <br/>const app = new WebPush({ socketUrl: '{{ object.config_json.WS_URL }}', channelUUID: '{{ object.uuid }}', hostApi: '{{ domain }}' });<br/>&lt;/script&gt;
+      <br/>const app = new WebPush({ socketUrl: '{{ object.config_json.WS_URL }}', channelUUID: '{{ object.uuid }}', hostApi: '{{ domain }}', welcomeMessage: 'Hi, need help?' });<br/>&lt;/script&gt;
 
 -block extra-script
   {{ block.super }}
