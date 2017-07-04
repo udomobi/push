@@ -2982,10 +2982,10 @@ class Channel(TembaModel):
                     external_id = result['multicast_id']
                     Channel.success(channel, msg, WIRED, start, events=[event], external_id=external_id)
                 else:
-                    ChannelLog.log_error(msg, "Failed to send message")
+                    ChannelLog.log_error(msg, response.content)
 
             except Exception as e:
-                ChannelLog.log_error(msg, e.args)
+                raise SendException(e.args, event=event, fatal=True, start=start)
 
         else:
             ChannelLog.log_error(msg, "API Key not found.")
