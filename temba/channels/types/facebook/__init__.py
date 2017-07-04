@@ -51,6 +51,8 @@ class FacebookType(ChannelType):
             self._set_call_to_action(trigger.channel, None)
 
     def send(self, channel, msg, text):
+        from temba.utils.fb_payload import get_fb_payload
+
         # build our payload
         payload = {'message': {'text': text}}
 
@@ -59,6 +61,8 @@ class FacebookType(ChannelType):
             payload['recipient'] = dict(user_ref=URN.fb_ref_from_path(msg.urn_path))
         else:
             payload['recipient'] = dict(id=msg.urn_path)
+
+        payload['message'] = get_fb_payload(msg, text)
 
         url = "https://graph.facebook.com/v2.5/me/messages"
         params = {'access_token': channel.config[Channel.CONFIG_AUTH_TOKEN]}
