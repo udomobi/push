@@ -11,6 +11,9 @@ import six
 import time
 
 from collections import defaultdict
+
+from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import models
@@ -53,6 +56,7 @@ TWITTER_SCHEME = 'twitter'
 VIBER_SCHEME = 'viber'
 FCM_SCHEME = 'fcm'
 GCM_SCHEME = 'gcm'
+WS_SCHEME = 'ws'
 
 FACEBOOK_PATH_REF_PREFIX = 'ref:'
 
@@ -67,7 +71,8 @@ URN_SCHEME_CONFIG = ((TEL_SCHEME, _("Phone number"), 'phone', 'tel_e164'),
                      (EXTERNAL_SCHEME, _("External identifier"), 'external', EXTERNAL_SCHEME),
                      (JIOCHAT_SCHEME, _("Jiochat identifier"), 'jiochat', JIOCHAT_SCHEME),
                      (FCM_SCHEME, _("Firebase Cloud Messaging identifier"), 'fcm', FCM_SCHEME),
-                     (GCM_SCHEME, _("GCM identifier"), 'gcm', GCM_SCHEME))
+                     (GCM_SCHEME, _("GCM identifier"), 'gcm', GCM_SCHEME),
+                     (WS_SCHEME, _("WebSocket identifier"), 'ws', WS_SCHEME))
 
 
 IMPORT_HEADERS = tuple((c[2], c[0]) for c in URN_SCHEME_CONFIG)
@@ -288,6 +293,10 @@ class URN(object):
     @classmethod
     def from_gcm(cls, path):
         return cls.from_parts(GCM_SCHEME, path)
+
+    @classmethod
+    def from_ws(cls, path):
+        return cls.from_parts(WS_SCHEME, path)
 
 
 @six.python_2_unicode_compatible
@@ -1872,6 +1881,7 @@ class ContactURN(models.Model):
         JIOCHAT_SCHEME: dict(label="Jiochat", key=None, id=0, field=None, urn_scheme=JIOCHAT_SCHEME),
         FCM_SCHEME: dict(label="FCM", key=None, id=0, field=None, urn_scheme=FCM_SCHEME),
         GCM_SCHEME: dict(label='GCM', key=None, id=0, field=None, urn_scheme=GCM_SCHEME),
+        WS_SCHEME: dict(label="WS", key=None, id=0, field=None, urn_scheme=WS_SCHEME),
     }
 
     PRIORITY_LOWEST = 1

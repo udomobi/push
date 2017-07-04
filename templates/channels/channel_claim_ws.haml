@@ -1,0 +1,23 @@
+-extends "smartmin/form.html"
+-load i18n compress temba
+
+-block title
+  .medium-help.icon-cog.float-left
+
+  %h2.font_normalize.header-margin
+    -trans "Connect WebSocket"
+
+-block pre-form
+  .info
+    %p
+      -blocktrans
+        You can connect a WebSocket service to RapidPro.
+
+-block extra-style
+  {{ block.super }}
+
+  :css
+    .info {
+      width: 800px;
+      margin-bottom: 20px;
+    }
