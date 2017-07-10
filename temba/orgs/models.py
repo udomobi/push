@@ -1993,7 +1993,10 @@ class Org(SmartModel):
 
         headers = {'Content-Type': 'application/json'}
         headers.update(TEMBA_HEADERS)
-        requests.post(settings.CHATBASE_API_URL, data=payload, headers=headers)
+        response = requests.post(settings.CHATBASE_API_URL, data=payload, headers=headers)
+
+        # Chatbase response
+        print(response.content)
 
     def __str__(self):
         return self.name
