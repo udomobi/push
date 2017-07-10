@@ -773,7 +773,10 @@ class Msg(models.Model):
         """
         Processes a message, running it through all our handlers
         """
+        from temba.orgs.models import CHATBASE_TYPE_USER
+
         handlers = get_message_handlers()
+        flow = None
 
         if msg.contact.is_blocked:
             msg.visibility = Msg.VISIBILITY_ARCHIVED
@@ -785,7 +788,7 @@ class Msg(models.Model):
                     if settings.DEBUG:  # pragma: no cover
                         start = time.time()
 
-                    handled = handler.handle(msg)
+                    (handled, flow) = handler.handle(msg)
 
                     if start:  # pragma: no cover
                         print("[%0.2f] %s for %d" % (time.time() - start, handler.name, msg.pk or 0))
@@ -799,9 +802,20 @@ class Msg(models.Model):
 
         cls.mark_handled(msg)
 
+        # Chatbase parameters to track logs
+        chatbase_not_handled = True
+
         # if this is an inbox message, increment our unread inbox count
         if msg.msg_type == INBOX:
             msg.org.increment_unread_msg_count(UNREAD_INBOX_MSGS)
+        elif msg.msg_type == FLOW:
+            chatbase_not_handled = False
+
+        # Registering data to send to Chatbase API later
+        org = msg.org
+        if org.is_connected_to_chatbase():
+            Org.queue_chatbase_log(org_id=org.id, channel_name=msg.channel.name, text=msg.text, type=CHATBASE_TYPE_USER,
+                                   contact_id=msg.contact.id, not_handled=chatbase_not_handled, intent=flow)
 
         # record our handling latency for this object
         if msg.queued_on:
@@ -1192,6 +1206,9 @@ class Msg(models.Model):
         if self.contact_urn.auth:
             data.update(dict(auth=self.contact_urn.auth))
 
+        if self.org.is_connected_to_chatbase():
+            data.update(dict(is_org_connected_to_chatbase=True))
+
         return data
 
     def __str__(self):
@@ -1205,9 +1222,7 @@ class Msg(models.Model):
     def create_incoming(cls, channel, urn, text, user=None, date=None, org=None, contact=None,
                         status=PENDING, attachments=None, msg_type=None, topup=None, external_id=None, session=None):
 
-        from temba.msgs.tasks import send_chatbase_log
         from temba.api.models import WebHookEvent
-        from temba.orgs.models import CHATBASE_TYPE_USER
         if not org and channel:
             org = channel.org
 
@@ -1285,12 +1300,6 @@ class Msg(models.Model):
 
             # fire an event off for this message
             WebHookEvent.trigger_sms_event(WebHookEvent.TYPE_SMS_RECEIVED, msg, date)
-
-        # Task to send data to Chatbase API
-        not_handled = msg.msg_type == INBOX
-        if channel:
-            send_chatbase_log.apply_async(args=(org.id, channel.name, msg.text, contact.id, CHATBASE_TYPE_USER,
-                                                not_handled), queue='msgs')
 
         return msg
 

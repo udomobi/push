@@ -12,8 +12,6 @@ import time
 
 from collections import defaultdict
 
-from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import models

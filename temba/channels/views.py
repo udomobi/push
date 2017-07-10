@@ -2383,7 +2383,7 @@ class ChannelCRUDL(SmartCRUDL):
                                                   cleaned_data.get('app_secret'))
 
             return HttpResponseRedirect(reverse('channels.channel_configuration', args=[channel.id]))
-    
+
     class ClaimWs(OrgPermsMixin, SmartFormView):
         class ClaimWsForm(forms.Form):
             url = forms.CharField(label=_('WebSocket URL'))
