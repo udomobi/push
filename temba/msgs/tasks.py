@@ -52,8 +52,12 @@ def process_run_timeout(run_id, timeout_on):
 def process_fire_events(fire_ids):
     from temba.campaigns.models import EventFire
 
-    # every event fire in the batch will be for the same flow
-    flow = EventFire.objects.filter(id__in=fire_ids).first().event.flow
+    # every event fire in the batch will be for the same flow... but if the flow has been deleted then fires won't exist
+    single_fire = EventFire.objects.filter(id__in=fire_ids).first()
+    if not single_fire:  # pragma: no cover
+        return
+
+    flow = single_fire.event.flow
 
     # lock on the flow so we know non-one else is updating these event fires
     r = get_redis_connection()
@@ -393,10 +397,3 @@ def clear_old_msg_external_ids():
         Msg.objects.filter(pk__in=msg_id_batch).update(external_id=None)
 
     print("Cleared external ids on %d messages" % len(msg_ids))
-
-
-@task(track_started=True, name='send_chatbase_log')
-def send_chatbase_log(org_id, channel_name, text, contact_id, type, not_handled):
-    from temba.channels.models import Channel
-    Channel.send_chatbase_log(org_id=org_id, channel_name=channel_name, text=text, contact_id=contact_id, type=type,
-                              not_handled=not_handled)

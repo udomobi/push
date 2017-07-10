@@ -2022,7 +2022,7 @@ class OrgCRUDL(SmartCRUDL):
             if disconnect:
                 org.remove_chatbase_account(user)
                 return HttpResponseRedirect(reverse('orgs.org_home'))
-            elif api_key and type:
+            elif api_key:
                 org.connect_chatbase(agent_name, api_key, version, user)
 
             return super(OrgCRUDL.Chatbase, self).form_valid(form)
@@ -2052,8 +2052,8 @@ class OrgCRUDL(SmartCRUDL):
         def add_channel_section(self, formax, channel):
 
             if self.has_org_perm('channels.channel_read'):
-                from temba.channels.views import get_channel_icon, get_channel_read_url
-                formax.add_section('channel', get_channel_read_url(channel), icon=get_channel_icon(channel.channel_type), action='link')
+                from temba.channels.views import get_channel_read_url
+                formax.add_section('channel', get_channel_read_url(channel), icon=channel.get_type().icon, action='link')
 
         def derive_formax_sections(self, formax, context):
 
