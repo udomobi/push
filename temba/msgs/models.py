@@ -6,6 +6,7 @@ import regex
 import six
 import time
 import traceback
+import json
 
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -228,8 +229,11 @@ class Broadcast(models.Model):
     send_all = models.BooleanField(default=False,
                                    help_text="Whether this broadcast should send to all URNs for each contact")
 
+    metadata = models.TextField(null=True, help_text=_("The metadata for any type msgs"))
+
     @classmethod
-    def create(cls, org, user, text, recipients, base_language=None, channel=None, media=None, send_all=False, **kwargs):
+    def create(cls, org, user, text, recipients, base_language=None, channel=None, media=None, send_all=False,
+               metadata=None, **kwargs):
         # for convenience broadcasts can still be created with single translation and no base_language
         if isinstance(text, six.string_types):
             base_language = org.primary_language.iso_code if org.primary_language else 'base'
@@ -242,7 +246,7 @@ class Broadcast(models.Model):
 
         broadcast = cls.objects.create(org=org, channel=channel, send_all=send_all,
                                        base_language=base_language, text=text, media=media,
-                                       created_by=user, modified_by=user, **kwargs)
+                                       created_by=user, modified_by=user, metadata=metadata, **kwargs)
         broadcast.update_recipients(recipients)
         return broadcast
 
@@ -380,6 +384,17 @@ class Broadcast(models.Model):
         preferred_languages = self.get_preferred_languages(contact, org)
         return Language.get_localized_text(self.text, preferred_languages)
 
+    def get_translated_metadata(self, contact, metadata_type='quick_replies', org=None):
+        """
+        Gets the appropriate metadata translation for the given contact
+        """
+        if self.metadata:
+            preferred_languages = self.get_preferred_languages(contact, org)
+            metadata = json.loads(self.metadata)
+            return Language.get_localized_text(metadata.get(metadata_type), preferred_languages)
+        else:
+            return None
+
     def get_translated_media(self, contact, org=None):
         """
         Gets the appropriate media for the given contact
@@ -388,7 +403,7 @@ class Broadcast(models.Model):
         return Language.get_localized_text(self.media, preferred_languages)
 
     def send(self, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
-             created_on=None, partial_recipients=None, run_map=None):
+             created_on=None, partial_recipients=None, run_map=None, metadata=None):
         """
         Sends this broadcast by creating outgoing messages for each recipient.
         """
@@ -450,6 +465,14 @@ class Broadcast(models.Model):
             # get the appropriate translation for this contact
             text = self.get_translated_text(contact)
 
+            if metadata:
+                _metadata = json.dumps(dict(
+                    quick_replies=self.get_translated_metadata(contact, 'quick_replies'),
+                    url_buttons=self.get_translated_metadata(contact, 'url_buttons')
+                ))
+            else:
+                _metadata = None
+
             media = self.get_translated_media(contact)
             if media:
                 media_type, media_url = media.split(':')
@@ -485,7 +508,8 @@ class Broadcast(models.Model):
                                           insert_object=False,
                                           attachments=[media] if media else None,
                                           priority=priority,
-                                          created_on=created_on)
+                                          created_on=created_on,
+                                          metadata=_metadata)
 
             except UnreachableException:
                 # there was no way to reach this contact, do not create a message
@@ -568,6 +592,29 @@ class Broadcast(models.Model):
 
     def __str__(self):
         return "%s (%s)" % (self.org.name, self.pk)
+
+
+class Attachment(object):
+    """
+    Represents a message attachment stored as type:url
+    """
+    def __init__(self, content_type, url):
+        self.content_type = content_type
+        self.url = url
+
+    @classmethod
+    def parse(cls, s):
+        return cls(*s.split(':', 1))
+
+    @classmethod
+    def parse_all(cls, attachments):
+        return [cls.parse(s) for s in attachments] if attachments else []
+
+    def as_json(self):
+        return {'content_type': self.content_type, 'url': self.url}
+
+    def __eq__(self, other):
+        return self.content_type == other.content_type and self.url == other.url
 
 
 @six.python_2_unicode_compatible
@@ -701,6 +748,8 @@ class Msg(models.Model):
     attachments = ArrayField(models.URLField(max_length=255), null=True,
                              help_text=_("The media attachments on this message if any"))
 
+    metadata = models.TextField(null=True, help_text=_("The metadata for any type msgs"))
+
     session = models.ForeignKey('channels.ChannelSession', null=True,
                                 help_text=_("The session this message was a part of if any"))
 
@@ -745,7 +794,7 @@ class Msg(models.Model):
                             if task_priority is None:  # pragma: needs cover
                                 task_priority = DEFAULT_PRIORITY
 
-                            push_task(task_msgs[0]['org'], MSG_QUEUE, SEND_MSG_TASK, task_msgs, priority=task_priority)
+                            on_transaction_commit(lambda: push_task(task_msgs[0]['org'], MSG_QUEUE, SEND_MSG_TASK, task_msgs, priority=task_priority))
                             task_msgs = []
                             task_priority = None
 
@@ -766,7 +815,8 @@ class Msg(models.Model):
         if task_msgs:
             if task_priority is None:
                 task_priority = DEFAULT_PRIORITY
-            push_task(task_msgs[0]['org'], MSG_QUEUE, SEND_MSG_TASK, task_msgs, priority=task_priority)
+
+            on_transaction_commit(lambda: push_task(task_msgs[0]['org'], MSG_QUEUE, SEND_MSG_TASK, task_msgs, priority=task_priority))
 
     @classmethod
     def process_message(cls, msg):
@@ -950,23 +1000,14 @@ class Msg(models.Model):
         else:
             Msg.objects.filter(id=msg.id).update(status=status, sent_on=msg.sent_on)
 
-    @classmethod
-    def get_attachments(cls, msg):
-        """
-        Returns the attachments on the given MsgStruct split into type and URL
-        """
-        if msg.attachments:
-            return [a.split(':', 1) for a in msg.attachments if ":" in a]
-        else:
-            return []
-
     def as_json(self):
-        return dict(direction=self.direction,
-                    text=self.text,
-                    id=self.id,
-                    attachments=self.attachments,
-                    created_on=self.created_on.strftime('%x %X'),
-                    model="msg")
+        msg_json = dict(direction=self.direction, text=self.text, id=self.id, attachments=self.attachments, model="msg",
+                        created_on=self.created_on.strftime('%x %X'))
+
+        if self.metadata:
+            msg_json['metadata'] = self.metadata
+
+        return msg_json
 
     def simulator_json(self):
         msg_json = self.as_json()
@@ -1032,6 +1073,12 @@ class Msg(models.Model):
 
         return commands
 
+    def get_attachments(self):
+        """
+        Gets this message's attachments parsed into actual attachment objects
+        """
+        return Attachment.parse_all(self.attachments)
+
     def get_last_log(self):
         """
         Gets the last channel log for this message. Performs sorting in Python to ease pre-fetching.
@@ -1041,34 +1088,13 @@ class Msg(models.Model):
             sorted_logs = sorted(self.channel_logs.all(), key=lambda l: l.created_on, reverse=True)
         return sorted_logs[0] if sorted_logs else None
 
-    def get_attachment_urls(self):
-        return [a.split(':', 1)[1] for a in self.attachments] if self.attachments else []
-
-    def get_media_path(self):
-        return self.get_attachment_urls()[0] if self.attachments else None
-
-    def get_media_type(self):
-        if self.attachments and ':' in self.attachments[0]:
-            type = self.attachments[0].split(':', 1)[0]
-            if type == 'application/octet-stream':  # pragma: needs cover
-                return 'audio'
-            return type.split('/', 1)[0]
-
-    def is_media_type_audio(self):
-        return Msg.MEDIA_AUDIO == self.get_media_type()
-
-    def is_media_type_video(self):
-        return Msg.MEDIA_VIDEO == self.get_media_type()
-
-    def is_media_type_image(self):
-        return Msg.MEDIA_IMAGE == self.get_media_type()
-
     def reply(self, text, user, trigger_send=False, message_context=None, session=None, attachments=None, msg_type=None,
-              send_all=False, created_on=None):
+              send_all=False, created_on=None, metadata=None):
 
         return self.contact.send(text, user, trigger_send=trigger_send, message_context=message_context,
-                                 response_to=self if self.id else None, session=session, attachments=attachments,
-                                 msg_type=msg_type or self.msg_type, created_on=created_on, all_urns=send_all)
+                                 response_to=self if self.id else None, session=session, metadata=metadata,
+                                 attachments=attachments, msg_type=msg_type or self.msg_type, created_on=created_on,
+                                 all_urns=send_all)
 
     def update(self, cmd):
         """
@@ -1137,7 +1163,7 @@ class Msg(models.Model):
     def build_expressions_context(self, contact_context=None):
         date_format = get_datetime_format(self.org.get_dayfirst())[1]
         value = six.text_type(self)
-        attachments = {six.text_type(a): url for a, url in enumerate(self.get_attachment_urls())}
+        attachments = {six.text_type(a): attachment.url for a, attachment in enumerate(self.get_attachments())}
 
         return {
             '__default__': value,
@@ -1183,13 +1209,6 @@ class Msg(models.Model):
         # send our message
         self.org.trigger_send([cloned])
 
-    def get_flow_step(self):
-        if self.msg_type not in (FLOW, IVR):
-            return None
-
-        steps = list(self.steps.all())  # steps may have been pre-fetched
-        return steps[0] if steps else None
-
     def as_task_json(self):
         """
         Used internally to serialize to JSON when queueing messages in Redis
@@ -1209,11 +1228,14 @@ class Msg(models.Model):
         if self.org.is_connected_to_chatbase():
             data.update(dict(is_org_connected_to_chatbase=True))
 
+        if self.metadata:
+            data.update(dict(metadata=self.metadata))
+
         return data
 
     def __str__(self):
         if self.attachments:
-            parts = ([self.text] if self.text else []) + self.get_attachment_urls()
+            parts = ([self.text] if self.text else []) + [a.url for a in self.get_attachments()]
             return "\n".join(parts)
         else:
             return self.text
@@ -1352,7 +1374,7 @@ class Msg(models.Model):
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, priority=PRIORITY_NORMAL,
                         created_on=None, response_to=None, message_context=None, status=PENDING, insert_object=True,
-                        attachments=None, topup_id=None, msg_type=INBOX, session=None):
+                        metadata=None, attachments=None, topup_id=None, msg_type=INBOX, session=None):
 
         if not org or not user:  # pragma: no cover
             raise ValueError("Trying to create outgoing message with no org or user")
@@ -1462,6 +1484,7 @@ class Msg(models.Model):
                         msg_type=msg_type,
                         priority=priority,
                         attachments=attachments,
+                        metadata=metadata,
                         session=session,
                         has_template_error=len(errors) > 0)
 

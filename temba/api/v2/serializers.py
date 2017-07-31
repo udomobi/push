@@ -8,7 +8,7 @@ from temba.api.models import Resthook, ResthookSubscriber, WebHookEvent
 from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel, ChannelEvent
 from temba.contacts.models import Contact, ContactField, ContactGroup
-from temba.flows.models import Flow, FlowRun, FlowStart, RuleSet
+from temba.flows.models import Flow, FlowRun, FlowStart
 from temba.locations.models import AdminBoundary
 from temba.msgs.models import Broadcast, Msg, Label, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED
@@ -791,20 +791,13 @@ class MsgReadSerializer(ReadSerializer):
     channel = fields.ChannelField()
     direction = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
-    media = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
+    metadata = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     archived = serializers.SerializerMethodField()
     visibility = serializers.SerializerMethodField()
     labels = fields.LabelField(many=True)
-    ruleset = serializers.SerializerMethodField()
-
-    def get_ruleset(self, obj):
-        try:
-            step = obj.get_flow_step()
-            destination = step.get_step().destination
-            return RuleSet.objects.filter(uuid=destination).first().as_json()
-        except:
-            return None
+    media = serializers.SerializerMethodField()  # deprecated
 
     def get_broadcast(self, obj):
         return obj.broadcast_id
@@ -819,6 +812,12 @@ class MsgReadSerializer(ReadSerializer):
         # PENDING and QUEUED are same as far as users are concerned
         return self.STATUSES.get(QUEUED if obj.status == PENDING else obj.status)
 
+    def get_attachments(self, obj):
+        return [a.as_json() for a in obj.get_attachments()]
+
+    def get_metadata(self, obj):
+        return json.loads(obj.metadata) if obj.metadata else []
+
     def get_media(self, obj):
         return obj.attachments[0] if obj.attachments else None
 
@@ -832,7 +831,7 @@ class MsgReadSerializer(ReadSerializer):
         model = Msg
         fields = ('id', 'broadcast', 'contact', 'urn', 'channel',
                   'direction', 'type', 'status', 'archived', 'visibility', 'text', 'labels',
-                  'media', 'created_on', 'sent_on', 'modified_on', 'ruleset')
+                  'attachments', 'metadata','created_on', 'sent_on', 'modified_on', 'media')
 
 
 class MsgBulkActionSerializer(WriteSerializer):
