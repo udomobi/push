@@ -1807,7 +1807,7 @@ class Contact(TembaModel):
         if tel:
             return tel.path
 
-    def send(self, text, user, trigger_send=True, response_to=None, message_context=None, session=None,
+    def send(self, text, user, trigger_send=True, response_to=None, message_context=None, session=None, metadata=None,
              attachments=None, msg_type=None, created_on=None, all_urns=False):
         from temba.msgs.models import Msg, INBOX, PENDING, SENT, UnreachableException
 
@@ -1823,8 +1823,8 @@ class Contact(TembaModel):
             try:
                 msg = Msg.create_outgoing(self.org, user, recipient, text, priority=Msg.PRIORITY_HIGH,
                                           response_to=response_to, message_context=message_context, session=session,
-                                          attachments=attachments, msg_type=msg_type or INBOX, status=status,
-                                          created_on=created_on)
+                                          metadata=metadata, attachments=attachments, msg_type=msg_type or INBOX,
+                                          status=status, created_on=created_on)
                 if msg is not None:
                     msgs.append(msg)
             except UnreachableException:

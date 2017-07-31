@@ -1666,6 +1666,41 @@
       }
     }
   }
+
+  .modal-body{
+    .quick-reply{
+      .modal-quick-reply{
+        display:inline-block;
+        input{
+          width:180px;
+          height:30px;
+        }
+        .modal-quick-reply-type{
+          display:inline-block;
+          width:86px;
+          select{
+            width:86px;
+          }
+        }
+        .modal-quick-reply-value{
+          display:inline-block;
+          width:200px;
+        }
+        .icon{
+          display: none;
+          color: #ccc;
+          margin: 8px 0;
+          cursor: pointer;
+        }
+        &:hover{
+          .icon{
+            display: inline-block;
+          }
+        }
+      }
+    }
+  }
+ 
   .modal-body input.url {
     width: 490px;
     margin-left:5px;
@@ -2220,3 +2255,63 @@ div.modal[role="dialog"] {
     }
   }
 }
+
+.modal {
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  .cursor-pointer:hover {
+    opacity: 0.7;
+  }
+}
+.container-operations {
+  * {
+    height: 20px;
+  }
+  .icon {
+    display: none;
+    color: #ccc;
+    margin: 3px 0;
+    cursor: pointer;
+  }
+}
+
+.quick-reply {
+  margin-top: 20px;
+
+  .modal-quick-reply {
+    margin: 0 auto;
+    display: inline-block;
+    width: 100%;
+  }
+  .modal-quick-reply .icon {
+    display: none;
+    cursor: pointer;
+  }
+  .modal-quick-reply:hover .icon {
+    display: inline-block;
+    color: #CCCCCC;
+  }
+  .modal-quick-reply input {
+    width: 100%;
+    height: 30px;
+  }
+  .modal-quick-reply-value {
+    display: inline-block;
+    width: 43%;
+    margin-left: 2%;
+    margin-right: 10px;
+    margin-bottom: 5px;
+    .translate-from{
+      text-align: center;
+      font-size: 12px;
+      display: inline;
+      padding: 5px;
+      margin-bottom: 3px;
+    }
+  }
+  .center-translate{
+    text-align: center;
+  }
+}
+    

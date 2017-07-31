@@ -31,7 +31,6 @@ window.updateSimulator = (data) ->
     $('.simulator-footer .media-button').hide()
     $('.simulator-footer .imessage').show()
 
-
   while i < data.messages.length
     msg = data.messages[i]
 
@@ -41,6 +40,20 @@ window.updateSimulator = (data) ->
 
     media_type = null
     media_viewer_elt = null
+
+    quick_replies = null
+    url_buttons = null
+
+    if msg.metadata
+      params = JSON.parse(msg.metadata)
+      if params.quick_replies[0]
+        model = 'ilog'
+        quick_replies = "<div id='quick-reply-content'>"
+        for reply in params.quick_replies
+          quick_replies += "<button class=\"btn quick-reply\" data-payload=\"" + reply.payload + "\"> " + reply.title + "</button>"
+        quick_replies += "</div>"
+      else if params.url_buttons[0] 
+        url_buttons = "<a class=\"btn button-reply\"href='" + params.url_buttons[0].url + "' target=\"_blank\"> " + params.url_buttons[0].title + "</a><br>"
 
     if msg.attachments
       parts = msg.attachments[0].split(':')
@@ -62,23 +75,31 @@ window.updateSimulator = (data) ->
           media_type = 'icon-mic'
           media_viewer_elt = "<span class=\"media-file\"><audio controls src=\"" + media_url + "\"></span>"
 
-
-
     ele = "<div class=\"" + model + " " + level + " " + direction + " " + ussd
     if media_type
       ele += " media-msg"
+
     ele += "\">"
-    ele += msg.text
+    if quick_replies
+      ele += quick_replies
+    else
+      ele += msg.text
     
     if media_type and media_viewer_elt
       ele += media_viewer_elt
 
+    if url_buttons
+      ele += url_buttons
     ele += "</div>"
 
     $(".simulator-body").append(ele)
     i++
   $(".simulator-body").scrollTop $(".simulator-body")[0].scrollHeight
   $("#simulator textarea").val ""
+
+  $(".btn.quick-reply").on "click", (event) ->
+    payload = event.target.innerText
+    sendMessage(payload)
 
   if window.simulation
 

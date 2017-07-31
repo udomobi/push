@@ -51,9 +51,41 @@ class FacebookType(ChannelType):
         if trigger.trigger_type == Trigger.TYPE_NEW_CONVERSATION:
             self._set_call_to_action(trigger.channel, None)
 
+    def get_quick_replies(self, current_payload, params, text):
+        params = json.loads(params)
+        quick_replies = params.get('quick_replies')
+        if quick_replies:
+            current_payload['message']['quick_replies'] = []
+            for reply in quick_replies:
+                current_payload['message']['quick_replies'].append(dict(
+                    title=reply.get('title'),
+                    payload=reply.get('payload'),
+                    content_type='text'
+                ))
+
+        elif params.get('url_buttons'):
+            current_payload = dict(message=dict())
+            url_buttons = params.get('url_buttons')
+            current_payload['message']['attachment'] = dict(
+                type='template',
+                payload=dict(
+                    template_type='button',
+                    text=text,
+                    buttons=[]
+                )
+            )
+            for button in url_buttons:
+                button_obj = dict(title=button.get('title'), url=button.get('url'), type='web_url')
+                current_payload['message']['attachment']['payload']['buttons'].append(button_obj)
+
+        return current_payload
+
     def send(self, channel, msg, text):
         # build our payload
-        payload = {'message': {'text': text}}
+        payload = dict(message=dict(text=text))
+
+        if hasattr(msg, 'metadata'):
+            payload = self.get_quick_replies(payload, msg.metadata, text)
 
         # this is a ref facebook id, temporary just for this message
         if URN.is_path_fb_ref(msg.urn_path):
@@ -93,6 +125,7 @@ class FacebookType(ChannelType):
                 response = requests.post(url, payload, params=params, headers=headers, timeout=15)
                 event.status_code = response.status_code
                 event.response_body = response.text
+                print(response.text)
             except Exception as e:
                 raise SendException(six.text_type(e), event=event, start=start)
 

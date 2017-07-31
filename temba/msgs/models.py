@@ -6,6 +6,7 @@ import regex
 import six
 import time
 import traceback
+import json
 
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -228,8 +229,11 @@ class Broadcast(models.Model):
     send_all = models.BooleanField(default=False,
                                    help_text="Whether this broadcast should send to all URNs for each contact")
 
+    metadata = models.TextField(null=True, help_text=_("The metadata for any type msgs"))
+
     @classmethod
-    def create(cls, org, user, text, recipients, base_language=None, channel=None, media=None, send_all=False, **kwargs):
+    def create(cls, org, user, text, recipients, base_language=None, channel=None, media=None, send_all=False,
+               metadata=None, **kwargs):
         # for convenience broadcasts can still be created with single translation and no base_language
         if isinstance(text, six.string_types):
             base_language = org.primary_language.iso_code if org.primary_language else 'base'
@@ -242,7 +246,7 @@ class Broadcast(models.Model):
 
         broadcast = cls.objects.create(org=org, channel=channel, send_all=send_all,
                                        base_language=base_language, text=text, media=media,
-                                       created_by=user, modified_by=user, **kwargs)
+                                       created_by=user, modified_by=user, metadata=metadata, **kwargs)
         broadcast.update_recipients(recipients)
         return broadcast
 
@@ -380,6 +384,17 @@ class Broadcast(models.Model):
         preferred_languages = self.get_preferred_languages(contact, org)
         return Language.get_localized_text(self.text, preferred_languages)
 
+    def get_translated_metadata(self, contact, metadata_type='quick_replies', org=None):
+        """
+        Gets the appropriate metadata translation for the given contact
+        """
+        if self.metadata:
+            preferred_languages = self.get_preferred_languages(contact, org)
+            metadata = json.loads(self.metadata)
+            return Language.get_localized_text(metadata.get(metadata_type), preferred_languages)
+        else:
+            return None
+
     def get_translated_media(self, contact, org=None):
         """
         Gets the appropriate media for the given contact
@@ -388,7 +403,7 @@ class Broadcast(models.Model):
         return Language.get_localized_text(self.media, preferred_languages)
 
     def send(self, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
-             created_on=None, partial_recipients=None, run_map=None):
+             created_on=None, partial_recipients=None, run_map=None, metadata=None):
         """
         Sends this broadcast by creating outgoing messages for each recipient.
         """
@@ -450,6 +465,14 @@ class Broadcast(models.Model):
             # get the appropriate translation for this contact
             text = self.get_translated_text(contact)
 
+            if metadata:
+                _metadata = json.dumps(dict(
+                    quick_replies=self.get_translated_metadata(contact, 'quick_replies'),
+                    url_buttons=self.get_translated_metadata(contact, 'url_buttons')
+                ))
+            else:
+                _metadata = None
+
             media = self.get_translated_media(contact)
             if media:
                 media_type, media_url = media.split(':')
@@ -485,7 +508,8 @@ class Broadcast(models.Model):
                                           insert_object=False,
                                           attachments=[media] if media else None,
                                           priority=priority,
-                                          created_on=created_on)
+                                          created_on=created_on,
+                                          metadata=_metadata)
 
             except UnreachableException:
                 # there was no way to reach this contact, do not create a message
@@ -724,6 +748,8 @@ class Msg(models.Model):
     attachments = ArrayField(models.URLField(max_length=255), null=True,
                              help_text=_("The media attachments on this message if any"))
 
+    metadata = models.TextField(null=True, help_text=_("The metadata for any type msgs"))
+
     session = models.ForeignKey('channels.ChannelSession', null=True,
                                 help_text=_("The session this message was a part of if any"))
 
@@ -961,12 +987,13 @@ class Msg(models.Model):
             Msg.objects.filter(id=msg.id).update(status=status, sent_on=msg.sent_on)
 
     def as_json(self):
-        return dict(direction=self.direction,
-                    text=self.text,
-                    id=self.id,
-                    attachments=self.attachments,
-                    created_on=self.created_on.strftime('%x %X'),
-                    model="msg")
+        msg_json = dict(direction=self.direction, text=self.text, id=self.id, attachments=self.attachments, model="msg",
+                        created_on=self.created_on.strftime('%x %X'))
+
+        if self.metadata:
+            msg_json['metadata'] = self.metadata
+
+        return msg_json
 
     def simulator_json(self):
         msg_json = self.as_json()
@@ -1048,11 +1075,12 @@ class Msg(models.Model):
         return sorted_logs[0] if sorted_logs else None
 
     def reply(self, text, user, trigger_send=False, message_context=None, session=None, attachments=None, msg_type=None,
-              send_all=False, created_on=None):
+              send_all=False, created_on=None, metadata=None):
 
         return self.contact.send(text, user, trigger_send=trigger_send, message_context=message_context,
-                                 response_to=self if self.id else None, session=session, attachments=attachments,
-                                 msg_type=msg_type or self.msg_type, created_on=created_on, all_urns=send_all)
+                                 response_to=self if self.id else None, session=session, metadata=metadata,
+                                 attachments=attachments, msg_type=msg_type or self.msg_type, created_on=created_on,
+                                 all_urns=send_all)
 
     def update(self, cmd):
         """
@@ -1182,6 +1210,9 @@ class Msg(models.Model):
 
         if self.contact_urn.auth:
             data.update(dict(auth=self.contact_urn.auth))
+
+        if self.metadata:
+            data.update(dict(metadata=self.metadata))
 
         return data
 
@@ -1326,7 +1357,7 @@ class Msg(models.Model):
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, priority=PRIORITY_NORMAL,
                         created_on=None, response_to=None, message_context=None, status=PENDING, insert_object=True,
-                        attachments=None, topup_id=None, msg_type=INBOX, session=None):
+                        metadata=None, attachments=None, topup_id=None, msg_type=INBOX, session=None):
 
         if not org or not user:  # pragma: no cover
             raise ValueError("Trying to create outgoing message with no org or user")
@@ -1436,6 +1467,7 @@ class Msg(models.Model):
                         msg_type=msg_type,
                         priority=priority,
                         attachments=attachments,
+                        metadata=metadata,
                         session=session,
                         has_template_error=len(errors) > 0)
 
