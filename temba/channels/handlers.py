@@ -517,7 +517,7 @@ class ExternalHandler(BaseChannelHandler):
 
 class WsHandler(BaseChannelHandler):
 
-    url = r'^ws/(?P<action>received|register|message-options)/(?P<uuid>[a-z0-9\-]+)/$'
+    url = r'^ws/(?P<action>received|register)/(?P<uuid>[a-z0-9\-]+)/$'
     url_name = 'handlers.ws_handler'
 
     def get_channel_type(self):
@@ -528,7 +528,6 @@ class WsHandler(BaseChannelHandler):
 
     def post(self, request, *args, **kwargs):
         from temba.msgs.models import Msg
-        from temba.flows.models import RuleSet
 
         action = kwargs['action'].lower()
 
@@ -566,26 +565,10 @@ class WsHandler(BaseChannelHandler):
 
             ws_urn = URN.from_ws(self.get_param('urn'))
             name = self.get_param('name', None)
+            language = self.get_param('language', None)
             contact = Contact.get_or_create(channel.org, channel.created_by, name=name, urns=[ws_urn],
-                                            channel=channel)
+                                            channel=channel, language=language)
             return HttpResponse(json.dumps({'contact_uuid': contact.uuid}), content_type='application/json')
-
-        elif action == 'message-options':
-            msg_id = self.get_param('id')
-            if msg_id is None:
-                return HttpResponse("Missing 'id' parameter, invalid call.", status=400)
-
-            msg = Msg.objects.filter(pk=msg_id).first()
-
-            if msg:
-                try:
-                    step = msg.get_flow_step()
-                    destination = step.get_step().destination
-                    rules = RuleSet.objects.filter(uuid=destination).first().as_json()
-                except:
-                    rules = {}
-
-            return HttpResponse(json.dumps(rules), content_type='application/json')
 
         else:
             return HttpResponse("Not handled", status=400)
