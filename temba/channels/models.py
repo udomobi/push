@@ -1532,6 +1532,16 @@ class Channel(TembaModel):
             'channel': str(channel.id)
         }
 
+        if hasattr(msg, 'metadata'):
+            metadata = json.loads(msg.metadata)
+            quick_replies = metadata.get('quick_replies') if metadata.get('quick_replies') else None
+            url_buttons = metadata.get('url_buttons') if metadata.get('url_buttons') else None
+
+            if quick_replies:
+                data['metadata'] = dict(quick_replies=quick_replies)
+            elif url_buttons:
+                data['metadata'] = dict(url_buttons=url_buttons)
+
         url = channel.config[Channel.CONFIG_WS_URL]
         start = time.time()
 
