@@ -1067,8 +1067,27 @@
         &lt;script src=&quot;https://s3.amazonaws.com/udo-rapidpro-static-app/push.min.js&quot;&gt;&lt;/script&gt;
         <br/><br/>
 
-        &lt;script type=&quot;text/javascript&quot;&gt;
-        <br/>const app = new WebPush({ <br/>&nbsp;&nbsp;socketUrl: '{{ object.config_json.WS_URL }}', <br/>&nbsp;&nbsp;channelUUID: '{{ object.uuid }}', <br/>&nbsp;&nbsp;hostApi: '{{ domain }}', <br/>&nbsp;&nbsp;welcomeMessage: 'Hi, need help?' <br/>});<br/>&lt;/script&gt;
+        &lt;script type=&quot;text/javascript&quot;&gt; 
+        <br/>const app = new WebPush({ 
+          <br/>socketUrl: '{{ object.config_json.WS_URL }}', 
+          <br/>channelUUID: '{{ object.uuid }}', 
+          <br/>hostApi: 'https://{{ domain }}', 
+          <br/>welcomeMessage: 'Hi, need help?',
+          <br/>language: 'por', // main language
+          <br/>//trigger: '', // optional
+          <br/>//divName: '', // optional
+          <br/>/*customize widget*/
+          <br/>/*customizeWidget: {
+          <br/>mainIcon: '',
+          <br/>mainIconColor: '',
+          <br/>chatIcon: '',
+          <br/>chatIconColor: '',
+          <br/>chatPushMessageColor: '',
+          <br/>chatPushTextColor: '',
+          <br/>chatUserTextColor: '',
+          <br/>},*/
+          <br/>});
+        <br/>&lt;/script&gt;
 
 -block extra-script
   {{ block.super }}
