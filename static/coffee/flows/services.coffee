@@ -1318,8 +1318,6 @@ app.factory 'Flow', ['$rootScope', '$window', '$http', '$timeout', '$interval', 
             quick_reply_title = if quick_reply.title then quick_reply.title else null
             if quick_reply_title
               quick_reply.title = quick_reply_title.slice(0, 20)
-            else
-              quick_reply = {}
             actions.push(quick_reply)
           action.quick_replies[lang] = actions
 
@@ -1330,8 +1328,6 @@ app.factory 'Flow', ['$rootScope', '$window', '$http', '$timeout', '$interval', 
             button_title = if button.title then button.title else null
             if button_title
               button.title = button_title.slice(0, 20)
-            else
-              button = {}
             actions.push(button)
           action.url_buttons[lang] = actions
 
