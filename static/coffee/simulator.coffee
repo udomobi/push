@@ -46,14 +46,15 @@ window.updateSimulator = (data) ->
 
     if msg.metadata
       params = JSON.parse(msg.metadata)
-      if params.quick_replies[0]
-        model = 'ilog'
+      if params.quick_replies? and params.quick_replies[0]?
         quick_replies = "<div id='quick-reply-content'>"
         for reply in params.quick_replies
           quick_replies += "<button class=\"btn quick-reply\" data-payload=\"" + reply.payload + "\"> " + reply.title + "</button>"
         quick_replies += "</div>"
-      else if params.url_buttons[0] 
-        url_buttons = "<a class=\"btn button-reply\"href='" + params.url_buttons[0].url + "' target=\"_blank\"> " + params.url_buttons[0].title + "</a><br>"
+      else if params.url_buttons? and params.url_buttons[0]?
+        url_buttons = ''
+        for button in params.url_buttons
+          url_buttons += "<a class=\"btn button-reply\"href='" + button.url + "' target=\"_blank\"> " + button.title + "</a><br>"
 
     if msg.attachments
       parts = msg.attachments[0].split(':')
@@ -78,19 +79,21 @@ window.updateSimulator = (data) ->
     ele = "<div class=\"" + model + " " + level + " " + direction + " " + ussd
     if media_type
       ele += " media-msg"
-
     ele += "\">"
-    if quick_replies
-      ele += quick_replies
-    else
-      ele += msg.text
-    
-    if media_type and media_viewer_elt
-      ele += media_viewer_elt
+    ele += msg.text
 
     if url_buttons
       ele += url_buttons
     ele += "</div>"
+
+    if quick_replies
+      ele_quick_replies = "<div class='ilog " + level + " " + direction + " " + ussd + "'>"
+      ele_quick_replies += quick_replies
+      ele_quick_replies += "</div>"
+      ele += ele_quick_replies
+    
+    if media_type and media_viewer_elt
+      ele += media_viewer_elt
 
     $(".simulator-body").append(ele)
     i++
