@@ -426,6 +426,7 @@ class Broadcast(models.Model):
         Sends this broadcast by creating outgoing messages for each recipient.
         """
         # ignore mock messages
+
         if response_to and not response_to.id:
             response_to = None
 
@@ -835,8 +836,7 @@ class Msg(models.Model):
         if task_msgs:
             if task_priority is None:
                 task_priority = DEFAULT_PRIORITY
-
-                batches.append(dict(org=task_msgs[0]['org'], msgs=task_msgs, priority=task_priority))
+            batches.append(dict(org=task_msgs[0]['org'], msgs=task_msgs, priority=task_priority))
 
         # send our batches
         on_transaction_commit(lambda: cls._send_msg_batches(batches))
