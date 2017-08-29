@@ -1349,6 +1349,60 @@ class OrgTest(TembaTest):
         self.assertContains(response, reverse('airtime.airtimetransfer_list'))
         self.assertContains(response, "%s?disconnect=true" % reverse('orgs.org_transfer_to_account'))
 
+    def test_chatbase_account(self):
+        self.login(self.admin)
+
+        self.org.refresh_from_db()
+        self.assertEquals((None, None), self.org.get_chatbase_credentials())
+
+        chatbase_account_url = reverse('orgs.org_chatbase')
+        response = self.client.get(chatbase_account_url)
+        self.assertContains(response, 'Chatbase')
+
+        payload = dict(version='1.0', not_handled=True, feedback=False, disconnect='false')
+
+        response = self.client.post(chatbase_account_url, payload, follow=True)
+        self.assertContains(response, "Missing data: Agent Name or API Key.Please check them again and retry.")
+        self.assertEquals((None, None), self.org.get_chatbase_credentials())
+
+        payload.update(dict(api_key='api_key', agent_name='chatbase_agent', type='user'))
+
+        self.client.post(chatbase_account_url, payload, follow=True)
+
+        self.org.refresh_from_db()
+        self.assertEquals(('api_key', '1.0'), self.org.get_chatbase_credentials())
+
+        self.assertEquals(self.org.config_json()['CHATBASE_API_KEY'], 'api_key')
+        self.assertEquals(self.org.config_json()['CHATBASE_AGENT_NAME'], 'chatbase_agent')
+        self.assertEquals(self.org.config_json()['CHATBASE_VERSION'], '1.0')
+
+        with self.assertRaises(Exception):
+            contact = self.create_contact('Anakin Skywalker', '+12067791212')
+            msg = self.create_msg(contact=contact, text="favs")
+            Msg.process_message(msg)
+
+        with self.settings(SEND_CHATBASE=True):
+            contact = self.create_contact('Anakin Skywalker', '+12067791212')
+            msg = self.create_msg(contact=contact, text="favs")
+            Msg.process_message(msg)
+
+        org_home_url = reverse('orgs.org_home')
+
+        response = self.client.get(org_home_url)
+        self.assertContains(response, self.org.config_json()['CHATBASE_AGENT_NAME'])
+
+        payload.update(dict(disconnect='true'))
+
+        self.client.post(chatbase_account_url, payload, follow=True)
+
+        self.org.refresh_from_db()
+        self.assertEquals((None, None), self.org.get_chatbase_credentials())
+
+        with self.settings(SEND_CHATBASE=True):
+            contact = self.create_contact('Anakin Skywalker', '+12067791212')
+            msg = self.create_msg(contact=contact, text="favs")
+            Msg.process_message(msg)
+
     def test_resthooks(self):
         # no hitting this page without auth
         resthook_url = reverse('orgs.org_resthooks')
@@ -3073,10 +3127,14 @@ class TestStripeCredits(TembaTest):
         self.assertEqual(1, self.org.topups.all().count())
         self.assertEqual(1000, self.org.get_credits_total())
 
+    @patch('stripe.Customer.create')
     @patch('stripe.Customer.retrieve')
     @patch('stripe.Charge.create')
     @override_settings(SEND_EMAILS=True)
-    def test_add_credits_existing_customer(self, charge_create, customer_retrieve):
+    def test_add_credits_existing_customer(self, charge_create, customer_retrieve, customer_create):
+        self.admin2 = self.create_user("Administrator 2")
+        self.org.administrators.add(self.admin2)
+
         self.org.stripe_customer = 'stripe-cust-1'
         self.org.save()
 
@@ -3095,14 +3153,17 @@ class TestStripeCredits(TembaTest):
                 return MockCard()
 
         class MockCustomer(object):
-            def __init__(self):
-                self.id = 'stripe-cust-1'
+            def __init__(self, id, email):
+                self.id = id
+                self.email = email
                 self.cards = MockCards()
 
             def save(self):
                 pass
 
-        customer_retrieve.return_value = MockCustomer()
+        customer_retrieve.return_value = MockCustomer(id='stripe-cust-1', email=self.admin.email)
+        customer_create.return_value = MockCustomer(id='stripe-cust-2', email=self.admin2.email)
+
         charge_create.return_value = \
             dict_to_struct('Charge', dict(id='stripe-charge-1',
                                           card=dict_to_struct('Card', dict(last4='1234', type='Visa', name='Rudolph'))))
@@ -3120,13 +3181,21 @@ class TestStripeCredits(TembaTest):
         org = Org.objects.get(id=self.org.id)
         self.assertEqual('stripe-cust-1', org.stripe_customer)
 
-        # assert we sent our confirmation emai
+        # assert we sent our confirmation email
         self.assertEqual(1, len(mail.outbox))
         email = mail.outbox[0]
         self.assertEquals("RapidPro Receipt", email.subject)
         self.assertTrue('Rudolph' in email.body)
         self.assertTrue('Visa' in email.body)
         self.assertTrue('$20' in email.body)
+
+        # do it again with a different user, should create a new stripe customer
+        self.org.add_credits('2000', 'stripe-token', self.admin2)
+        self.assertTrue(4000, self.org.get_credits_total())
+
+        # should have a different customer now
+        org = Org.objects.get(id=self.org.id)
+        self.assertEqual('stripe-cust-2', org.stripe_customer)
 
 
 class ParsingTest(TembaTest):
