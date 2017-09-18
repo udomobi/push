@@ -226,7 +226,6 @@ class Channel(TembaModel):
     CONFIG_FCM_TITLE = 'FCM_TITLE'
     CONFIG_FCM_NOTIFICATION = 'FCM_NOTIFICATION'
     CONFIG_MAX_LENGTH = 'max_length'
-    CONFIG_WS_URL = 'WS_URL'
     CONFIG_MACROKIOSK_SENDER_ID = 'macrokiosk_sender_id'
     CONFIG_MACROKIOSK_SERVICE_ID = 'macrokiosk_service_id'
 
@@ -356,7 +355,7 @@ class Channel(TembaModel):
                     (TYPE_VIBER_PUBLIC, "Viber Public Channels"),
                     (TYPE_VUMI, "Vumi"),
                     (TYPE_VUMI_USSD, "Vumi USSD"),
-                    (TYPE_WS, "WebSocket"),
+                    (TYPE_WS, "WebSite"),
                     (TYPE_YO, "Yo!"),
                     (TYPE_ZENVIA, "Zenvia"),
                     (TYPE_GCM, "GCM"))
@@ -810,14 +809,11 @@ class Channel(TembaModel):
         return Channel.create(org, user, 'BR', Channel.TYPE_ZENVIA, name="Zenvia: %s" % phone, address=phone, config=config)
 
     @classmethod
-    def add_ws_channel(cls, org, user, data):
+    def add_ws_channel(cls, org, user, name):
         from temba.contacts.models import WS_SCHEME
 
-        assert Channel.CONFIG_WS_URL in data, "%s and %s are required" % (
-            Channel.CONFIG_WS_URL, Channel.CONFIG_WS_URL)
-
-        return Channel.create(org, user, None, Channel.TYPE_WS, name="WebSocket Server",
-                              address=data.get(Channel.CONFIG_WS_URL), config=data, scheme=WS_SCHEME)
+        return Channel.create(org, user, None, Channel.TYPE_WS, name=name, address=settings.WEBSOCKET_ADDRESS,
+                              scheme=WS_SCHEME)
 
     @classmethod
     def add_send_channel(cls, user, channel):
@@ -1542,7 +1538,7 @@ class Channel(TembaModel):
             elif url_buttons:
                 data['metadata'] = dict(url_buttons=url_buttons)
 
-        url = channel.config[Channel.CONFIG_WS_URL]
+        url = settings.WEBSOCKET_ADDRESS
         start = time.time()
 
         headers = {'Content-Type': 'application/json'}

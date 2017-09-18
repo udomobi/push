@@ -1161,3 +1161,4 @@ SUCCESS_LOGS_TRIM_TIME = 48
 ALL_LOGS_TRIM_TIME = 24 * 30
 
 CHATBASE_API_URL = 'https://chatbase.com/api/messages'
+WEBSOCKET_ADDRESS = 'https://push-websocket.ilhasoft.mobi'
