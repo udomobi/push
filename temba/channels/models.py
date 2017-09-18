@@ -356,7 +356,7 @@ class Channel(TembaModel):
                     (TYPE_VIBER_PUBLIC, "Viber Public Channels"),
                     (TYPE_VUMI, "Vumi"),
                     (TYPE_VUMI_USSD, "Vumi USSD"),
-                    (TYPE_WS, "WebSocket"),
+                    (TYPE_WS, "WebSite"),
                     (TYPE_YO, "Yo!"),
                     (TYPE_ZENVIA, "Zenvia"),
                     (TYPE_GCM, "GCM"))
@@ -816,7 +816,7 @@ class Channel(TembaModel):
         assert Channel.CONFIG_WS_URL in data, "%s and %s are required" % (
             Channel.CONFIG_WS_URL, Channel.CONFIG_WS_URL)
 
-        return Channel.create(org, user, None, Channel.TYPE_WS, name="WebSocket Server",
+        return Channel.create(org, user, None, Channel.TYPE_WS, name="WebSite",
                               address=data.get(Channel.CONFIG_WS_URL), config=data, scheme=WS_SCHEME)
 
     @classmethod
