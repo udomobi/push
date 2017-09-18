@@ -1068,24 +1068,25 @@
         <br/><br/>
 
         &lt;script type=&quot;text/javascript&quot;&gt; 
-        <br/>const app = new WebPush({ 
-          <br/>socketUrl: '{{ object.config_json.WS_URL }}', 
-          <br/>channelUUID: '{{ object.uuid }}', 
-          <br/>hostApi: 'https://{{ domain }}', 
-          <br/>welcomeMessage: 'Hi, need help?',
-          <br/>//trigger: '', // optional
-          <br/>//divName: '', // optional
-          <br/>/*customize widget*/
-          <br/>/*customizeWidget: {
-          <br/>mainIcon: '',
-          <br/>mainIconColor: '',
-          <br/>chatIcon: '',
-          <br/>chatIconColor: '',
-          <br/>chatPushMessageColor: '',
-          <br/>chatPushTextColor: '',
-          <br/>chatUserTextColor: '',
-          <br/>},*/
-          <br/>});
+        <p/>const app = new WebPush({
+          %ul
+            %li socketUrl: '{{ object.address }}',
+            %li channelUUID: '{{ object.uuid }}', 
+            %li hostApi: 'https://{{ domain }}', 
+            %li welcomeMessage: 'Hi, do you need help?',
+            %li //trigger: '', // optional
+            %li //divName: '', // optional
+            %li <br/>// Use this code below to customize your widget
+            %li /*customizeWidget: {
+              %ul mainIcon: '',
+                %li mainIconColor: '',
+                %li chatIcon: '',
+                %li chatIconColor: '',
+                %li chatPushMessageColor: '',
+                %li chatPushTextColor: '',
+                %li chatUserTextColor: '',
+            %li },*/
+          });
         <br/>&lt;/script&gt;
 
 -block extra-script

@@ -2347,21 +2347,19 @@ class ChannelCRUDL(SmartCRUDL):
 
     class ClaimWs(OrgPermsMixin, SmartFormView):
         class ClaimWsForm(forms.Form):
-            url = forms.CharField(label=_('WebSocket URL'))
+            name = forms.CharField(label=_('WebSite Name'))
 
         form_class = ClaimWsForm
-        fields = ('url',)
-        url = _("WebSocket Server URL")
+        fields = ('name',)
+        name = _("WebSite Name")
         permission = 'channels.channel_claim'
         success_url = "id@channels.channel_configuration"
 
         def form_valid(self, form):
             cleaned_data = form.cleaned_data
-            data = {
-                Channel.CONFIG_WS_URL: cleaned_data.get('url')
-            }
 
-            self.object = Channel.add_ws_channel(org=self.request.user.get_org(), user=self.request.user, data=data)
+            self.object = Channel.add_ws_channel(org=self.request.user.get_org(), user=self.request.user,
+                                                 name=cleaned_data['name'])
 
             return super(ChannelCRUDL.ClaimWs, self).form_valid(form)
 
