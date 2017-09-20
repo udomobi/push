@@ -596,7 +596,7 @@ class Flow(TembaModel):
             if not destination:  # pragma: no cover
                 step.run.set_completed(final_step=step)
                 Msg.mark_handled(msg)
-                return True, [], flow.name
+                return True, []
 
             (handled, msgs) = Flow.handle_destination(destination, step, step.run, msg, started_flows,
                                                       user_input=user_input, triggered_start=triggered_start,
@@ -2635,10 +2635,8 @@ class FlowRun(models.Model):
                     msg.contact = run.contact
 
                 # finally, trigger our parent flow
-                (handled, msgs, flow_name) = Flow.find_and_handle(msg, user_input=False,
-                                                                  started_flows=[run.flow, run.parent.flow],
-                                                                  resume_parent_run=True, trigger_send=trigger_send,
-                                                                  continue_parent=continue_parent)
+                (handled, msgs) = Flow.find_and_handle(msg, user_input=False, started_flows=[run.flow, run.parent.flow],
+                                                       resume_parent_run=True, trigger_send=trigger_send, continue_parent=continue_parent)
 
         return msgs
 
