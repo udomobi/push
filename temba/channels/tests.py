@@ -7626,9 +7626,7 @@ class TelegramTest(TembaTest):
 
             mock_json = json.loads(mock.call_args[0][1]['reply_markup'])
 
-            self.assertEqual(mock_json['keyboard'][0][0]['callback_data'], "yes")
             self.assertEqual(mock_json['keyboard'][0][0]['text'], "Yes")
-            self.assertEqual(mock_json['keyboard'][1][0]['callback_data'], "no")
             self.assertEqual(mock_json['keyboard'][1][0]['text'], "No")
 
     def test_send_url_buttons(self):
