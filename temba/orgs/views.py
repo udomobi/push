@@ -1975,7 +1975,8 @@ class OrgCRUDL(SmartCRUDL):
             agent_name = forms.CharField(max_length=255, label=_("Agent Name"), required=False,
                                          help_text="Set the your Chatbase application name")
             api_key = forms.CharField(max_length=255, label=_("API Key"), required=False,
-                                      help_text="Set the your Chatbase API Key")
+                                      help_text="You can find your API Key by clicking "
+                                                "<a href='https://chatbase.com/agents' target='_new'>here</a>")
             version = forms.CharField(max_length=10, label=_("Version"), required=False, help_text="E.g. 1.0, 1.2.1")
             disconnect = forms.CharField(widget=forms.HiddenInput, max_length=6, required=True)
 
@@ -2011,7 +2012,8 @@ class OrgCRUDL(SmartCRUDL):
 
         def get_context_data(self, **kwargs):
             context = super(OrgCRUDL.Chatbase, self).get_context_data(**kwargs)
-            if self.object.is_connected_to_chatbase():
+            (chatbase_api_key, chatbase_version) = self.object.get_chatbase_credentials()
+            if chatbase_api_key:
                 config = self.object.config_json()
                 agent_name = config.get(CHATBASE_AGENT_NAME, None)
                 context['chatbase_agent_name'] = agent_name
@@ -2110,7 +2112,8 @@ class OrgCRUDL(SmartCRUDL):
                                        action='redirect', nobutton=True)
 
             if self.has_org_perm('orgs.org_chatbase'):
-                if not self.object.is_connected_to_chatbase():
+                (chatbase_api_key, chatbase_version) = self.object.get_chatbase_credentials()
+                if not chatbase_api_key:
                     formax.add_section('chatbase', reverse('orgs.org_chatbase'), icon='icon-chatbase',
                                        action='redirect', button=_("Connect"))
                 else:  # pragma: needs cover

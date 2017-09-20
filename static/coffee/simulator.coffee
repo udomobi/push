@@ -31,6 +31,7 @@ window.updateSimulator = (data) ->
     $('.simulator-footer .media-button').hide()
     $('.simulator-footer .imessage').show()
 
+
   while i < data.messages.length
     msg = data.messages[i]
 
@@ -49,14 +50,14 @@ window.updateSimulator = (data) ->
       if params.quick_replies? and params.quick_replies[0]?
         quick_replies = "<div id='quick-reply-content'>"
         for reply in params.quick_replies
-          quick_replies += "<button class=\"btn quick-reply\" data-payload=\"" + reply.payload + "\"> " + reply.title + "</button>"
+          quick_replies += "<button class=\"btn quick-reply\" data-payload=\"" + reply.title + "\"> " + reply.title + "</button>"
         quick_replies += "</div>"
       else if params.url_buttons? and params.url_buttons[0]?
         url_buttons = ''
         for button in params.url_buttons
           url_buttons += "<a class=\"btn button-reply\"href='" + button.url + "' target=\"_blank\"> " + button.title + "</a><br>"
 
-    if msg.attachments
+    if msg.attachments and msg.attachments.length > 0
       parts = msg.attachments[0].split(':')
 
       media_type = parts[0]
@@ -75,6 +76,8 @@ window.updateSimulator = (data) ->
         else if media_type == 'audio'
           media_type = 'icon-mic'
           media_viewer_elt = "<span class=\"media-file\"><audio controls src=\"" + media_url + "\"></span>"
+
+
 
     ele = "<div class=\"" + model + " " + level + " " + direction + " " + ussd
     if media_type
