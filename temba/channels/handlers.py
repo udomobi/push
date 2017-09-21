@@ -520,7 +520,7 @@ class ExternalHandler(BaseChannelHandler):
 
 class WsHandler(BaseChannelHandler):
 
-    url = r'^ws/(?P<action>received|register)/(?P<uuid>[a-z0-9\-]+)/$'
+    url = r'^ws/(?P<action>received|register|referrer)/(?P<uuid>[a-z0-9\-]+)/$'
     url_name = 'handlers.ws_handler'
 
     def get_channel_type(self):
@@ -572,6 +572,28 @@ class WsHandler(BaseChannelHandler):
             contact = Contact.get_or_create(channel.org, channel.created_by, name=name, urns=[ws_urn],
                                             channel=channel, language=language)
             return HttpResponse(json.dumps({'contact_uuid': contact.uuid}), content_type='application/json')
+
+        elif action == 'referrer':
+            if not self.get_param('urn'):
+                return HttpResponse("Missing parameters, requires 'urn'", status=400)
+
+            urn = URN.from_ws(self.get_param('urn'))
+            referrer_id = self.get_param('ref')
+
+            extra = self.get_param('extra')
+            trigger_extra = {'ref': referrer_id}
+            try:
+                trigger_extra.update(json.loads(extra))
+            except:
+                pass
+
+            contact = Contact.from_urn(channel.org, urn)
+            caught = Trigger.catch_triggers(contact, Trigger.TYPE_REFERRAL, channel,
+                                            referrer_id=referrer_id, extra=trigger_extra)
+            if caught:
+                return HttpResponse("Referrer Accepted: %s" % referrer_id)
+            else:
+                return HttpResponse("Not handled", status=400)
 
         else:
             return HttpResponse("Not handled", status=400)
