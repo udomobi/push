@@ -2762,7 +2762,7 @@ class ContactTest(TembaTest):
                                       error_messages=[dict(line=3,
                                                            error="Missing any valid URNs; at least one among phone, "
                                                                  "facebook, twitter, twitterid, viber, line, telegram, email, "
-                                                                 "external, jiochat, fcm should be provided"),
+                                                                 "external, jiochat, fcm, gcm, ws should be provided"),
                                                       dict(line=4, error="Invalid Phone number 12345")]))
 
         # import a spreadsheet with a name and a twitter columns only
@@ -2834,7 +2834,7 @@ class ContactTest(TembaTest):
                                           error_messages=[dict(line=3,
                                                           error="Missing any valid URNs; at least one among phone, "
                                                                 "facebook, twitter, twitterid, viber, line, telegram, email, "
-                                                                "external, jiochat, fcm should be provided")]))
+                                                                "external, jiochat, fcm, gcm, ws should be provided")]))
 
             # lock for creates only
             self.assertEquals(mock_lock.call_count, 1)
@@ -2902,7 +2902,7 @@ class ContactTest(TembaTest):
                                           error_messages=[dict(line=3,
                                                           error="Missing any valid URNs; at least one among phone, "
                                                                 "facebook, twitter, twitterid, viber, line, telegram, email, "
-                                                                "external, jiochat, fcm should be provided")]))
+                                                                "external, jiochat, fcm, gcm, ws should be provided")]))
 
             # only lock for create
             self.assertEquals(mock_lock.call_count, 1)
@@ -4100,7 +4100,7 @@ class ContactFieldTest(TembaTest):
 
         response_json = response.json()
 
-        self.assertEquals(len(response_json), 45)
+        self.assertEquals(len(response_json), 47)
         self.assertEquals(response_json[0]['label'], 'Full name')
         self.assertEquals(response_json[0]['key'], 'name')
         self.assertEquals(response_json[1]['label'], 'Phone number')
@@ -4125,22 +4125,26 @@ class ContactFieldTest(TembaTest):
         self.assertEquals(response_json[10]['key'], 'jiochat')
         self.assertEquals(response_json[11]['label'], 'Firebase Cloud Messaging identifier')
         self.assertEquals(response_json[11]['key'], 'fcm')
-        self.assertEquals(response_json[12]['label'], 'Groups')
-        self.assertEquals(response_json[12]['key'], 'groups')
-        self.assertEquals(response_json[13]['label'], 'First')
-        self.assertEquals(response_json[13]['key'], 'first')
-        self.assertEquals(response_json[14]['label'], 'label0')
-        self.assertEquals(response_json[14]['key'], 'key0')
+        self.assertEquals(response_json[12]['label'], 'GCM identifier')
+        self.assertEquals(response_json[12]['key'], 'gcm')
+        self.assertEquals(response_json[13]['label'], 'WebSocket identifier')
+        self.assertEquals(response_json[13]['key'], 'ws')
+        self.assertEquals(response_json[14]['label'], 'Groups')
+        self.assertEquals(response_json[14]['key'], 'groups')
+        self.assertEquals(response_json[15]['label'], 'First')
+        self.assertEquals(response_json[15]['key'], 'first')
+        self.assertEquals(response_json[16]['label'], 'label0')
+        self.assertEquals(response_json[16]['key'], 'key0')
 
         ContactField.objects.filter(org=self.org, key='key0').update(label='AAAA')
 
         response = self.client.get(contact_field_json_url)
         response_json = response.json()
 
-        self.assertEquals(response_json[13]['label'], 'AAAA')
-        self.assertEquals(response_json[13]['key'], 'key0')
-        self.assertEquals(response_json[14]['label'], 'First')
-        self.assertEquals(response_json[14]['key'], 'first')
+        self.assertEquals(response_json[15]['label'], 'AAAA')
+        self.assertEquals(response_json[15]['key'], 'key0')
+        self.assertEquals(response_json[16]['label'], 'First')
+        self.assertEquals(response_json[16]['key'], 'first')
 
 
 class URNTest(TembaTest):
