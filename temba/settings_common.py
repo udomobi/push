@@ -852,9 +852,9 @@ AUTHENTICATION_BACKENDS = (
 ANONYMOUS_USER_NAME = 'AnonymousUser'
 
 # -----------------------------------------------------------------------------------
-# Our test runner is standard but with ability to exclude apps
+# Our test runner includes a mocked HTTP server and the ability to exclude apps
 # -----------------------------------------------------------------------------------
-TEST_RUNNER = 'temba.tests.ExcludeTestRunner'
+TEST_RUNNER = 'temba.tests.TembaTestRunner'
 TEST_EXCLUDE = ('smartmin',)
 
 # -----------------------------------------------------------------------------------
@@ -906,11 +906,6 @@ CELERYBEAT_SCHEDULE = {
     "check-messages-task": {
         'task': 'check_messages_task',
         'schedule': timedelta(seconds=300)
-    },
-    "send-chatbase-logs": {
-        'task': 'send_chatbase_logs',
-        'schedule': timedelta(seconds=300),
-        'options': {'queue': 'msgs'}
     },
     "fail-old-messages": {
         'task': 'fail_old_messages',
@@ -1113,10 +1108,16 @@ MESSAGE_HANDLERS = [
 ]
 
 CHANNEL_TYPES = [
+    'temba.channels.types.external.ExternalType',
     'temba.channels.types.facebook.FacebookType',
+    'temba.channels.types.firebase.FirebaseCloudMessagingType',
+    'temba.channels.types.infobip.InfobipType',
+    'temba.channels.types.jiochat.JioChatType',
+    'temba.channels.types.line.LineType',
     'temba.channels.types.telegram.TelegramType',
     'temba.channels.types.twitter.TwitterType',
-    'temba.channels.types.twitter_activity.TwitterActivityType'
+    'temba.channels.types.twitter_activity.TwitterActivityType',
+    'temba.channels.types.viber_public.ViberPublicType',
 ]
 
 # -----------------------------------------------------------------------------------
@@ -1160,5 +1161,13 @@ QUICK_REPLY_TITLE_SIZE = 20
 SUCCESS_LOGS_TRIM_TIME = 48
 ALL_LOGS_TRIM_TIME = 24 * 30
 
-CHATBASE_API_URL = 'https://chatbase.com/api/messages'
+# -----------------------------------------------------------------------------------
+# Which channel types will be sent using Courier instead of RapidPro
+# -----------------------------------------------------------------------------------
+COURIER_CHANNELS = set()
+
+# -----------------------------------------------------------------------------------
+# Chatbase integration
+# -----------------------------------------------------------------------------------
+CHATBASE_API_URL = 'https://chatbase.com/api/message'
 WEBSOCKET_ADDRESS = 'https://push-websocket.ilhasoft.mobi'

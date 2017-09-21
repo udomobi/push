@@ -506,8 +506,8 @@ app.controller 'FlowController', [ '$scope', '$rootScope', '$timeout', '$log', '
       if lastAction
         return lastAction._missingTranslation
 
-  $scope.broadcastToStep = (event, uuid) ->
-    window.broadcastToNode(uuid)
+  $scope.broadcastToStep = (event, uuid, count) ->
+    window.broadcastToNode(uuid, count)
     event.stopPropagation()
 
   $scope.addNote = (event) ->
@@ -741,7 +741,7 @@ app.controller 'FlowController', [ '$scope', '$rootScope', '$timeout', '$log', '
           if typeof toQuickReply == "undefined" && (fromQuickReply != [] && fromQuickReply?)
             toQuickReply = []
             for obj in fromQuickReply
-              toQuickReply.push({title:'', payload:''})
+              toQuickReply.push({title:''})
 
         catch
           fromButtonsReply = []
@@ -1879,10 +1879,10 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
     if $scope.actions_quick_reply.length < 11
       $scope.container_operation_visible = false
       if Object.keys($scope.action.quick_replies).length < 1
-        $scope.actions_quick_reply.push({title:'', payload:''})
+        $scope.actions_quick_reply.push({title:''})
       else
         for lang of $scope.action.quick_replies
-          $scope.action.quick_replies[lang].push({title:'', payload:''})
+          $scope.action.quick_replies[lang].push({title:''})
 
   $scope.addNewUrlButton = ->
     if $scope.actions_buttons_reply.length < 3

@@ -14,8 +14,6 @@ import regex
 import six
 import stripe
 import traceback
-import time
-import requests
 
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -23,7 +21,6 @@ from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth.models import User, Group
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.core.urlresolvers import reverse
@@ -41,7 +38,6 @@ from smartmin.models import SmartModel
 from temba.bundles import get_brand_bundles, get_bundle_map
 from temba.locations.models import AdminBoundary, BoundaryAlias
 from temba.utils import analytics, str_to_datetime, get_datetime_format, datetime_to_str, random_string, languages
-from temba.utils import dict_to_json, json_to_dict
 from temba.utils.cache import get_cacheable_result, get_cacheable_attr, incrby_existing
 from temba.utils.currencies import currency_for_country
 from temba.utils.email import send_template_email, send_simple_email, send_custom_smtp_email
@@ -118,7 +114,6 @@ CHATBASE_TYPE_AGENT = 'agent'
 CHATBASE_TYPE_USER = 'user'
 CHATBASE_FEEDBACK = 'CHATBASE_FEEDBACK'
 CHATBASE_VERSION = 'CHATBASE_VERSION'
-CHATBASE_BATCH_SIZE = 500
 
 ORG_STATUS = 'STATUS'
 SUSPENDED = 'suspended'
@@ -140,7 +135,6 @@ ORG_ACTIVE_TOPUP_KEY = 'org:%d:cache:active_topup'
 ORG_ACTIVE_TOPUP_REMAINING = 'org:%d:cache:credits_remaining:%d'
 ORG_CREDIT_EXPIRING_CACHE_KEY = 'org:%d:cache:credits_expiring_soon'
 ORG_LOW_CREDIT_THRESHOLD_CACHE_KEY = 'org:%d:cache:low_credits_threshold'
-ORG_CHATBASE_LOG_CACHE_KEY = 'org:%d:cache:chatbase_log'
 
 ORG_LOCK_TTL = 60  # 1 minute
 ORG_CREDITS_CACHE_TTL = 7 * 24 * 60 * 60  # 1 week
@@ -449,7 +443,7 @@ class Org(SmartModel):
         channels = self.channels.filter(is_active=True, role__contains=role).order_by('-pk')
 
         if scheme is not None:
-            channels = channels.filter(scheme=scheme)
+            channels = channels.filter(schemes__contains=[scheme])
 
         channel = None
         if country_code:
@@ -500,7 +494,7 @@ class Org(SmartModel):
 
                 # no country specific channel, try to find any channel at all
                 if not channels:
-                    channels = [c for c in self.channels.all()]
+                    channels = [c for c in self.channels.filter(schemes__contains=[TEL_SCHEME])]
 
                 # filter based on role and activity (we do this in python as channels can be prefetched so it is quicker in those cases)
                 senders = []
@@ -581,7 +575,8 @@ class Org(SmartModel):
 
         schemes = set()
         for channel in self.channels.filter(is_active=True, role__contains=role):
-            schemes.add(channel.scheme)
+            for scheme in channel.schemes:
+                schemes.add(scheme)
 
         setattr(self, cache_attr, schemes)
         return schemes
@@ -910,14 +905,14 @@ class Org(SmartModel):
         self.modified_by = user
         self.save()
 
-    def is_connected_to_chatbase(self):
+    def get_chatbase_credentials(self):
         if self.config:
             config = self.config_json()
             chatbase_api_key = config.get(CHATBASE_API_KEY, None)
-
-            return True if chatbase_api_key else False
+            chatbase_version = config.get(CHATBASE_VERSION, None)
+            return chatbase_api_key, chatbase_version
         else:
-            return False
+            return None, None
 
     def get_verboice_client(self):  # pragma: needs cover
         from temba.ivr.clients import VerboiceClient
@@ -1539,9 +1534,9 @@ class Org(SmartModel):
         # for our purposes, #1 and #2 are treated the same, we just always update the default card
 
         try:
-            if not customer:
+            if not customer or customer.email != user.email:
                 # then go create a customer object for this user
-                customer = stripe.Customer.create(card=token, email=user,
+                customer = stripe.Customer.create(card=token, email=user.email,
                                                   description="{ org: %d }" % self.pk)
 
                 stripe_customer = customer.id
@@ -1946,58 +1941,6 @@ class Org(SmartModel):
 
         return getattr(user, '_org', None)
 
-    @staticmethod
-    def queue_chatbase_log(org_id, channel_name, text, contact_id, type, not_handled, intent=None):
-        if not settings.SEND_CHATBASE:
-            raise Exception("!! Skipping Chatbase request, SEND_CHATBASE set to False")
-
-        try:
-            data = dict(type=type,
-                        user_id=contact_id,
-                        platform=channel_name,
-                        message=text,
-                        time_stamp=int(time.time()))
-
-            if intent:
-                data.update(dict(intent=intent))
-
-            if type == CHATBASE_TYPE_USER and not_handled:
-                data.update(dict(not_handled=not_handled))
-
-            key = ORG_CHATBASE_LOG_CACHE_KEY % org_id
-            cached = cache.get(key, None)
-
-            if cached is None:
-                cache.set(key, dict_to_json([data]))
-            else:
-                cached_dict = json_to_dict(cached)
-                cached_dict.append(data)
-                cache.set(key, dict_to_json(cached_dict))
-
-        except Exception as e:
-            import traceback
-            traceback.print_exc(e)
-            raise Exception("Error: %s" % e.args)
-
-    def send_messages_to_chatbase(self, messages):
-        from temba.channels.models import TEMBA_HEADERS
-
-        for message in messages:
-            message['api_key'] = self.config_json()[CHATBASE_API_KEY]
-
-            if CHATBASE_VERSION in self.config_json():
-                message['version'] = self.config_json()[CHATBASE_VERSION]
-
-        payload = dict(messages=messages)
-        payload = json.dumps(payload)
-
-        headers = {'Content-Type': 'application/json'}
-        headers.update(TEMBA_HEADERS)
-        response = requests.post(settings.CHATBASE_API_URL, data=payload, headers=headers)
-
-        # Chatbase response
-        print(response.content)
-
     def __str__(self):
         return self.name
 
@@ -2005,8 +1948,8 @@ class Org(SmartModel):
 # ===================== monkey patch User class with a few extra functions ========================
 
 def get_user_orgs(user, brand=None):
-    org = user.get_org()
     if not brand:
+        org = Org.get_org(user)
         brand = org.brand if org else settings.DEFAULT_BRAND
 
     if user.is_superuser:

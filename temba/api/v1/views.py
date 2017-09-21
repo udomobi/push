@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import generics, mixins, status, pagination
+from rest_framework import generics, mixins, status, pagination, views
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1465,7 +1465,7 @@ class ContactEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAPIView)
 
         urns = self.request.query_params.getlist('urns', None)
         if urns:
-            queryset = queryset.filter(urns__urn__in=urns)
+            queryset = queryset.filter(urns__identity__in=urns)
 
         groups = self.request.query_params.getlist('group', None)  # deprecated, use group_uuids
         if groups:
