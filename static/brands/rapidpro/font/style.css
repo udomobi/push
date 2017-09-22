@@ -13,3 +13,8 @@
   font-family: 'rapidpro';
   content: "\e600";
 }
+
+.icon-logo img {
+	width: auto;
+	height: auto;
+}
