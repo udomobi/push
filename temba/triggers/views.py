@@ -299,7 +299,7 @@ class ReferralTriggerForm(BaseTriggerForm):
     Form for referral triggers
     """
     channel = forms.ModelChoiceField(Channel.objects.filter(pk__lt=0), label=_("Channel"), required=False,
-                                     help_text=_("The channel to apply this trigger to, leave blank for all Facebook channels"))
+                                     help_text=_("The channel to apply this trigger to, leave blank for all Facebook and Website channels"))
     referrer_id = forms.CharField(max_length=255, required=False, label=_("Referrer Id"),
                                   help_text=_("The referrer id that will trigger us"))
 
