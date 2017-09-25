@@ -1171,3 +1171,5 @@ COURIER_CHANNELS = set()
 # -----------------------------------------------------------------------------------
 CHATBASE_API_URL = 'https://chatbase.com/api/message'
 WEBSOCKET_ADDRESS = 'https://push-websocket.ilhasoft.mobi'
+
+SUPPORT_CHANNEL = '75e71c2f-03b2-46ae-b25e-87c48bd098a0'

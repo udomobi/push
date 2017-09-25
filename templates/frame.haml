@@ -10,6 +10,8 @@
         {{ brand.name }} - Visually build interactive SMS Applications
       {% endblock %}
 
+    %link{href:'https://s3.amazonaws.com/udo-rapidpro-static-app/push-widget/1.1/push.min.css', rel:'stylesheet', type:'text/css'}
+    %script{src:"https://s3.amazonaws.com/udo-rapidpro-static-app/push-widget/1.1/push.min.js"}
     %link{href:'{{STATIC_URL}}fonts/roboto/stylesheet.css', rel:'stylesheet', type:'text/css'}
     %meta{charset:"utf-8"}
     %meta{name:"viewport", content:"width=device-width, initial-scale=1.0"}
@@ -32,6 +34,15 @@
         (function() { document.write(unescape('%3Cscript src="' + src + '"%3E%3C/script%3E')); })();
       }
 
+    // ==== SUPPORT WIDGET ====
+    :javascript
+      const app = new WebPush({
+        socketUrl: '{{ websocket_address }}',
+        channelUUID: '{{ support_channel }}',
+        hostApi: 'https://{{ hostname }}',
+        referrer: 'support',
+        autoOpen: false
+      });
 
     // ==== JQUERY ====
     :javascript
@@ -177,9 +188,8 @@
     #header
       &nbsp;
 
-    %a#big-logo.logo.icon-logo{href:"/", title:"{{brand.name}}"}
-      .name
-        {{brand.name}}
+    %a#big-logo.logo{href:"/", title:"{{brand.name}}"}
+      %img{ src:"{{ STATIC_URL }}brands/push/logo.png" }
 
     -include 'includes/nav.html'
 
