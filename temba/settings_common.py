@@ -221,6 +221,7 @@ INSTALLED_APPS = (
     'temba.assets',
     'temba.auth_tweaks',
     'temba.api',
+    'temba.dashboard',
     'temba.public',
     'temba.schedules',
     'temba.orgs',
@@ -377,6 +378,7 @@ PERMISSIONS = {
                  'clear_cache',
                  'create_login',
                  'create_sub_org',
+                 'dashboard',
                  'download',
                  'edit',
                  'edit_sub_org',
@@ -589,6 +591,7 @@ GROUP_PERMISSIONS = {
         'orgs.org_accounts',
         'orgs.org_smtp_server',
         'orgs.org_api',
+        'orgs.org_dashboard',
         'orgs.org_country',
         'orgs.org_chatbase',
         'orgs.org_create_sub_org',
@@ -852,9 +855,9 @@ AUTHENTICATION_BACKENDS = (
 ANONYMOUS_USER_NAME = 'AnonymousUser'
 
 # -----------------------------------------------------------------------------------
-# Our test runner is standard but with ability to exclude apps
+# Our test runner includes a mocked HTTP server and the ability to exclude apps
 # -----------------------------------------------------------------------------------
-TEST_RUNNER = 'temba.tests.ExcludeTestRunner'
+TEST_RUNNER = 'temba.tests.TembaTestRunner'
 TEST_EXCLUDE = ('smartmin',)
 
 # -----------------------------------------------------------------------------------
@@ -1108,11 +1111,24 @@ MESSAGE_HANDLERS = [
 ]
 
 CHANNEL_TYPES = [
+    'temba.channels.types.africastalking.AfricasTalkingType',
+    'temba.channels.types.blackmyna.BlackmynaType',
+    'temba.channels.types.clickatell.ClickatellType',
+    'temba.channels.types.dartmedia.DartMediaType',
     'temba.channels.types.external.ExternalType',
     'temba.channels.types.facebook.FacebookType',
     'temba.channels.types.firebase.FirebaseCloudMessagingType',
+    'temba.channels.types.globe.GlobeType',
+    'temba.channels.types.highconnection.HighConnectionType',
+    'temba.channels.types.hub9.Hub9Type',
+    'temba.channels.types.infobip.InfobipType',
+    'temba.channels.types.jasmin.JasminType',
     'temba.channels.types.jiochat.JioChatType',
+    'temba.channels.types.junebug.JunebugType',
+    'temba.channels.types.junebug_ussd.JunebugUSSDType',
+    'temba.channels.types.kannel.KannelType',
     'temba.channels.types.line.LineType',
+    'temba.channels.types.m3tech.M3TechType',
     'temba.channels.types.telegram.TelegramType',
     'temba.channels.types.twitter.TwitterType',
     'temba.channels.types.twitter_activity.TwitterActivityType',
@@ -1159,4 +1175,12 @@ VALUE_FIELD_SIZE = 640
 SUCCESS_LOGS_TRIM_TIME = 48
 ALL_LOGS_TRIM_TIME = 24 * 30
 
+# -----------------------------------------------------------------------------------
+# Which channel types will be sent using Courier instead of RapidPro
+# -----------------------------------------------------------------------------------
+COURIER_CHANNELS = set()
+
+# -----------------------------------------------------------------------------------
+# Chatbase integration
+# -----------------------------------------------------------------------------------
 CHATBASE_API_URL = 'https://chatbase.com/api/message'
