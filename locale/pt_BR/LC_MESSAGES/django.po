@@ -10693,7 +10693,6 @@ msgid "messages"
 msgstr "mensagens"
 
 #: templates/includes/nav.haml:24
-#, fuzzy
 msgid "contacts"
 msgstr "Contatos"
 
@@ -10714,9 +10713,8 @@ msgid "triggers"
 msgstr "disparadores"
 
 #: templates/includes/nav.haml:80
-#, fuzzy
 msgid "channels"
-msgstr "Transmissor"
+msgstr "canais"
 
 #: templates/includes/nav.haml:92
 msgid "users"
@@ -10735,9 +10733,8 @@ msgid "sign in"
 msgstr "entrar"
 
 #: templates/includes/nav.haml:145
-#, fuzzy
 msgid "You are out of credits, add more to resume your service"
-msgstr "créditos e você deve realizar uma recarga para retomar o seu serviço."
+msgstr "Você está sem créditos, adicione mais para retormar o seu serviço"
 
 #: templates/includes/nav.haml:151
 #, python-format
@@ -10753,14 +10750,14 @@ msgid "Your phone is having difficulty relaying messages"
 msgstr ""
 
 #: templates/locations/adminboundary_alias.haml:28
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "\n"
 "            Aliases for %(name)s\n"
 "          "
 msgstr ""
 "\n"
-"Instalar o %(name)s app"
+"Alias para %(name)s"
 
 #: templates/locations/adminboundary_alias.haml:33
 #, python-format
@@ -10774,25 +10771,23 @@ msgid ""
 msgstr ""
 
 #: templates/locations/adminboundary_alias.haml:48
-#, fuzzy
 msgid "Clear"
-msgstr "aprender"
+msgstr "Limpar"
 
 #: templates/locations/adminboundary_alias.haml:134
 msgid "(one per alias line)"
 msgstr ""
 
 #: templates/locations/adminboundary_alias.haml:138
-#, fuzzy
 msgid "Alias names must be unique, try again."
-msgstr "Número de telefone inválido, tente novamente."
+msgstr "Alias deve ser único, tente novamente."
 
 #: templates/locations/adminboundary_alias.haml:142
 msgid "Your changes could not be saved. Please reload the page and try again."
 msgstr ""
 
 #: templates/msgs/broadcast_schedule_list.haml:22
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "\n"
 "                %(count_comma)s recipient\n"
@@ -10803,7 +10798,7 @@ msgid_plural ""
 "              "
 msgstr[0] ""
 "\n"
-"%(sms_sent)s Enviadas"
+"%(sms_sent)s Enviada"
 msgstr[1] ""
 "\n"
 "%(sms_sent)s Enviadas"
@@ -10813,12 +10808,11 @@ msgid "No Matching schedules"
 msgstr "Nenhum agendamento correspondente"
 
 #: templates/msgs/broadcast_schedule_read.haml:30
-#, fuzzy
 msgid "Send History"
-msgstr "Histórico de mensagens"
+msgstr "Enviar Histórico"
 
 #: templates/msgs/broadcast_schedule_read.haml:41
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "\n"
 "                      %(count_comma)s recipient\n"
@@ -10829,7 +10823,7 @@ msgid_plural ""
 "                    "
 msgstr[0] ""
 "\n"
-"Distribuir para %(count_comma)s Contact"
+"Distribuir para %(count_comma)s contato"
 msgstr[1] ""
 "\n"
 "Distribuir para %(count_comma)s contatos"
@@ -10839,7 +10833,7 @@ msgid "Write the message that will get sent when the scheduled time arrives"
 msgstr "Escrever a mensagem que será enviada quando chegar o momento agendado"
 
 #: templates/msgs/broadcast_update.haml:54
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "\n"
 "      The message will be sent to\n"
