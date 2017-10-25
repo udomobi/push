@@ -804,7 +804,7 @@ msgstr ""
 "\n"
 "Se sua base estiver no Quênia, você pode comprar um número curto da "
 "%(link_start)s Africa's Talking %(link_end)s e\n"
-"conectá-lo ao Textit em poucos e simples passos."
+"conectá-lo ao Push em poucos e simples passos."
 
 #: temba/channels/types/africastalking/views.py:13
 msgid "Your short code on Africa's Talking"
@@ -1040,7 +1040,7 @@ msgstr "Enviar URL"
 #: temba/channels/types/external/views.py:40
 #, fuzzy
 msgid "The URL we will call when sending messages, with variable substitutions"
-msgstr "A URL que o Textit irá postar quando enviar mensagens"
+msgstr "A URL que o Push irá postar quando enviar mensagens"
 
 #: temba/channels/types/external/views.py:42
 msgid "Request Body"
@@ -1056,7 +1056,7 @@ msgstr ""
 #, fuzzy
 msgid ""
 "The URL we will POST to when sending messages, with variable substitutions"
-msgstr "A URL que o Textit irá postar quando enviar mensagens"
+msgstr "A URL que o Push irá postar quando enviar mensagens"
 
 #: temba/channels/types/facebook/type.py:28
 msgid ""
@@ -1166,7 +1166,7 @@ msgstr ""
 "\n"
 "Se sua base está no Brasil, você pode comprar um\n"
 "número curto da <a href=\"http://www.take.net/\"> Take.net </a> e conectá-lo "
-"ao Textit \n"
+"ao Push \n"
 "em poucos passos simples. "
 
 #: temba/channels/types/hub9/type.py:33
@@ -2031,7 +2031,7 @@ msgid ""
 "Sorry, the number you chose is not supported. You can still deploy in any "
 "country using your own SIM card and an Android phone."
 msgstr ""
-"Você ainda pode implantar o Textit em qualquer país usando seu próprio "
+"Você ainda pode implantar o Push em qualquer país usando seu próprio "
 "cartão SIM e um telefone Android."
 
 #: temba/channels/views.py:2158
@@ -4378,7 +4378,7 @@ msgid ""
 "contact us."
 msgstr ""
 "Desculpe, mas não fomos capazes de cobrar em seu cartão, por favor, tente "
-"novamente mais tarde ou entre em contato conosco pelo feedback@textit.in"
+"novamente mais tarde ou entre em contato conosco pelo contato@push.al"
 
 #: temba/orgs/models.py:1663 temba/orgs/models.py:1665
 #, fuzzy
@@ -4386,7 +4386,7 @@ msgid ""
 "Sorry, we are unable to cancel your plan at this time.  Please contact us."
 msgstr ""
 "Desculpe, não podemos cancelar seu plano neste momento. Por favor, entre em "
-"contato conosco pelo feedback@textit.in."
+"contato conosco pelo contato@push.al."
 
 #: temba/orgs/models.py:1694
 #, fuzzy
@@ -4395,7 +4395,7 @@ msgid ""
 "us."
 msgstr ""
 "Desculpe, mas não fomos capazes de cobrar em seu cartão, por favor, tente "
-"novamente mais tarde ou entre em contato conosco pelo feedback@textit.in"
+"novamente mais tarde ou entre em contato conosco pelo contato@push.al"
 
 #: temba/orgs/models.py:2049 templates/orgs/org_manage_accounts.haml:223
 msgid "Viewer"
@@ -5971,8 +5971,8 @@ msgid ""
 msgstr ""
 "\n"
 "Se sua base está no Brasil, você pode comprar um\n"
-"número curto da <a href=\"http://www.take.net/\"> Take.net </a> e conectá-lo "
-"ao Textit \n"
+"número curto da <a href=\"http://www.zenvia.com.br/\">Zenvia</a> e conectá-lo "
+"ao Push \n"
 "em poucos passos simples. "
 
 #: templates/channels/channel_claim.haml:101
@@ -6449,7 +6449,7 @@ msgid ""
 "\n"
 "            %(brand)s uses your Android phone to send and receive messages.\n"
 "          "
-msgstr "Textit usa o seu telefone Android para enviar e receber mensagens."
+msgstr "Push usa o seu telefone Android para enviar e receber mensagens."
 
 #: templates/channels/channel_claim_android.haml:55
 msgid ""
@@ -6477,7 +6477,7 @@ msgid ""
 "          "
 msgstr ""
 "\n"
-"Você pode baixar o aplicativo Textit gratuitamente na Loja do Google Play. "
+"Você pode baixar o aplicativo Push gratuitamente na Loja do Google Play. "
 "Se você já usou o Play Store antes, então  \n"
 "o processo será o mesmo. Se esta é sua primeira vez, não se preocupe, é "
 "fácil! Basta seguir os passos  \n"
@@ -6523,8 +6523,8 @@ msgid ""
 "              "
 msgstr ""
 "\n"
-"Depois de abrir a loja do Google Play, procure por \"Nyaruka Textit\". Para "
-"procurar, toque na tela e digite \"Nyaruka Textit\", em seguida, toque no "
+"Depois de abrir a loja do Google Play, procure por \"Push SMS Channel\". Para "
+"procurar, toque na tela e digite \"Push SMS Channel\", em seguida, toque no "
 "resultado que retornar."
 
 #: templates/channels/channel_claim_android.haml:105
@@ -6541,7 +6541,7 @@ msgid ""
 "              "
 msgstr ""
 "\n"
-"Na página do aplicativo Textit, toque no botão \"Instalar\"."
+"Na página do aplicativo Push, toque no botão \"Instalar\"."
 
 #: templates/channels/channel_claim_android.haml:119
 msgid "Confirm Installation"
@@ -6574,7 +6574,7 @@ msgid ""
 "              "
 msgstr ""
 "\n"
-"O aplicativo Textit recebe atualizações regulares. Para garantir que você "
+"O aplicativo Push recebe atualizações regulares. Para garantir que você "
 "não perca nenhuma, marque o checkbox \"Permitir atualização automática\" ."
 
 #: templates/channels/channel_claim_android.haml:148
@@ -6592,7 +6592,7 @@ msgid ""
 "              "
 msgstr ""
 "\n"
-"Dependendo da velocidade de sua conexão, o Textit pode demorar alguns "
+"Dependendo da velocidade de sua conexão, o Push pode demorar alguns "
 "minutos para baixar. Você pode acompanhar o progresso do download na parte "
 "superior da tela, puxe-a para baixo. "
 
@@ -6615,8 +6615,8 @@ msgid ""
 "\n"
 "              "
 msgstr ""
-"Uma vez que o Textit foi instalado, vá até a sua lista de aplicativos e "
-"toque no ícone Textit para iniciar o aplicativo."
+"Uma vez que o Push foi instalado, vá até a sua lista de aplicativos e "
+"toque no ícone Push para iniciar o aplicativo."
 
 #: templates/channels/channel_claim_android.haml:179
 msgid "Enter Claim Code"
@@ -6635,7 +6635,7 @@ msgid ""
 "              "
 msgstr ""
 "\n"
-"Quando você abrir o Textit pela primeira vez, o aplicativo irá registrar o "
+"Quando você abrir o Push pela primeira vez, o aplicativo irá registrar o "
 "seu dispositivo com o Google e com nossos servidores. Assim que completar, "
 "ele irá exibir um código de requisição. Digite este código no formulário à "
 "esquerda e clique \"Adicionar Telefone\", para conectar seu dispositivo. "
@@ -6733,7 +6733,7 @@ msgid ""
 msgstr ""
 "\n"
 "Após a conexão com o seu serviço, iremos fornecer URLs para os terminais "
-"para o InfoBip chamar quando queiser enviar uma mensagem para Textit."
+"para o InfoBip chamar quando queiser enviar uma mensagem para Push."
 
 #: templates/channels/channel_claim_twiml_api.haml:24
 msgid ""
@@ -6856,7 +6856,7 @@ msgid ""
 msgstr ""
 "\n"
 "Após a conexão com o seu serviço, iremos fornecer URLs para os terminais "
-"para o InfoBip chamar quando queiser enviar uma mensagem para Textit."
+"para o InfoBip chamar quando queiser enviar uma mensagem para Push."
 
 #: templates/channels/channel_configuration.haml:28
 msgid ""
@@ -7429,7 +7429,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando uma nova mensagem é recebida pelo seu serviço, o Textit deve ser "
+"Quando uma nova mensagem é recebida pelo seu serviço, o Push deve ser "
 "notificado com um POST para a URL a seguir, passando os seguintes "
 "parâmetros: 'de' e 'texto'"
 
@@ -7449,7 +7449,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando seu serviço enviar uma mensagem com sucesso, o Textit deve ser "
+"Quando seu serviço enviar uma mensagem com sucesso, o Push deve ser "
 "notificado com um POST para a seguinte URL, passando o ID da mensagem como o "
 "parâmetro 'id' (reportar mensagens enviadas é opcional)"
 
@@ -7464,7 +7464,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando o seu serviço entregar com sucesso uma mensagem, o Textit deve ser "
+"Quando o seu serviço entregar com sucesso uma mensagem, o Push deve ser "
 "notificado com um POST para a URL a seguir, passando o ID da mensagem como o "
 "parâmetro 'id' (reportar as entregas é opcional)"
 
@@ -7484,7 +7484,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Se seu serviço falhar em enviar uma mensagem de saída, o Textit deve ser "
+"Se seu serviço falhar em enviar uma mensagem de saída, o Push deve ser "
 "notificado com um POST para a URL a seguir, passando o ID da mensagem como o "
 "parâmetro 'id' (reportar envios com falha é opcional)"
 
@@ -8056,7 +8056,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando o Textit precisa enviar uma mensagem de saída, fará um post nesta URL "
+"Quando o Push precisa enviar uma mensagem de saída, fará um post nesta URL "
 "com os parâmetros 'texto', 'para', 'de', 'transmissor' e 'id'"
 
 #: templates/channels/channel_configuration.haml:1223
@@ -8069,7 +8069,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando o Textit precisa enviar uma mensagem de saída, fará um post nesta URL "
+"Quando o Push precisa enviar uma mensagem de saída, fará um post nesta URL "
 "com os parâmetros 'texto', 'para', 'de', 'transmissor' e 'id'"
 
 #: templates/channels/channel_configuration.haml:1229
@@ -8089,7 +8089,7 @@ msgid ""
 "        "
 msgstr ""
 "\n"
-"Quando uma nova mensagem é recebida pelo seu serviço, o Textit deve ser "
+"Quando uma nova mensagem é recebida pelo seu serviço, o Push deve ser "
 "notificado com um POST para a URL a seguir, passando os seguintes "
 "parâmetros: 'de' e 'texto'"
 
@@ -8104,7 +8104,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando seu serviço enviar uma mensagem com sucesso, o Textit deve ser "
+"Quando seu serviço enviar uma mensagem com sucesso, o Push deve ser "
 "notificado com um POST para a seguinte URL, passando o ID da mensagem como o "
 "parâmetro 'id' (reportar mensagens enviadas é opcional)"
 
@@ -8119,7 +8119,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Quando o seu serviço entregar com sucesso uma mensagem, o Textit deve ser "
+"Quando o seu serviço entregar com sucesso uma mensagem, o Push deve ser "
 "notificado com um POST para a URL a seguir, passando o ID da mensagem como o "
 "parâmetro 'id' (reportar as entregas é opcional)"
 
@@ -8134,7 +8134,7 @@ msgid ""
 "      "
 msgstr ""
 "\n"
-"Se seu serviço falhar em enviar uma mensagem de saída, o Textit deve ser "
+"Se seu serviço falhar em enviar uma mensagem de saída, o Push deve ser "
 "notificado com um POST para a URL a seguir, passando o ID da mensagem como o "
 "parâmetro 'id' (reportar envios com falha é opcional)"
 
@@ -8523,7 +8523,7 @@ msgstr ""
 "\n"
 "Nós percebemos que o telefone Android para %(org_name)s foi conectado a "
 "internet novamente e está pronto para sincronizar com os servidores do "
-"Textit em"
+"Push em"
 
 #: templates/channels/email/connected_alert.html:16
 msgid ""
@@ -8597,7 +8597,7 @@ msgstr ""
 "\n"
 "Nós percebemos que o telefone Android para %(org_name)s foi conectado a "
 "internet novamente e está pronto para sincronizar com os servidores do "
-"Textit em"
+"Push em"
 
 #: templates/channels/email/connected_alert.txt:12
 #, fuzzy
@@ -8629,7 +8629,7 @@ msgid ""
 msgstr ""
 "\n"
 "Nós percebemos que o celular Android de %(org_name)s não se conectou aos "
-"servidores Textit desde"
+"servidores Push desde"
 
 #: templates/channels/email/disconnected_alert.html:13
 msgid ""
@@ -8673,7 +8673,7 @@ msgid ""
 msgstr ""
 "\n"
 "Nós percebemos que o celular Android de %(org_name)s não se conectou aos "
-"servidores Textit desde"
+"servidores Push desde"
 
 #: templates/channels/email/disconnected_alert.txt:12
 #, fuzzy
@@ -8727,7 +8727,7 @@ msgstr ""
 "\n"
 "Nós percebemos que o telefone Android de %(org_name)s está com pouca bateria "
 "e não está conectado.\n"
-"Se ele ficar sem bateria, você para de receber mensagens de Textit."
+"Se ele ficar sem bateria, você para de receber mensagens de Push."
 
 #: templates/channels/email/power_alert.html:13
 #, python-format
@@ -8763,7 +8763,7 @@ msgstr ""
 "\n"
 "Nós percebemos que o telefone Android de %(org_name)s está com pouca bateria "
 "e não está conectado.\n"
-"Se ele ficar sem bateria, você para de receber mensagens de Textit."
+"Se ele ficar sem bateria, você para de receber mensagens de Push."
 
 #: templates/channels/email/power_alert.txt:11
 #, fuzzy, python-format
@@ -9102,7 +9102,7 @@ msgid ""
 msgstr ""
 "\n"
 "Após a conexão com o seu serviço, iremos fornecer URLs para os terminais "
-"para o InfoBip chamar quando queiser enviar uma mensagem para Textit."
+"para o InfoBip chamar quando queiser enviar uma mensagem para Push."
 
 #: templates/channels/types/external/claim.haml:14
 #, fuzzy, python-format
@@ -9118,7 +9118,7 @@ msgid ""
 msgstr ""
 "\n"
 "Você pode conectar a um facilitador externo ou serviço de mensagens para o "
-"Textit usando nossa API externa. Quando o Textit precisa enviar uma \n"
+"Push usando nossa API externa. Quando o Push precisa enviar uma \n"
 "mensagem ele vai fazer um POST na URL que você especificar abaixo e Enviar "
 "com os parâmetros 'para' e 'texto'. "
 
@@ -9152,7 +9152,7 @@ msgstr ""
 "\n"
 "Depois de conectar o seu serviço, iremos fornecer as URLs para os parâmetros "
 "de chamada quando você quiser publicar uma mensagem para o \n"
-"Textit ou notificar o status de entrega de uma mensagem. "
+"Push ou notificar o status de entrega de uma mensagem. "
 
 #: templates/channels/types/facebook/claim.haml:14
 #, python-format
@@ -9265,7 +9265,7 @@ msgid ""
 msgstr ""
 "\n"
 "Após a conexão com o seu serviço, iremos fornecer URLs para os terminais "
-"para o InfoBip chamar quando queiser enviar uma mensagem para Textit."
+"para o InfoBip chamar quando queiser enviar uma mensagem para Push."
 
 #: templates/channels/types/jiochat/claim.haml:14
 #, python-format
@@ -9489,7 +9489,7 @@ msgid ""
 "                "
 msgstr ""
 "\n"
-"Na página do aplicativo Textit, toque no botão \"Instalar\"."
+"Na página do aplicativo Push, toque no botão \"Instalar\"."
 
 #: templates/channels/types/telegram/claim.haml:14
 #, python-format
@@ -10170,7 +10170,7 @@ msgid ""
 msgstr ""
 "\n"
 "Um fluxo lhe permite modelar interações complexas, simplesmente desenhando "
-"um fluxograma. Com a interface arrasta-e-solta do Textit , você pode "
+"um fluxograma. Com a interface arrasta-e-solta do Push , você pode "
 "facilmente construir ramificações baseadas em como as pessoas respondem às "
 "suas mensagens. Isto significa que é fácil criar experiências altamente "
 "pessoais e cativantes para os seus usuários ."
@@ -12296,7 +12296,7 @@ msgid ""
 "              Complementary credits, thanks for trying %(brand)s.\n"
 "\n"
 "            "
-msgstr "Créditos complementares, obrigado por usar o Textit."
+msgstr "Créditos complementares, obrigado por usar o Push."
 
 #: templates/orgs/topup_list.haml:152
 #, fuzzy
@@ -13253,7 +13253,7 @@ msgstr "Criar nova conta"
 #: templates/public/public_privacy.haml:7
 #, fuzzy
 msgid "Privacy Policy"
-msgstr "Textit - Política de Privacidade"
+msgstr "Push - Política de Privacidade"
 
 #: templates/public/public_privacy.haml:14
 msgid "What information do we collect?"
@@ -13482,7 +13482,7 @@ msgstr ""
 #: templates/public/public_privacy.haml:142
 #, fuzzy
 msgid "Who has access to my messages?"
-msgstr "Quem tem acesso às mensagens do Textit?"
+msgstr "Quem tem acesso às mensagens do Push?"
 
 #: templates/public/public_privacy.haml:146
 #, fuzzy, python-format
@@ -13495,7 +13495,7 @@ msgid ""
 "        "
 msgstr ""
 "\n"
-"As informações que são transmitidas ou armazenadas através do Textit estão "
+"As informações que são transmitidas ou armazenadas através do Push estão "
 "disponíveis apenas para aqueles com quem você escolher \n"
 "compartilhar tais informações. "
 
@@ -13513,7 +13513,7 @@ msgid ""
 "        "
 msgstr ""
 "\n"
-"Note que quaisquer mensagens transmitidas via Textit podem ser acessadas por "
+"Note que quaisquer mensagens transmitidas via Push podem ser acessadas por "
 "certas organizações terceiras, tais como \n"
 "serviços de redes celulares e gateway SMS, que podem ser utilizados para "
 "transmitir as mensagens. Estas organizações podem ter  \n"
@@ -13531,7 +13531,7 @@ msgid ""
 "        "
 msgstr ""
 "\n"
-"Os funcionários e contratados do Textit podem, em certas circunstâncias, "
+"Os funcionários e contratados do Push podem, em certas circunstâncias, "
 "acessar as informações da sua conta, se for necessário para suporte ao "
 "cliente ou os efeitos legais. "
 
@@ -13924,7 +13924,7 @@ msgid ""
 "    Learn %(brand)s - SMS Application Videos and Tutorials\n"
 "\n"
 "  "
-msgstr "Aprenda o Textit - Vídeos de Aplicação SMS e Tutoriais"
+msgstr "Aprenda o Push - Vídeos de Aplicação SMS e Tutoriais"
 
 #: templates/public/video_list.haml:13
 #, fuzzy, python-format
@@ -13936,7 +13936,7 @@ msgid ""
 "  "
 msgstr ""
 "Comece a construir aplicações SMS assistindo a estes vídeos curtos, de dois "
-"minutos, sobre os vários recursos do Textit."
+"minutos, sobre os vários recursos do Push."
 
 #: templates/public/video_list.haml:104
 msgid "Mastering Flows"
@@ -13959,7 +13959,7 @@ msgid ""
 "    "
 msgstr ""
 "\n"
-"Para garantir que você esta aproveitando ao máximo o Textit, reunimos vários "
+"Para garantir que você esta aproveitando ao máximo o Push, reunimos vários "
 "vídeos curtos para guiá-lo em alguns dos recursos mais poderosos. Cada um "
 "desses vídeos tem apenas dois minutos, mas vão ajudá-lo a construir fluxos "
 "complexos sem muito esforço. "
@@ -13989,7 +13989,7 @@ msgid ""
 "  "
 msgstr ""
 "\n"
-"Aprenda TextIt - %(video_name)s"
+"Aprenda Push - %(video_name)s"
 
 #: templates/public/video_read.haml:94
 msgid "More Videos"
@@ -14013,7 +14013,7 @@ msgstr ""
 "\n"
 "Disparadores permitem aos usuários iniciar fluxos através do envio de um "
 "SMS. Você pode configurar os disparadores para iniciarem os fluxos a partir "
-"de palavras-chave enviadas pelos usuários para o Textit. A palavra-chave é a "
+"de palavras-chave enviadas pelos usuários para o Push. A palavra-chave é a "
 "primeira palavra em uma mensagem SMS, pense nela como o nome de um comando "
 "para o SMS. "
 
@@ -14827,7 +14827,7 @@ msgstr ""
 #, fuzzy
 #~ msgid ""
 #~ "The name of the Vumi transport you will use to send and receive messages"
-#~ msgstr "Textit usa o seu telefone Android para enviar e receber mensagens."
+#~ msgstr "Push usa o seu telefone Android para enviar e receber mensagens."
 
 #~ msgid "Sorry, you can only add numbers for the same country (%s)"
 #~ msgstr "Desculpe, voce so pode adicionar numeros para o mesmo país (%s)"
@@ -16056,7 +16056,7 @@ msgstr ""
 #~ "    %(brand)s - SMS Application Pricing\n"
 #~ "\n"
 #~ "  "
-#~ msgstr "Textit - Preço da Aplicação SMS"
+#~ msgstr "Push - Preço da Aplicação SMS"
 
 #, fuzzy
 #~ msgid ""
@@ -16066,7 +16066,7 @@ msgstr ""
 #~ "\n"
 #~ "  "
 #~ msgstr ""
-#~ "Sem mensalidades, o Textit lhe deixa pagar somente as mensagens usadas. "
+#~ "Sem mensalidades, o Push lhe deixa pagar somente as mensagens usadas. "
 #~ "Veja seu pacote aqui."
 
 #~ msgid "Get started today, no credit card required!"
@@ -16098,19 +16098,19 @@ msgstr ""
 #~ "de serviços no seu país diretamente. "
 
 #~ msgid "Search for TextIt"
-#~ msgstr "Pesquise por Textit"
+#~ msgstr "Pesquise por Push"
 
 #~ msgid "Open TextIt"
-#~ msgstr "Abrir Textit"
+#~ msgstr "Abrir Push"
 
 #~ msgid "Remove Phone Number"
 #~ msgstr "Remover número de telefone"
 
 #~ msgid "TextIt - Channel Events"
-#~ msgstr "Textit - Eventos do transmissor"
+#~ msgstr "Push - Eventos do transmissor"
 
 #~ msgid "TextIt - Channel Event"
-#~ msgstr "Textit - Evento do transmissor"
+#~ msgstr "Push - Evento do transmissor"
 
 #~ msgid "Send SMS"
 #~ msgstr "Enviar SMS"
@@ -16194,7 +16194,7 @@ msgstr ""
 #~ msgstr "Número de mensagens"
 
 #~ msgid "The TextIt Team"
-#~ msgstr "A Equipe Textit"
+#~ msgstr "A Equipe Push"
 
 #~ msgid "joins the"
 #~ msgstr "Junte-se a"
