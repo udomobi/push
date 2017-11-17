@@ -1367,7 +1367,7 @@ class Msg(models.Model):
 
         # we limit our text message length and remove any invalid chars
         if text:
-            text = clean_string(text[:cls.MAX_TEXT_LEN])
+            text = clean_string(text[:settings.MSG_FIELD_SIZE_INCREASED])
 
         existing = Msg.objects.filter(text=text, sent_on=date, contact=contact, direction='I').first()
         if existing:
@@ -1516,7 +1516,7 @@ class Msg(models.Model):
 
         (text, errors) = Msg.substitute_variables(text, message_context, contact=contact, org=org)
         if text:
-            text = text[:Msg.MAX_TEXT_LEN]
+            text = text[:settings.MSG_FIELD_SIZE_INCREASED]
 
         # if we are doing a single message, check whether this might be a loop of some kind
         if insert_object:
