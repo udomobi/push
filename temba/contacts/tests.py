@@ -235,19 +235,6 @@ class ContactGroupTest(TembaTest):
         group.refresh_from_db()
         self.assertEqual(group.name, "first")
 
-    @patch.object(ContactGroup, "MAX_ORG_CONTACTGROUPS", new=10)
-    def test_reached_maximum_org_contact_groups(self):
-        ContactGroup.user_groups.all().delete()
-
-        for i in range(ContactGroup.MAX_ORG_CONTACTGROUPS):
-            ContactGroup.create_static(self.org, self.admin, 'group%d' % i)
-
-        ContactGroup.get_or_create(self.org, self.admin, 'group1')
-
-        self.assertRaises(ValueError, ContactGroup.get_or_create, self.org, self.user, "Team")
-        self.assertRaises(ValueError, ContactGroup.create_static, self.org, self.user, "Team")
-        self.assertRaises(ValueError, ContactGroup.create_dynamic, self.org, self.user, "Team", "Age > 10")
-
     def test_get_user_groups(self):
         self.create_field('gender', "Gender")
         static = ContactGroup.create_static(self.org, self.admin, "Static")
@@ -371,7 +358,7 @@ class ContactGroupTest(TembaTest):
 
         self.login(self.admin)
 
-        response = self.client.post(reverse('contacts.contactgroup_delete', args=[group.pk]), dict())
+        self.client.post(reverse('contacts.contactgroup_delete', args=[group.pk]), dict())
         self.assertIsNone(ContactGroup.user_groups.filter(pk=group.pk).first())
         self.assertFalse(ContactGroup.all_groups.get(pk=group.pk).is_active)
 
@@ -383,6 +370,9 @@ class ContactGroupTest(TembaTest):
 
         second_trigger = Trigger.objects.create(org=self.org, flow=flow, keyword="register", created_by=self.admin, modified_by=self.admin)
         second_trigger.groups.add(group)
+
+        response = self.client.get(delete_url, dict(), HTTP_X_PJAX=True)
+        self.assertContains(response, "This group is used by 2 triggers.")
 
         response = self.client.post(delete_url, dict())
         self.assertEqual(302, response.status_code)
@@ -403,12 +393,42 @@ class ContactGroupTest(TembaTest):
         trigger.is_archived = True
         trigger.save()
 
-        response = self.client.post(delete_url, dict())
+        self.client.post(delete_url, dict())
         # group should have is_active = False and all its triggers
         self.assertIsNone(ContactGroup.user_groups.filter(pk=group.pk).first())
         self.assertFalse(ContactGroup.all_groups.get(pk=group.pk).is_active)
         self.assertFalse(Trigger.objects.get(pk=trigger.pk).is_active)
         self.assertFalse(Trigger.objects.get(pk=second_trigger.pk).is_active)
+
+    def test_delete_fail_with_dependencies(self):
+        self.login(self.admin)
+
+        self.get_flow('dependencies')
+
+        from temba.flows.models import Flow
+        flow = Flow.objects.filter(name='Dependencies').first()
+        cats = ContactGroup.user_groups.filter(name='Cat Facts').first()
+        delete_url = reverse('contacts.contactgroup_delete', args=[cats.pk])
+
+        # can't delete if it is a dependency
+        response = self.client.post(delete_url, dict())
+        self.assertEqual(302, response.status_code)
+        self.assertTrue(ContactGroup.user_groups.get(id=cats.id).is_active)
+
+        # get the dependency details
+        response = self.client.get(delete_url, dict(), HTTP_X_PJAX=True)
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, "Dependencies")
+
+        # remove it from our list of dependencies
+        flow.group_dependencies.remove(cats)
+
+        # now it should be gone
+        response = self.client.get(delete_url, dict(), HTTP_X_PJAX=True)
+        self.assertNotContains(response, "Dependencies")
+
+        response = self.client.post(delete_url, dict(), HTTP_X_PJAX=True)
+        self.assertIsNone(ContactGroup.user_groups.filter(id=cats.id).first())
 
 
 class ContactGroupCRUDLTest(TembaTest):
@@ -476,9 +496,8 @@ class ContactGroupCRUDLTest(TembaTest):
 
         self.assertEqual(ContactGroup.user_groups.all().count(), ContactGroup.MAX_ORG_CONTACTGROUPS)
         response = self.client.post(url, dict(name="People"))
-        self.assertFormError(response, 'form', 'name', "You have reached 10 contact groups, "
-                                                       "please remove some contact groups to be able "
-                                                       "to create new contact groups")
+        self.assertFormError(response, 'form', 'name', 'This org has 10 groups and the limit is 10. '
+                                                       'You must delete existing ones before you can create new ones.')
 
     def test_update(self):
         url = reverse('contacts.contactgroup_update', args=[self.joe_and_frank.pk])
@@ -527,8 +546,9 @@ class ContactGroupCRUDLTest(TembaTest):
 
         # can as admin user
         self.login(self.admin)
-        response = self.client.post(url)
-        self.assertRedirect(response, reverse('contacts.contact_list'))
+        response = self.client.post(url, HTTP_X_PJAX=True)
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, '/contact/')
 
         self.joe_and_frank.refresh_from_db()
         self.assertFalse(self.joe_and_frank.is_active)
@@ -556,7 +576,7 @@ class ContactTest(TembaTest):
     def create_campaign(self):
         # create a campaign with a future event and add joe
         self.farmers = self.create_group("Farmers", [self.joe])
-        self.reminder_flow = self.create_flow(definition=self.COLOR_FLOW_DEFINITION)
+        self.reminder_flow = self.get_flow('color')
         self.planting_date = ContactField.get_or_create(self.org, self.admin, 'planting_date', "Planting Date")
         self.campaign = Campaign.create(self.org, self.admin, "Planting Reminders", self.farmers)
 
@@ -1457,185 +1477,195 @@ class ContactTest(TembaTest):
     def test_history(self):
 
         # use a max history size of 100
-        from temba.contacts import models
-        models.MAX_HISTORY = 100
+        with patch('temba.contacts.models.MAX_HISTORY', 100):
+            url = reverse('contacts.contact_history', args=[self.joe.uuid])
 
-        url = reverse('contacts.contact_history', args=[self.joe.uuid])
+            kurt = self.create_contact("Kurt", "123123")
+            self.joe.created_on = timezone.now() - timedelta(days=1000)
+            self.joe.save()
 
-        kurt = self.create_contact("Kurt", "123123")
-        self.joe.created_on = timezone.now() - timedelta(days=1000)
-        self.joe.save()
+            self.create_campaign()
 
-        self.create_campaign()
+            # add a message with some attachments
+            self.create_msg(direction='I', contact=self.joe, text="Message caption", created_on=timezone.now(),
+                            attachments=[
+                                "audio/mp3:http://blah/file.mp3",
+                                "video/mp4:http://blah/file.mp4",
+                                "geo:47.5414799,-122.6359908"])
 
-        # add a message with some attachments
-        self.create_msg(direction='I', contact=self.joe, text="Message caption", created_on=timezone.now(),
-                        attachments=[
-                            "audio/mp3:http://blah/file.mp3",
-                            "video/mp4:http://blah/file.mp4",
-                            "geo:47.5414799,-122.6359908"])
+            # create some messages
+            for i in range(99):
+                self.create_msg(direction='I', contact=self.joe, text="Inbound message %d" % i,
+                                created_on=timezone.now() - timedelta(days=(100 - i)))
 
-        # create some messages
-        for i in range(99):
-            self.create_msg(direction='I', contact=self.joe, text="Inbound message %d" % i,
-                            created_on=timezone.now() - timedelta(days=(100 - i)))
+            # because messages are stored with timestamps from external systems, possible to have initial message
+            # which is little bit older than the contact itself
+            self.create_msg(direction='I', contact=self.joe, text="Very old inbound message",
+                            created_on=self.joe.created_on - timedelta(seconds=10))
 
-        # because messages are stored with timestamps from external systems, possible to have initial message
-        # which is little bit older than the contact itself
-        self.create_msg(direction='I', contact=self.joe, text="Very old inbound message",
-                        created_on=self.joe.created_on - timedelta(seconds=10))
+            # start a joe flow
+            self.reminder_flow.start([], [self.joe, kurt])
 
-        # start a joe flow
-        self.reminder_flow.start([], [self.joe, kurt])
+            # mark an outgoing message as failed
+            failed = Msg.objects.get(direction='O', contact=self.joe)
+            failed.status = 'F'
+            failed.save()
+            log = ChannelLog.objects.create(channel=failed.channel, msg=failed, is_error=True,
+                                            description="It didn't send!!")
 
-        # mark an outgoing message as failed
-        failed = Msg.objects.get(direction='O', contact=self.joe)
-        failed.status = 'F'
-        failed.save()
-        log = ChannelLog.objects.create(channel=failed.channel, msg=failed, is_error=True,
-                                        description="It didn't send!!")
+            # pretend that flow run made a webhook request
+            WebHookEvent.trigger_flow_event(FlowRun.objects.get(contact=self.joe), 'https://example.com', '1234', msg=None)
 
-        # pretend that flow run made a webhook request
-        WebHookEvent.trigger_flow_event(FlowRun.objects.get(contact=self.joe), 'https://example.com', '1234', msg=None)
+            # create an event from the past
+            scheduled = timezone.now() - timedelta(days=5)
+            EventFire.objects.create(event=self.planting_reminder, contact=self.joe, scheduled=scheduled, fired=scheduled)
 
-        # create an event from the past
-        scheduled = timezone.now() - timedelta(days=5)
-        EventFire.objects.create(event=self.planting_reminder, contact=self.joe, scheduled=scheduled, fired=scheduled)
+            # create a missed call
+            ChannelEvent.create(self.channel, six.text_type(self.joe.get_urn(TEL_SCHEME)), ChannelEvent.TYPE_CALL_OUT_MISSED,
+                                timezone.now(), 5)
 
-        # create a missed call
-        ChannelEvent.create(self.channel, six.text_type(self.joe.get_urn(TEL_SCHEME)), ChannelEvent.TYPE_CALL_OUT_MISSED,
-                            timezone.now(), 5)
+            # try adding some failed calls
+            IVRCall.objects.create(contact=self.joe, status=IVRCall.NO_ANSWER, created_by=self.admin,
+                                   modified_by=self.admin, channel=self.channel, org=self.org,
+                                   contact_urn=self.joe.urns.all().first())
 
-        # try adding some failed calls
-        IVRCall.objects.create(contact=self.joe, status=IVRCall.NO_ANSWER, created_by=self.admin,
-                               modified_by=self.admin, channel=self.channel, org=self.org,
-                               contact_urn=self.joe.urns.all().first())
+            # fetch our contact history
+            with self.assertNumQueries(67):
+                response = self.fetch_protected(url, self.admin)
 
-        # fetch our contact history
-        with self.assertNumQueries(67):
+            # activity should include all messages in the last 90 days, the channel event, the call, and the flow run
+            activity = response.context['activity']
+            self.assertEqual(len(activity), 95)
+            self.assertIsInstance(activity[0]['obj'], IVRCall)
+            self.assertIsInstance(activity[1]['obj'], ChannelEvent)
+            self.assertIsInstance(activity[2]['obj'], WebHookResult)
+            self.assertIsInstance(activity[3]['obj'], Msg)
+            self.assertEqual(activity[3]['obj'].direction, 'O')
+            self.assertIsInstance(activity[4]['obj'], FlowRun)
+            self.assertIsInstance(activity[5]['obj'], Msg)
+            self.assertIsInstance(activity[6]['obj'], Msg)
+            self.assertEqual(activity[6]['obj'].text, "Inbound message 98")
+            self.assertIsInstance(activity[9]['obj'], EventFire)
+            self.assertEqual(activity[-1]['obj'].text, "Inbound message 11")
+
+            self.assertContains(response, '<audio ')
+            self.assertContains(response, '<source type="audio/mp3" src="http://blah/file.mp3" />')
+            self.assertContains(response, '<video ')
+            self.assertContains(response, '<source type="video/mp4" src="http://blah/file.mp4" />')
+            self.assertContains(response, 'http://www.openstreetmap.org/?mlat=47.5414799&amp;mlon=-122.6359908#map=18/47.5414799/-122.6359908')
+            self.assertContains(response, '/channels/channellog/read/%d/' % log.id)
+
+            # fetch next page
+            before = datetime_to_ms(timezone.now() - timedelta(days=90))
+            response = self.fetch_protected(url + '?before=%d' % before, self.admin)
+            self.assertFalse(response.context['has_older'])
+
+            # none of our messages have a failed status yet
+            self.assertNotContains(response, 'icon-bubble-notification')
+
+            # activity should include 11 remaining messages and the event fire
+            activity = response.context['activity']
+            self.assertEqual(len(activity), 12)
+            self.assertEqual(activity[0]['obj'].text, "Inbound message 10")
+            self.assertEqual(activity[10]['obj'].text, "Inbound message 0")
+            self.assertEqual(activity[11]['obj'].text, "Very old inbound message")
+
+            # if a broadcast is purged, it appears in place of the message
+            bcast = Broadcast.objects.get()
+            bcast.purged = True
+            bcast.save()
+            bcast.msgs.all().delete()
+
+            recipient = BroadcastRecipient.objects.filter(contact=self.joe, broadcast=bcast).first()
+            recipient.purged_status = 'F'
+            recipient.save()
+
+            response = self.fetch_protected(url, self.admin)
+            activity = response.context['activity']
+
+            # our broadcast recipient purged_status is failed
+            self.assertContains(response, 'icon-bubble-notification')
+
+            self.assertEqual(len(activity), 95)
+            self.assertIsInstance(activity[4]['obj'], Broadcast)  # TODO fix order so initial broadcasts come after their run
+            self.assertEqual(activity[4]['obj'].text, {'base': "What is your favorite color?", 'fre': "Quelle est votre couleur préférée?"})
+            self.assertEqual(activity[4]['obj'].translated_text, "What is your favorite color?")
+
+            # if a new message comes in
+            self.create_msg(direction='I', contact=self.joe, text="Newer message")
             response = self.fetch_protected(url, self.admin)
 
-        # activity should include all messages in the last 90 days, the channel event, the call, and the flow run
-        activity = response.context['activity']
-        self.assertEqual(len(activity), 95)
-        self.assertIsInstance(activity[0]['obj'], IVRCall)
-        self.assertIsInstance(activity[1]['obj'], ChannelEvent)
-        self.assertIsInstance(activity[2]['obj'], WebHookResult)
-        self.assertIsInstance(activity[3]['obj'], Msg)
-        self.assertEqual(activity[3]['obj'].direction, 'O')
-        self.assertIsInstance(activity[4]['obj'], FlowRun)
-        self.assertIsInstance(activity[5]['obj'], Msg)
-        self.assertIsInstance(activity[6]['obj'], Msg)
-        self.assertEqual(activity[6]['obj'].text, "Inbound message 98")
-        self.assertIsInstance(activity[9]['obj'], EventFire)
-        self.assertEqual(activity[-1]['obj'].text, "Inbound message 11")
+            # now we'll see the message that just came in first, followed by the call event
+            activity = response.context['activity']
+            self.assertIsInstance(activity[0]['obj'], Msg)
+            self.assertEqual(activity[0]['obj'].text, "Newer message")
+            self.assertIsInstance(activity[1]['obj'], IVRCall)
 
-        self.assertContains(response, '<audio ')
-        self.assertContains(response, '<source type="audio/mp3" src="http://blah/file.mp3" />')
-        self.assertContains(response, '<video ')
-        self.assertContains(response, '<source type="video/mp4" src="http://blah/file.mp4" />')
-        self.assertContains(response, 'http://www.openstreetmap.org/?mlat=47.5414799&amp;mlon=-122.6359908#map=18/47.5414799/-122.6359908')
-        self.assertContains(response, '/channels/channellog/read/%d/' % log.id)
+            recent_start = datetime_to_ms(timezone.now() - timedelta(days=1))
+            response = self.fetch_protected(url + "?after=%s" % recent_start, self.admin)
 
-        # fetch next page
-        before = datetime_to_ms(timezone.now() - timedelta(days=90))
-        response = self.fetch_protected(url + '?before=%d' % before, self.admin)
-        self.assertFalse(response.context['has_older'])
+            # with our recent flag on, should not see the older messages
+            activity = response.context['activity']
+            self.assertEqual(len(activity), 7)
+            self.assertContains(response, 'file.mp4')
 
-        # none of our messages have a failed status yet
-        self.assertNotContains(response, 'icon-bubble-notification')
+            # can't view history of contact in another org
+            self.create_secondary_org()
+            hans = self.create_contact("Hans", twitter="hans", org=self.org2)
+            response = self.client.get(reverse('contacts.contact_history', args=[hans.uuid]))
+            self.assertLoginRedirect(response)
 
-        # activity should include 11 remaining messages and the event fire
-        activity = response.context['activity']
-        self.assertEqual(len(activity), 12)
-        self.assertEqual(activity[0]['obj'].text, "Inbound message 10")
-        self.assertEqual(activity[10]['obj'].text, "Inbound message 0")
-        self.assertEqual(activity[11]['obj'].text, "Very old inbound message")
+            # invalid UUID should return 404
+            response = self.client.get(reverse('contacts.contact_history', args=['bad-uuid']))
+            self.assertEqual(response.status_code, 404)
 
-        # if a broadcast is purged, it appears in place of the message
-        bcast = Broadcast.objects.get()
-        bcast.purged = True
-        bcast.save()
-        bcast.msgs.all().delete()
+            # super users can view history of any contact
+            response = self.fetch_protected(reverse('contacts.contact_history', args=[self.joe.uuid]), self.superuser)
+            self.assertEqual(len(response.context['activity']), 96)
+            response = self.fetch_protected(reverse('contacts.contact_history', args=[hans.uuid]), self.superuser)
+            self.assertEqual(len(response.context['activity']), 0)
 
-        recipient = BroadcastRecipient.objects.filter(contact=self.joe, broadcast=bcast).first()
-        recipient.purged_status = 'F'
-        recipient.save()
+            # exit flow runs
+            FlowRun.bulk_exit(self.joe.runs.all(), FlowRun.EXIT_TYPE_COMPLETED)
 
-        response = self.fetch_protected(url, self.admin)
-        activity = response.context['activity']
+            # add a new run
+            self.reminder_flow.start([], [self.joe], restart_participants=True)
+            response = self.fetch_protected(reverse('contacts.contact_history', args=[self.joe.uuid]), self.admin)
+            activity = response.context['activity']
+            self.assertEqual(len(activity), 99)
 
-        # our broadcast recipient purged_status is failed
-        self.assertContains(response, 'icon-bubble-notification')
+            # before date should not match our last activity, that only happens when we truncate
+            self.assertNotEqual(response.context['before'], datetime_to_ms(response.context['activity'][-1]['time']))
 
-        self.assertEqual(len(activity), 95)
-        self.assertIsInstance(activity[4]['obj'], Broadcast)  # TODO fix order so initial broadcasts come after their run
-        self.assertEqual(activity[4]['obj'].text, {'base': "What is your favorite color?", 'fre': "Quelle est votre couleur préférée?"})
-        self.assertEqual(activity[4]['obj'].translated_text, "What is your favorite color?")
+            self.assertIsInstance(activity[0]['obj'], Msg)
+            self.assertEqual(activity[0]['obj'].direction, 'O')
+            self.assertEqual(activity[1]['type'], 'run-start')
+            self.assertIsInstance(activity[1]['obj'], FlowRun)
+            self.assertEqual(activity[1]['obj'].exit_type, None)
+            self.assertEqual(activity[2]['type'], 'run-exit')
+            self.assertIsInstance(activity[2]['obj'], FlowRun)
+            self.assertEqual(activity[2]['obj'].exit_type, FlowRun.EXIT_TYPE_COMPLETED)
+            self.assertIsInstance(activity[3]['obj'], Msg)
+            self.assertEqual(activity[3]['obj'].direction, 'I')
+            self.assertIsInstance(activity[4]['obj'], IVRCall)
+            self.assertIsInstance(activity[5]['obj'], ChannelEvent)
+            self.assertIsInstance(activity[6]['obj'], WebHookResult)
+            self.assertIsInstance(activity[7]['obj'], FlowRun)
 
-        # if a new message comes in
-        self.create_msg(direction='I', contact=self.joe, text="Newer message")
-        response = self.fetch_protected(url, self.admin)
+        # with a max history of one, we should see this event first
+        with patch('temba.contacts.models.MAX_HISTORY', 1):
+            # make our message event older than our planting reminder
+            self.message_event.created_on = self.planting_reminder.created_on - timedelta(days=1)
+            self.message_event.save()
 
-        # now we'll see the message that just came in first, followed by the call event
-        activity = response.context['activity']
-        self.assertIsInstance(activity[0]['obj'], Msg)
-        self.assertEqual(activity[0]['obj'].text, "Newer message")
-        self.assertIsInstance(activity[1]['obj'], IVRCall)
+            # but fire it immediately
+            scheduled = timezone.now()
+            EventFire.objects.create(event=self.message_event, contact=self.joe, scheduled=scheduled, fired=scheduled)
 
-        recent_start = datetime_to_ms(timezone.now() - timedelta(days=1))
-        response = self.fetch_protected(url + "?after=%s" % recent_start, self.admin)
+            response = self.fetch_protected(reverse('contacts.contact_history', args=[self.joe.uuid]) + '?before=%d' % datetime_to_ms(timezone.now()), self.admin)
+            self.assertEqual(self.message_event, response.context['activity'][0]['obj'].event)
 
-        # with our recent flag on, should not see the older messages
-        activity = response.context['activity']
-        self.assertEqual(len(activity), 7)
-        self.assertContains(response, 'file.mp4')
-
-        # can't view history of contact in another org
-        self.create_secondary_org()
-        hans = self.create_contact("Hans", twitter="hans", org=self.org2)
-        response = self.client.get(reverse('contacts.contact_history', args=[hans.uuid]))
-        self.assertLoginRedirect(response)
-
-        # invalid UUID should return 404
-        response = self.client.get(reverse('contacts.contact_history', args=['bad-uuid']))
-        self.assertEqual(response.status_code, 404)
-
-        # super users can view history of any contact
-        response = self.fetch_protected(reverse('contacts.contact_history', args=[self.joe.uuid]), self.superuser)
-        self.assertEqual(len(response.context['activity']), 96)
-        response = self.fetch_protected(reverse('contacts.contact_history', args=[hans.uuid]), self.superuser)
-        self.assertEqual(len(response.context['activity']), 0)
-
-        # exit flow runs
-        FlowRun.bulk_exit(self.joe.runs.all(), FlowRun.EXIT_TYPE_COMPLETED)
-
-        # add a new run
-        self.reminder_flow.start([], [self.joe], restart_participants=True)
-        response = self.fetch_protected(reverse('contacts.contact_history', args=[self.joe.uuid]), self.admin)
-        activity = response.context['activity']
-        self.assertEqual(len(activity), 99)
-
-        # before date should not match our last activity, that only happens when we truncate
-        self.assertNotEqual(response.context['before'], datetime_to_ms(response.context['activity'][-1]['time']))
-
-        self.assertIsInstance(activity[0]['obj'], Msg)
-        self.assertEqual(activity[0]['obj'].direction, 'O')
-        self.assertEqual(activity[1]['type'], 'run-start')
-        self.assertIsInstance(activity[1]['obj'], FlowRun)
-        self.assertEqual(activity[1]['obj'].exit_type, None)
-        self.assertEqual(activity[2]['type'], 'run-exit')
-        self.assertIsInstance(activity[2]['obj'], FlowRun)
-        self.assertEqual(activity[2]['obj'].exit_type, FlowRun.EXIT_TYPE_COMPLETED)
-        self.assertIsInstance(activity[3]['obj'], Msg)
-        self.assertEqual(activity[3]['obj'].direction, 'I')
-        self.assertIsInstance(activity[4]['obj'], IVRCall)
-        self.assertIsInstance(activity[5]['obj'], ChannelEvent)
-        self.assertIsInstance(activity[6]['obj'], WebHookResult)
-        self.assertIsInstance(activity[7]['obj'], FlowRun)
-
-        # now try a shorter max history to test truncation
-        models.MAX_HISTORY = 50
+        # now try the proper max history to test truncation
         response = self.fetch_protected(reverse('contacts.contact_history', args=[self.joe.uuid]) + '?before=%d' % datetime_to_ms(timezone.now()), self.admin)
 
         # our before should be the same as the last item
@@ -2075,8 +2105,8 @@ class ContactTest(TembaTest):
         self.assertEqual("New Test", group.name)
 
         # post to our delete url
-        response = self.client.post(delete_url, dict())
-        self.assertRedirect(response, reverse('contacts.contact_list'))
+        response = self.client.post(delete_url, dict(), HTTP_X_PJAX=True)
+        self.assertEqual(200, response.status_code)
 
         # make sure it is inactive
         self.assertIsNone(ContactGroup.user_groups.filter(name="New Test").first())
@@ -2351,12 +2381,12 @@ class ContactTest(TembaTest):
         state.value_type = Value.TYPE_TEXT
         state.save()
         value = self.joe.get_field('state')
-        value.category = "Rwama Category"
+        value.string_value = "Rwama Value"
         value.save()
 
-        # should now be using stored category as value
+        # should now be using stored string_value instead of state name
         response = self.client.get(reverse('contacts.contact_read', args=[self.joe.uuid]))
-        self.assertContains(response, 'Rwama Category')
+        self.assertContains(response, 'Rwama Value')
 
         # bad field
         contact_field = ContactField.objects.create(org=self.org, key='language', label='User Language',
@@ -3113,9 +3143,9 @@ class ContactTest(TembaTest):
         csv_file = open('%s/test_imports/sample_contacts.xls' % settings.MEDIA_ROOT, 'rb')
         post_data = dict(csv_file=csv_file)
         response = self.client.post(import_url, post_data)
-        self.assertFormError(response, 'form', '__all__', 'You have reached %s contact groups, please remove '
-                                                          'some contact groups to be able to import contacts '
-                                                          'in a contact group' % ContactGroup.MAX_ORG_CONTACTGROUPS)
+        self.assertFormError(response, 'form', '__all__',
+                             "This org has 10 groups and the limit is 10. "
+                             "You must delete existing ones before you can create new ones.")
 
         ContactGroup.user_groups.all().delete()
 
@@ -3513,13 +3543,11 @@ class ContactTest(TembaTest):
         self.assertEqual(Contact.serialize_field_value(state_field, value), 'Kigali City')
 
         value = joe.get_field(color_field.key)
-        value.category = "Dark"
-        value.save()
-
-        self.assertEqual(Contact.serialize_field_value(color_field, value), 'Dark')
+        self.assertEqual(Contact.serialize_field_value(color_field, value), 'green')
 
     def test_set_location_fields(self):
         district_field = ContactField.get_or_create(self.org, self.admin, 'district', 'District', None, Value.TYPE_DISTRICT)
+        not_state_field = ContactField.get_or_create(self.org, self.admin, 'not_state', 'Not State', None, Value.TYPE_TEXT)
 
         # add duplicate district in different states
         east_province = AdminBoundary.objects.create(osm_id='R005', name='East Province', level=1, parent=self.country)
@@ -3538,6 +3566,14 @@ class ContactTest(TembaTest):
         value = Value.objects.filter(contact=joe, contact_field=state_field).first()
         self.assertTrue(value.location_value)
         self.assertEqual(value.location_value.name, "Kigali City")
+        self.assertEqual("Kigali City", joe.get_field_display_for_value(state_field, value))
+        self.assertEqual("Kigali City", joe.serialize_field_value(state_field, value))
+
+        # test that we don't normalize non-location fields
+        joe.set_field(self.user, 'not_state', 'kigali city')
+        value = Value.objects.filter(contact=joe, contact_field=not_state_field).first()
+        self.assertEqual("kigali city", joe.get_field_display_for_value(not_state_field, value))
+        self.assertEqual("kigali city", joe.serialize_field_value(not_state_field, value))
 
         joe.set_field(self.user, 'district', 'Remera')
         value = Value.objects.filter(contact=joe, contact_field=district_field).first()
@@ -4071,6 +4107,55 @@ class ContactFieldTest(TembaTest):
         self.assertContains(response, 'first')
         self.assertNotContains(response, 'Second')
 
+    def test_delete_with_flow_dependency(self):
+        self.login(self.admin)
+        self.get_flow('dependencies')
+
+        manage_fields_url = reverse('contacts.contactfield_managefields')
+        response = self.client.get(manage_fields_url)
+
+        # prep our post_data from the form in our response
+        post_data = dict()
+        for id, field in response.context['form'].fields.items():
+            if field.initial is None:
+                post_data[id] = ''
+            elif isinstance(field.initial, ContactField):
+                post_data[id] = field.initial.pk
+            else:
+                post_data[id] = field.initial
+
+        # find our favorite_cat contact field
+        favorite_cat = None
+        for key, value in six.iteritems(post_data):
+            if value == 'Favorite Cat':
+                favorite_cat = key
+        self.assertIsNotNone(favorite_cat)
+
+        # try deleting favorite_cat, should not work since our flow depends on it
+        before = ContactField.objects.filter(org=self.org, is_active=True).count()
+
+        # make sure we can't delete it directly
+        with self.assertRaises(Exception):
+            ContactField.hide_field(self.org, self.admin, 'favorite_cat')
+
+        # or through the ui
+        post_data[favorite_cat] = ''
+        response = self.client.post(manage_fields_url, post_data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(before, ContactField.objects.filter(org=self.org, is_active=True).count())
+        self.assertFormError(response, 'form', None, 'The field "Favorite Cat" cannot be removed while it is still used in the flow "Dependencies"')
+
+        # remove it from our list of dependencies
+        from temba.flows.models import Flow
+        flow = Flow.objects.filter(name='Dependencies').first()
+        flow.field_dependencies.clear()
+
+        # now we should be successful
+        response = self.client.post(manage_fields_url, post_data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue('form' not in response.context)
+        self.assertEqual(before - 1, ContactField.objects.filter(org=self.org, is_active=True).count())
+
     def test_manage_fields(self):
         manage_fields_url = reverse('contacts.contactfield_managefields')
 
@@ -4339,6 +4424,9 @@ class URNTest(TembaTest):
         # email addresses
         self.assertTrue(URN.validate("mailto:abcd+label@x.y.z.com"))
         self.assertFalse(URN.validate("mailto:@@@"))
+
+        # viber urn
+        self.assertTrue(URN.validate("viber:dKPvqVrLerGrZw15qTuVBQ=="))
 
         # facebook and telegram URN paths must be integers
         self.assertTrue(URN.validate("telegram:12345678901234567"))
