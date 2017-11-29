@@ -787,11 +787,8 @@
   content: "\e9cd";
 }
 .icon-chatbase:before {
-  content: "\e907";
+  content: "\e902";
 }
 .icon-button-quick-reply:before {
   content: "\e903";
-}
-.icon-button-response:before {
-  content: "\e902";
 }

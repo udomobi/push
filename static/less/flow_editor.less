@@ -831,6 +831,15 @@
         padding-top:5px;
       }
 
+      .icon-button-quick-reply {
+        cursor: pointer;
+        font-size: 18px;
+        margin-top: 4px;
+        margin-left: 2px;
+        transition: none;
+        -webkit-transition: none;
+      }
+
       margin-top: -3px;
       .viewer-button {
         margin-right:5px;
@@ -1182,15 +1191,9 @@
     padding: 0 15px 10px;
   }
 
-  @media only screen and (min-width: 980px) {
-    width: 660px;
-    margin-left: -330px;
-  }
+  width: 660px;
+  margin-left: -330px;
 
-  .ie & {
-    width: 660px;
-    margin-left: -330px;
-  }
 }
 
 
@@ -1397,6 +1400,7 @@
 }
 
 .action-editor {
+  width: 560px;
 
   &.trigger-flow .modal-body {
     min-height: 225px;
@@ -2256,14 +2260,7 @@ div.modal[role="dialog"] {
   }
 }
 
-.modal {
-  .cursor-pointer {
-    cursor: pointer;
-  }
-  .cursor-pointer:hover {
-    opacity: 0.7;
-  }
-}
+
 .container-operations {
   * {
     height: 20px;
@@ -2279,8 +2276,10 @@ div.modal[role="dialog"] {
 .quick-reply {
   margin-top: 20px;
 
-  a{
+  a.add-reply{
+    padding: 5px 0;
     font-size: 14px;
+    display: inline-block;
   }
 
   .modal-quick-reply {
@@ -2311,10 +2310,10 @@ div.modal[role="dialog"] {
       box-shadow: 0 0 6px #f8b9b7;
     }
   }
-  .quick_reply-title, .url_buttons-title, .url_buttons-value {
+  .quick-reply-title {
     display: inline-block;
     width: 95%;
-    margin: 0 1% 0 0;
+    margin: 5px 1% 0 0;
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
@@ -2333,20 +2332,6 @@ div.modal[role="dialog"] {
       text-align: center;
       input{
         margin: 2px 0 5px 0;
-      }
-    }
-    &.url_buttons-title{
-      width: 46%;
-      margin: 0 1% 0 0;
-      @media(max-width: 768px){
-        width: 45%;
-      }
-    }
-    &.url_buttons-value {
-      width: 46%;
-      margin: 0 1% 0 0;
-      @media(max-width: 768px){
-        width: 45%;
       }
     }
   }

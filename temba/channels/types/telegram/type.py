@@ -5,7 +5,6 @@ import telegram
 import time
 import json
 
-from django.conf import settings
 from django.urls import reverse
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
@@ -40,43 +39,25 @@ class TelegramType(ChannelType):
     def activate(self, channel):
         config = channel.config_json()
         bot = telegram.Bot(config['auth_token'])
-        bot.set_webhook("https://" + settings.TEMBA_HOST + reverse('handlers.telegram_handler', args=[channel.uuid]))
+        bot.set_webhook("https://" + channel.callback_domain + reverse('courier.tg', args=[channel.uuid]))
 
     def deactivate(self, channel):
         config = channel.config_json()
         bot = telegram.Bot(config['auth_token'])
         bot.delete_webhook()
 
-    def get_quick_replies(self, metadata, post_body):
-        metadata = json.loads(metadata)
-        quick_replies = metadata.get('quick_replies', None)
-        url_buttons = metadata.get('url_buttons', None)
-        replies = []
-        keyboard_type = None
-
-        if quick_replies:
-            for reply in quick_replies:
-                replies.append([dict(text=reply.get('title'))])
-            keyboard_type = 'keyboard'
-        elif url_buttons:
-            for url_button in url_buttons:
-                replies.append([dict(text=url_button.get('title'), url=url_button.get('url'))])
-            keyboard_type = 'inline_keyboard'
-
-        if keyboard_type:
-            keyboard_json = dict(resize_keyboard=True, one_time_keyboard=True)
-            keyboard_json[keyboard_type] = replies
-            post_body['reply_markup'] = json.dumps(keyboard_json)
-
-        return post_body
-
     def send(self, channel, msg, text):
         auth_token = channel.config['auth_token']
         send_url = 'https://api.telegram.org/bot%s/sendMessage' % auth_token
         post_body = {'chat_id': msg.urn_path, 'text': text}
 
-        if hasattr(msg, 'metadata'):
-            post_body = self.get_quick_replies(msg.metadata, post_body)
+        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
+        quick_replies = metadata.get('quick_replies', [])
+        formatted_replies = json.dumps(dict(resize_keyboard=True, one_time_keyboard=True,
+                                            keyboard=[[dict(text=item[:self.quick_reply_text_size])] for item in quick_replies]))
+
+        if quick_replies:
+            post_body['reply_markup'] = formatted_replies
 
         start = time.time()
 

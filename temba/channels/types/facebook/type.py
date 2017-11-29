@@ -51,42 +51,17 @@ class FacebookType(ChannelType):
         if trigger.trigger_type == Trigger.TYPE_NEW_CONVERSATION:
             self._set_call_to_action(trigger.channel, None)
 
-    def get_quick_replies(self, metadata, post_body):
-        metadata = json.loads(metadata)
-        quick_replies = metadata.get('quick_replies', None)
-        url_buttons = metadata.get('url_buttons', None)
-        replies = []
-
-        if quick_replies:
-            for reply in quick_replies:
-                replies.append(dict(title=reply.get('title'), payload=reply.get('title'), content_type='text'))
-
-            post_body['message']['quick_replies'] = replies
-
-        elif url_buttons:
-            for button in url_buttons:
-                replies.append(dict(title=button.get('title'), url=button.get('url'), type='web_url',
-                                    webview_height_ratio='tall'))
-
-            post_body['message'] = dict(
-                attachment=dict(
-                    type='template',
-                    payload=dict(
-                        template_type='button',
-                        text=post_body['message']['text'],
-                        buttons=replies
-                    )
-                )
-            )
-
-        return post_body
-
     def send(self, channel, msg, text):
         # build our payload
         payload = {'message': {'text': text}}
 
-        if hasattr(msg, 'metadata'):
-            payload = self.get_quick_replies(msg.metadata, payload)
+        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
+        quick_replies = metadata.get('quick_replies', [])
+        formatted_replies = [dict(title=item[:self.quick_reply_text_size], payload=item[:self.quick_reply_text_size],
+                                  content_type='text') for item in quick_replies]
+
+        if quick_replies:
+            payload['message']['quick_replies'] = formatted_replies
 
         # this is a ref facebook id, temporary just for this message
         if URN.is_path_fb_ref(msg.urn_path):
