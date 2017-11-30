@@ -1142,12 +1142,12 @@ class Msg(models.Model):
         return sorted_logs[0] if sorted_logs else None
 
     def reply(self, text, user, trigger_send=False, expressions_context=None, connection=None, attachments=None, msg_type=None,
-              send_all=False, created_on=None, quick_replies=None):
+              send_all=False, created_on=None, quick_replies=None, url_buttons=None):
 
         return self.contact.send(text, user, trigger_send=trigger_send, expressions_context=expressions_context,
                                  response_to=self if self.id else None, connection=connection, attachments=attachments,
                                  msg_type=msg_type or self.msg_type, created_on=created_on, all_urns=send_all,
-                                 high_priority=True, quick_replies=quick_replies)
+                                 high_priority=True, quick_replies=quick_replies, url_buttons=url_buttons)
 
     def update(self, cmd):
         """
@@ -1431,7 +1431,8 @@ class Msg(models.Model):
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, high_priority=False,
                         created_on=None, response_to=None, expressions_context=None, status=PENDING, insert_object=True,
-                        attachments=None, topup_id=None, msg_type=INBOX, connection=None, quick_replies=None):
+                        attachments=None, topup_id=None, msg_type=INBOX, connection=None, quick_replies=None,
+                        url_buttons=None):
 
         if not org or not user:  # pragma: no cover
             raise ValueError("Trying to create outgoing message with no org or user")
@@ -1539,12 +1540,23 @@ class Msg(models.Model):
             analytics.gauge('temba.msg_outgoing_%s' % channel.channel_type.lower())
 
         metadata = None
+
         if quick_replies:
             for counter, reply in enumerate(quick_replies):
                 (value, errors) = Msg.evaluate_template(text=reply, context=expressions_context, org=org)
                 if value:
                     quick_replies[counter] = value
             metadata = json.dumps(dict(quick_replies=quick_replies))
+
+        elif url_buttons:
+            for counter, reply in enumerate(url_buttons):
+                (title, errors) = Msg.evaluate_template(text=reply.get('title'), context=expressions_context, org=org)
+                (url, errors) = Msg.evaluate_template(text=reply.get('url'), context=expressions_context, org=org)
+
+                url_buttons[counter]['title'] = title if title else reply.get('title')
+                url_buttons[counter]['url'] = url if url else reply.get('url')
+
+            metadata = json.dumps(dict(url_buttons=url_buttons))
 
         msg_args = dict(contact=contact,
                         contact_urn=contact_urn,

@@ -5493,14 +5493,16 @@ class ReplyAction(Action):
     MEDIA = 'media'
     SEND_ALL = 'send_all'
     QUICK_REPLIES = 'quick_replies'
+    URL_BUTTONS = 'url_buttons'
 
-    def __init__(self, uuid, msg=None, media=None, quick_replies=None, send_all=False):
+    def __init__(self, uuid, msg=None, media=None, quick_replies=None, url_buttons=None, send_all=False):
         super(ReplyAction, self).__init__(uuid)
 
         self.msg = msg
         self.media = media if media else {}
         self.send_all = send_all
         self.quick_replies = quick_replies if quick_replies else []
+        self.url_buttons = url_buttons if url_buttons else []
 
     @classmethod
     def from_json(cls, org, json_obj):
@@ -5516,11 +5518,12 @@ class ReplyAction(Action):
             raise FlowException("Invalid reply action, no message")
 
         return cls(json_obj.get(cls.UUID), msg=json_obj.get(cls.MESSAGE), media=json_obj.get(cls.MEDIA, None),
-                   quick_replies=json_obj.get(cls.QUICK_REPLIES), send_all=json_obj.get(cls.SEND_ALL, False))
+                   quick_replies=json_obj.get(cls.QUICK_REPLIES), url_buttons=json_obj.get(cls.URL_BUTTONS),
+                   send_all=json_obj.get(cls.SEND_ALL, False))
 
     def as_json(self):
         return dict(type=self.TYPE, uuid=self.uuid, msg=self.msg, media=self.media, quick_replies=self.quick_replies,
-                    send_all=self.send_all)
+                    url_buttons=self.url_buttons, send_all=self.send_all)
 
     @staticmethod
     def get_translated_quick_replies(metadata, run):
@@ -5531,6 +5534,26 @@ class ReplyAction(Action):
         preferred_languages = [run.contact.language, run.flow.base_language]
         for item in metadata:
             text = Language.get_localized_text(text_translations=item, preferred_languages=preferred_languages)
+            language_metadata.append(text)
+
+        return language_metadata
+
+    @staticmethod
+    def get_translated_url_buttons(metadata, run):
+        """
+        Gets the appropriate metadata translation for the given contact
+        """
+        language_metadata = []
+        preferred_languages = [run.contact.language, run.flow.base_language]
+        for item in metadata:
+            text = Language.get_localized_text(text_translations=item, preferred_languages=preferred_languages)
+
+            if not text.get('title', None):
+                text['title'] = item.get(run.flow.base_language).get('title')
+
+            if not text.get('url', None):
+                text['url'] = item.get(run.flow.base_language).get('url')
+
             language_metadata.append(text)
 
         return language_metadata
@@ -5546,8 +5569,11 @@ class ReplyAction(Action):
                 text = run.flow.get_localized_text(self.msg, run.contact)
 
             quick_replies = []
+            url_buttons = []
             if self.quick_replies:
                 quick_replies = ReplyAction.get_translated_quick_replies(self.quick_replies, run)
+            elif self.url_buttons:
+                url_buttons = ReplyAction.get_translated_url_buttons(self.url_buttons, run)
 
             attachments = None
             if self.media:
@@ -5569,15 +5595,16 @@ class ReplyAction(Action):
             if msg and msg.id:
                 replies = msg.reply(text, user, trigger_send=False, expressions_context=context,
                                     connection=run.connection, msg_type=self.MSG_TYPE, quick_replies=quick_replies,
-                                    attachments=attachments, send_all=self.send_all, created_on=created_on)
+                                    url_buttons=url_buttons, attachments=attachments, send_all=self.send_all,
+                                    created_on=created_on)
             else:
                 # if our run has been responded to or any of our parent runs have
                 # been responded to consider us interactive with high priority
                 high_priority = run.get_session_responded()
                 replies = run.contact.send(text, user, trigger_send=False, expressions_context=context,
                                            connection=run.connection, msg_type=self.MSG_TYPE, attachments=attachments,
-                                           quick_replies=quick_replies, created_on=created_on, all_urns=self.send_all,
-                                           high_priority=high_priority)
+                                           quick_replies=quick_replies, url_buttons=url_buttons, created_on=created_on,
+                                           all_urns=self.send_all, high_priority=high_priority)
         return replies
 
 
