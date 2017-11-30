@@ -792,3 +792,6 @@
 .icon-button-quick-reply:before {
   content: "\e903";
 }
+.icon-button-url:before {
+  content: "\e907";
+}
