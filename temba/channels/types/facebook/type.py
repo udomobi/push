@@ -60,8 +60,23 @@ class FacebookType(ChannelType):
         formatted_replies = [dict(title=item[:self.quick_reply_text_size], payload=item[:self.quick_reply_text_size],
                                   content_type='text') for item in quick_replies]
 
+        url_buttons = metadata.get('url_buttons', [])
+        formatted_url_buttons = [dict(title=item.get('title')[:self.quick_reply_text_size], url=item.get('url'),
+                                      type='web_url', webview_height_ratio='tall') for item in url_buttons]
+
         if quick_replies:
             payload['message']['quick_replies'] = formatted_replies
+        elif url_buttons:
+            payload['message'] = dict(
+                attachment=dict(
+                    type='template',
+                    payload=dict(
+                        template_type='button',
+                        text=payload['message']['text'],
+                        buttons=formatted_url_buttons
+                    )
+                )
+            )
 
         # this is a ref facebook id, temporary just for this message
         if URN.is_path_fb_ref(msg.urn_path):
