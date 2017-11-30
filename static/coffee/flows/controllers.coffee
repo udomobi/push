@@ -734,7 +734,8 @@ app.controller 'FlowController', [ '$scope', '$rootScope', '$timeout', '$log', '
             name: 'Message Text',
             from: action.msg[Flow.flow.base_language],
             to: action.msg[Flow.language.iso_code],
-            fromQuickReplies: action.quick_replies || []
+            fromQuickReplies: action.quick_replies || [],
+            fromUrlButtons: action.url_buttons || []
           }
         ]
 
@@ -775,6 +776,9 @@ app.controller 'FlowController', [ '$scope', '$rootScope', '$timeout', '$log', '
 
             if translation.fromQuickReplies? && translation.fromQuickReplies != []
               action.quick_replies = translation.fromQuickReplies
+
+            if translation.fromUrlButtons? && translation.fromUrlButtons != []
+              action.url_buttons = translation.fromUrlButtons
             
             if translation.name == "Attachment"
               results = action.media
@@ -1846,13 +1850,30 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
   else
     $scope.action._attachType = "image"
 
-  if $scope.options.dragSource? or !($scope.action.quick_replies? and $scope.action.quick_replies != undefined and $scope.action.quick_replies.length > 0)
+  initQuickRepliesConfig = () ->
     $scope.quickReplies = []
-    $scope.action.quick_replies = []
+    $scope.urlButtons = []
+
     $scope.showQuickReplyButton = true
-  else
+    $scope.showUrlButton = true
+
+  if $scope.options.dragSource?
+    initQuickRepliesConfig()
+
+  else if $scope.options.dragSource? or ($scope.action.quick_replies? and $scope.action.quick_replies != undefined and $scope.action.quick_replies.length > 0)
     $scope.quickReplies = $scope.action.quick_replies
     $scope.showQuickReplyButton = false
+    $scope.urlButtons = []
+    $scope.showUrlButton = false
+
+  else if $scope.options.dragSource? or ($scope.action.url_buttons? and $scope.action.url_buttons != undefined and $scope.action.url_buttons.length > 0)
+    $scope.quickReplies = []
+    $scope.showQuickReplyButton = false
+    $scope.urlButtons = $scope.action.url_buttons
+    $scope.showUrlButton = false
+
+  else
+    initQuickRepliesConfig()
 
   if $scope.action.webhook_headers
     item_counter = 0
@@ -1890,6 +1911,7 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
 
   $scope.addNewQuickReply = ->
     $scope.showQuickReplyButton = false
+    $scope.showUrlButton = false
     if $scope.quickReplies.length < 11
       addQuickReply = {}
       addQuickReply[$scope.base_language] = ''
@@ -1901,6 +1923,27 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
     if $scope.quickReplies.length == 0
       $scope.showQuickReplyButton = true
       $scope.action.quick_replies = []
+
+      $scope.showUrlButton = true
+      $scope.action.url_buttons = []
+
+  $scope.addNewUrlButton = ->
+    $scope.showQuickReplyButton = false
+    $scope.showUrlButton = false
+    if $scope.quickReplies.length < 3
+      addUrlButton = {}
+      addUrlButton[$scope.base_language] = {'title': '', 'url': ''}
+      $scope.urlButtons.push(addUrlButton)
+
+  $scope.removeUrlButton = (index) ->
+    $scope.urlButtons.splice(index, 1)
+
+    if $scope.urlButtons.length == 0
+      $scope.showUrlButton = true
+      $scope.showQuickReplyButton = true
+
+      $scope.action.quick_replies = []
+      $scope.action.url_buttons = []
 
   $scope.actionset = actionset
   $scope.flowId = window.flowId
@@ -1987,6 +2030,11 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
       $scope.action.quick_replies = $scope.quickReplies
     else
       $scope.action.quick_replies = []
+
+    if $scope.urlButtons.length > 0
+      $scope.action.url_buttons = $scope.urlButtons
+    else
+      $scope.action.url_buttons = []
 
     Flow.saveAction(actionset, $scope.action)
     $modalInstance.close()
