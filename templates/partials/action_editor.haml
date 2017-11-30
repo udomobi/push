@@ -65,7 +65,7 @@
       %span{auto-complete:"",msg:"action.msg",type:"sms",data-message:"message"}
       %button{ng-click:'saveMessage(message, "reply", showAttachVariable)',class:"submit hide"}
       .media{ng-hide:'action.uploading'}
-        .attachments{ng-class: '{active:showAttachOptions}', ng-show: '!action._media && !quickReplies.length'}
+        .attachments{ng-class: '{active:showAttachOptions}', ng-show: '!action._media && !quickReplies.length && !urlButtons.length'}
           .attach-button{ng-show:'!showAttachOptions'}
             .icon-attachment.add-attachment{ng-click:'showAttachOptions = !showAttachOptions; showAttachVariable=false' }
 
@@ -100,7 +100,9 @@
 
         .icon-button-quick-reply{ng-click: 'addNewQuickReply();', ng-show: '!showAttachOptions && showQuickReplyButton && flow.flow_type=="F"'}
 
-      .quick-reply{ng-show:"!showQuickReplyButton"}
+        .icon-button-url{ng-click: 'addNewUrlButton();', ng-show: '!showAttachOptions && showUrlButton && flow.flow_type=="F"'}
+
+      .quick-reply{ng-show:"quickReplies.length > 0"}
         .modal-quick-reply-header
           .quick-reply-title
             -trans "Quick Replies"
@@ -111,6 +113,21 @@
 
           .icon.icon-close{ng-click:"removeQuickReply($index);"}
         %a.add-reply{href:"javascript:;", ng-click:"addNewQuickReply()", ng-hide:"quickReplies.length == 11"}
+          -trans "Add reply"
+
+      .quick-reply{ng-show:"urlButtons.length > 0"}
+        .modal-quick-reply-header
+          .quick-reply-title
+            -trans "URL Buttons"
+
+        .modal-quick-reply{ng-repeat:"reply in urlButtons", class:""}
+          .url-button-title
+            %input{type:"text", placeholder:"{% trans 'Title' %}", name:"url-button-title", auto-complete:"", ng-model:"reply[base_language].title", ng-required:"true"}
+          .url-button-payload
+            %input{type:"url", placeholder:"{% trans 'URL' %}", name:"url-button-url", auto-complete:"", ng-model:"reply[base_language].url", ng-required:"true"}
+
+          .icon.icon-close{ng-click:"removeUrlButton($index);"}
+        %a.add-reply{href:"javascript:;", ng-click:"addNewUrlButton()", ng-hide:"urlButtons.length == 3"}
           -trans "Add reply"
 
     %span{ng-if:'config.type == "end_ussd"'}

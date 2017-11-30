@@ -39,6 +39,21 @@
                   .translate-from{ng-show:"translation.fromQuickReplies"}
                     [[ response[language.from] ]]
                   %input{type:"text", name:"quick-reply-title", auto-complete:"", ng-model:"response[language.to]", ng-required:"true"}
+
+            .quick-reply{ng-show:"translation.fromUrlButtons.length"}
+              .modal-quick-reply-header
+                .quick-reply-title
+                  -trans "URL Buttons"
+
+              .modal-quick-reply{ng-repeat:"response in translation.fromUrlButtons", class:""}
+                .url-button-title.center-translate
+                  .translate-from{ng-show:"translation.fromUrlButtons"}
+                    [[ response[language.from].title ]]
+                  %input{type:"text", name:"url-button-title", auto-complete:"", ng-model:"response[language.to].title", ng-required:"true"}
+                .url-button-payload.center-translate
+                  .translate-from{ng-show:"translation.fromUrlButtons"}
+                    [[ response[language.from].url ]]
+                  %input{type:"url", name:"url-button-url", auto-complete:"", ng-model:"response[language.to].url", ng-required:"true"}
       .modal-footer
         %button{ng-click:"cancel()",class:"btn btn-secondary"}
           -trans "Cancel"
