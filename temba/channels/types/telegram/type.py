@@ -56,7 +56,13 @@ class TelegramType(ChannelType):
         formatted_replies = json.dumps(dict(resize_keyboard=True, one_time_keyboard=True,
                                             keyboard=[[dict(text=item[:self.quick_reply_text_size])] for item in quick_replies]))
 
-        if quick_replies:
+        url_buttons = metadata.get('url_buttons', [])
+        if not quick_replies and url_buttons:
+            formatted_replies = json.dumps(dict(resize_keyboard=True, one_time_keyboard=True,
+                                                inline_keyboard=[[dict(text=item.get('title')[:self.quick_reply_text_size],
+                                                                       url=item.get('url'))] for item in url_buttons]))
+
+        if quick_replies or url_buttons:
             post_body['reply_markup'] = formatted_replies
 
         start = time.time()

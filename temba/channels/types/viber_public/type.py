@@ -64,7 +64,12 @@ class ViberPublicType(ChannelType):
         formatted_replies = [dict(Text=item[:self.quick_reply_text_size], ActionBody=item[:self.quick_reply_text_size],
                                   ActionType='reply', TextSize='regular') for item in quick_replies]
 
-        if quick_replies:
+        url_buttons = metadata.get('url_buttons', [])
+        if not quick_replies and url_buttons:
+            formatted_replies = [dict(Text=item.get('title')[:self.quick_reply_text_size], ActionBody=item.get('url'),
+                                      ActionType='open-url', TextSize='regular') for item in url_buttons]
+
+        if quick_replies or url_buttons:
             payload['keyboard'] = dict(Type="keyboard", DefaultHeight=True, Buttons=formatted_replies)
 
         event = HttpEvent('POST', url, json.dumps(payload))
