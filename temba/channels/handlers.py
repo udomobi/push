@@ -600,9 +600,8 @@ class ExternalHandler(BaseChannelHandler):
 
 
 class WsHandler(BaseChannelHandler):
-
-    url = r'^ws/(?P<action>received|register|referrer)/(?P<uuid>[a-z0-9\-]+)/$'
-    url_name = 'handlers.ws_handler'
+    handler_url = r'^ws/(?P<action>received|register|referrer)/(?P<uuid>[a-z0-9\-]+)/$'
+    handler_name = 'handlers.ws_handler'
 
     def get_channel_type(self):
         return Channel.TYPE_WS
@@ -3281,8 +3280,8 @@ class TwitterHandler(BaseChannelHandler):
 
 class GCMHandler(BaseChannelHandler):
 
-    url = r'^gcm/(?P<uuid>[a-z0-9\-]+)/?$'
-    url_name = 'handlers.gcm_handler'
+    handler_url = r'^gcm/(?P<uuid>[a-z0-9\-]+)/?$'
+    handler_name = 'handlers.gcm_handler'
 
     def get(self, request, *args, **kwargs):
         return self.post(request, *args, **kwargs)

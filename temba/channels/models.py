@@ -458,6 +458,12 @@ class Channel(TembaModel):
                               config=config, role=role, schemes=schemes, parent=parent)
 
     @classmethod
+    def add_ws_channel(cls, org, user, name):
+        from temba.contacts.models import WS_SCHEME
+
+        return Channel.create(org, user, None, 'WS', name=name, address=settings.WEBSOCKET_ADDRESS, schemes=[WS_SCHEME])
+
+    @classmethod
     def add_send_channel(cls, user, channel):
         # nexmo ships numbers around as E164 without the leading +
         parsed = phonenumbers.parse(channel.address, None)
@@ -1084,15 +1090,19 @@ class Channel(TembaModel):
             'channel': str(channel.id)
         }
 
-        if hasattr(msg, 'metadata'):
-            metadata = json.loads(msg.metadata)
-            quick_replies = metadata.get('quick_replies') if metadata.get('quick_replies') else None
-            url_buttons = metadata.get('url_buttons') if metadata.get('url_buttons') else None
+        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
+        quick_replies = metadata.get('quick_replies', [])
 
-            if quick_replies:
-                data['metadata'] = dict(quick_replies=quick_replies)
-            elif url_buttons:
-                data['metadata'] = dict(url_buttons=url_buttons)
+        formatted_replies = [dict(title=item) for item in quick_replies]
+
+        url_buttons = metadata.get('url_buttons', [])
+        if not quick_replies and url_buttons:
+            formatted_replies = [dict(title=item.get('title'), url=item.get('url')) for item in url_buttons]
+
+        if quick_replies:
+            data['metadata'] = dict(quick_replies=formatted_replies)
+        elif url_buttons:
+            data['metadata'] = dict(url_buttons=formatted_replies)
 
         url = settings.WEBSOCKET_ADDRESS
         start = time.time()
