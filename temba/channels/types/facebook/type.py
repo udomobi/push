@@ -61,7 +61,8 @@ class FacebookType(ChannelType):
                                   content_type='text') for item in quick_replies]
 
         url_buttons = metadata.get('url_buttons', [])
-        formatted_url_buttons = [dict(title=item.get('title')[:self.quick_reply_text_size], url=item.get('url'),
+        if not quick_replies and url_buttons:
+            formatted_replies = [dict(title=item.get('title')[:self.quick_reply_text_size], url=item.get('url'),
                                       type='web_url', webview_height_ratio='tall') for item in url_buttons]
 
         if quick_replies:
@@ -73,7 +74,7 @@ class FacebookType(ChannelType):
                     payload=dict(
                         template_type='button',
                         text=payload['message']['text'],
-                        buttons=formatted_url_buttons
+                        buttons=formatted_replies
                     )
                 )
             )
