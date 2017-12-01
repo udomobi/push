@@ -1749,7 +1749,8 @@ class Flow(TembaModel):
                                                  media=send_action.media,
                                                  base_language=self.base_language,
                                                  send_all=send_action.send_all,
-                                                 quick_replies=send_action.quick_replies)
+                                                 quick_replies=send_action.quick_replies,
+                                                 url_buttons=send_action.url_buttons)
                     broadcast.update_contacts(all_contact_ids)
 
                     # manually set our broadcast status to QUEUED, our sub processes will send things off for us

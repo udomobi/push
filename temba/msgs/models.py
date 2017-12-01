@@ -236,7 +236,7 @@ class Broadcast(models.Model):
 
     @classmethod
     def create(cls, org, user, text, recipients, base_language=None, channel=None, media=None, send_all=False,
-               quick_replies=None, **kwargs):
+               quick_replies=None, url_buttons=None, **kwargs):
         # for convenience broadcasts can still be created with single translation and no base_language
         if isinstance(text, six.string_types):
             base_language = org.primary_language.iso_code if org.primary_language else 'base'
@@ -250,6 +250,8 @@ class Broadcast(models.Model):
         metadata = None
         if quick_replies:
             metadata = json.dumps(dict(quick_replies=quick_replies))
+        elif url_buttons:
+            metadata = json.dumps(dict(url_buttons=url_buttons))
 
         broadcast = cls.objects.create(org=org, channel=channel, send_all=send_all,
                                        base_language=base_language, text=text, media=media,
@@ -393,8 +395,30 @@ class Broadcast(models.Model):
         language_metadata = []
         if self.metadata:
             metadata = json.loads(self.metadata)
-            for item in metadata.get('quick_replies'):
+            for item in metadata.get('quick_replies', []):
                 text = Language.get_localized_text(text_translations=item, preferred_languages=preferred_languages)
+                language_metadata.append(text)
+
+        return language_metadata
+
+    def get_translated_url_buttons(self, contact, org=None):
+        """
+        Gets the appropriate url buttons translation for the given contact
+        """
+        preferred_languages = self.get_preferred_languages(contact, org)
+        language_metadata = []
+        if self.metadata:
+            metadata = json.loads(self.metadata)
+
+            for item in metadata.get('url_buttons', []):
+                text = Language.get_localized_text(text_translations=item, preferred_languages=preferred_languages)
+
+                if not text.get('title', None):
+                    text['title'] = item.get(self.base_language).get('title')
+
+                if not text.get('url', None):
+                    text['url'] = item.get(self.base_language).get('url')
+
                 language_metadata.append(text)
 
         return language_metadata
@@ -464,6 +488,7 @@ class Broadcast(models.Model):
 
             # get the appropriate quick replies translation for this contact
             quick_replies = self.get_translated_quick_replies(contact)
+            url_buttons = self.get_translated_url_buttons(contact)
 
             media = self.get_translated_media(contact)
             if media:
@@ -508,7 +533,8 @@ class Broadcast(models.Model):
                                           insert_object=False,
                                           attachments=[media] if media else None,
                                           created_on=created_on,
-                                          quick_replies=quick_replies)
+                                          quick_replies=quick_replies,
+                                          url_buttons=url_buttons)
 
             except UnreachableException:
                 # there was no way to reach this contact, do not create a message
