@@ -62,8 +62,15 @@ class FirebaseCloudMessagingType(ChannelType):
         formatted_replies = [dict(title=item[:self.quick_reply_text_size], payload=item[:self.quick_reply_text_size])
                              for item in quick_replies]
 
+        url_buttons = metadata.get('url_buttons', [])
+        if not quick_replies and url_buttons:
+            formatted_replies = [dict(title=item.get('title')[:self.quick_reply_text_size], url=item.get('url'))
+                                 for item in url_buttons]
+
         if quick_replies:
             data['data']['quick_replies'] = formatted_replies
+        elif url_buttons:
+            data['data']['url_buttons'] = formatted_replies
 
         payload = json.dumps(data)
         headers = http_headers(extra={'Content-Type': 'application/json', 'Authorization': 'key=%s' % channel.config.get('FCM_KEY')})
