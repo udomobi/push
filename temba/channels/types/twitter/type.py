@@ -63,23 +63,37 @@ class TwitterType(ChannelType):
             else:
                 metadata = msg.metadata if hasattr(msg, 'metadata') else {}
                 quick_replies = metadata.get('quick_replies', [])
-                formatted_replies = [dict(label=item[:self.quick_reply_text_size]) for item in quick_replies]
+                formatted_replies = dict(type='options', options=[dict(label=item[:self.quick_reply_text_size])
+                                                                  for item in quick_replies])
 
-                if quick_replies:
+                url_buttons = metadata.get('url_buttons', [])
+                if not quick_replies and url_buttons:
+                    formatted_replies = [dict(type='web_url', label=item.get('title')[:self.quick_reply_text_size],
+                                              url=item.get('url')) for item in url_buttons]
+
+                if quick_replies or url_buttons:
                     params = {
                         'event': {
                             'type': 'message_create',
                             'message_create': {
                                 'target': {'recipient_id': path},
                                 'message_data': {
-                                    'text': text,
-                                    'quick_reply': {'type': 'options', 'options': formatted_replies}
+                                    'text': text
                                 }
                             }
                         }
                     }
+
+                    if quick_replies:
+                        params['event']['message_create']['message_data']['quick_reply'] = formatted_replies
+                    else:
+                        params['event']['message_create']['message_data']['ctas'] = formatted_replies
+
                     dm = twitter.post('direct_messages/events/new', params=params)
                     external_id = dm['event']['id']
+
+                elif url_buttons:
+                    pass
                 else:
                     dm = twitter.send_direct_message(user_id=path, text=text)
                     external_id = dm['id']
