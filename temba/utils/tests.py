@@ -1565,11 +1565,11 @@ class MiddlewareTest(TembaTest):
         self.assertFalse(Contact.get_simulation())
 
     def test_activate_language(self):
-        self.assertContains(self.client.get(reverse('public.public_index')), "Create Account")
+        self.assertContains(self.client.get(reverse('public.public_index')), "Visually build")
 
         self.login(self.admin)
 
-        self.assertContains(self.client.get(reverse('public.public_index')), "Create Account")
+        self.assertContains(self.client.get(reverse('public.public_index')), "Visually build")
         self.assertContains(self.client.get(reverse('contacts.contact_list')), "Import Contacts")
 
         UserSettings.objects.filter(user=self.admin).update(language='fr')
