@@ -1186,7 +1186,7 @@ class Channel(TembaModel):
 
         try:
             api_key = channel.config['api_key']
-        except:
+        except Exception:
             api_key = None
 
         if api_key:

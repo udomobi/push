@@ -664,7 +664,7 @@ class WsHandler(BaseChannelHandler):
             trigger_extra = {'ref': referrer_id}
             try:
                 trigger_extra.update(json.loads(extra))
-            except:
+            except Exception:
                 pass
 
             contact = Contact.from_urn(channel.org, urn)
