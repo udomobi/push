@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from django.urls import reverse
 from temba.tests import TembaTest
@@ -8,10 +9,10 @@ from ...models import Channel
 class GlobeTypeTest(TembaTest):
     def test_claim(self):
         # disassociate all of our channels
-        self.org.channels.all().update(org=None, is_active=False)
+        self.org.channels.all().update(is_active=False)
 
         self.login(self.admin)
-        claim_url = reverse('channels.claim_globe')
+        claim_url = reverse('channels.types.globe.claim')
 
         response = self.client.get(reverse('channels.channel_claim'))
         self.assertNotContains(response, claim_url)
@@ -36,7 +37,7 @@ class GlobeTypeTest(TembaTest):
         channel = Channel.objects.get(channel_type='GL')
         self.assertEqual('21586380', channel.address)
         self.assertEqual('PH', channel.country)
-        config = channel.config_json()
+        config = channel.config
         self.assertEqual(config['app_secret'], 'AppSecret')
         self.assertEqual(config['app_id'], 'AppId')
         self.assertEqual(config['passphrase'], 'Passphrase')

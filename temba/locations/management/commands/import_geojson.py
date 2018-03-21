@@ -1,4 +1,5 @@
-from __future__ import print_function, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os.path
 import geojson
@@ -125,8 +126,10 @@ class Command(BaseCommand):  # pragma: no cover
         if osm_id:
             last_boundary = AdminBoundary.objects.filter(osm_id=osm_id).first()
             if last_boundary:
+                print(" ** removing unseen boundaries (%s)" % (osm_id))
                 country = last_boundary.get_root()
                 country.get_descendants().filter(level=level).exclude(osm_id__in=seen_osm_ids).delete()
+                return country
 
     def handle(self, *args, **options):
         files = options['files']
@@ -148,6 +151,7 @@ class Command(BaseCommand):  # pragma: no cover
         # before 2
         filepaths.sort()
 
+        country = None
         # for each file they have given us
         for filepath in filepaths:
             filename = os.path.basename(filepath)
@@ -159,9 +163,13 @@ class Command(BaseCommand):  # pragma: no cover
                 # if we are reading from a zipfile, read it from there
                 if zipfile:
                     with zipfile.open(filepath) as json_file:
-                        self.import_file(filename, json_file)
+                        country = self.import_file(filename, json_file)
 
                 # otherwise, straight off the filesystem
                 else:
                     with open(filepath) as json_file:
-                        self.import_file(filename, json_file)
+                        country = self.import_file(filename, json_file)
+
+        if country:
+            print(" ** updating paths for all of %s" % country.name)
+            country.update_path()

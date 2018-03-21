@@ -65,6 +65,7 @@
       %script{src:"{{ STATIC_URL }}bower/bootstrap/js/bootstrap-modal.js"}
       %script{src:"{{ STATIC_URL }}bower/bootstrap/js/bootstrap-dropdown.js"}
       %script{src:"{{ STATIC_URL }}bower/bootstrap/js/bootstrap-tooltip.js"}
+      %script{src:"{{ STATIC_URL }}bower/bootstrap/js/bootstrap-tab.js"}
       %script{src:"{{ STATIC_URL }}bower/jquery-pjax/jquery.pjax.js"}
       %script{src:"{{ STATIC_URL }}bower/jquery-ui/ui/jquery.ui.core.js"}
       %script{src:"{{ STATIC_URL }}bower/jquery-ui/ui/jquery.ui.widget.js"}
@@ -160,6 +161,9 @@
 
       -block extra-less
       -block extra-style
+
+  -for incl in brand.head_includes
+    -include incl
 
   <!--[if lt IE 9]>
     %script{src:"//html5shim.googlecode.com/svn/trunk/html5.js"}

@@ -1,7 +1,8 @@
-from __future__ import absolute_import, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import six
-import urllib
+from six.moves.urllib.parse import urlencode
 
 from django import forms
 from django.contrib.auth import authenticate, login
@@ -17,7 +18,8 @@ from temba.api.models import APIToken
 from temba.contacts.models import Contact, ContactField, ContactGroup, TEL_SCHEME
 from temba.flows.models import Flow, FlowRun
 from temba.locations.models import AdminBoundary, BoundaryAlias
-from temba.utils import json_date_to_datetime, splitting_getlist, str_to_bool
+from temba.utils import splitting_getlist, str_to_bool
+from temba.utils.dates import json_date_to_datetime
 from ..models import APIPermission, SSLPermission
 from .serializers import BoundarySerializer, AliasSerializer, ContactReadSerializer, ContactWriteSerializer
 from .serializers import ContactFieldReadSerializer, ContactFieldWriteSerializer, FlowReadSerializer
@@ -105,7 +107,7 @@ class ListAPIMixin(mixins.ListModelMixin):
             # param values should be in UTF8
             encoded_params = [(p[0], [v.encode('utf-8') for v in p[1]]) for p in query_params.lists()]
 
-            query_key = urllib.urlencode(sorted(encoded_params), doseq=True)
+            query_key = urlencode(sorted(encoded_params), doseq=True)
             count_key = REQUEST_COUNT_CACHE_KEY % (self.request.user.get_org().pk, query_key)
 
             # only try to use cached count for pages other than the first
@@ -718,7 +720,7 @@ class OrgEndpoint(BaseAPIView):
         {
             "name": "Nyaruka",
             "country": "RW",
-            "languages": ["eng", "fre"],
+            "languages": ["eng", "fra"],
             "primary_language": "eng",
             "timezone": "Africa/Kigali",
             "date_style": "day_first",

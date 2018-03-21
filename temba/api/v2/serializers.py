@@ -1,5 +1,7 @@
-from __future__ import absolute_import, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
+import iso8601
 import json
 import six
 
@@ -13,7 +15,8 @@ from temba.locations.models import AdminBoundary
 from temba.msgs.models import Broadcast, Msg, Label, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED
 from temba.msgs.tasks import send_broadcast_task
-from temba.utils import datetime_to_json_date, on_transaction_commit
+from temba.utils import on_transaction_commit
+from temba.utils.dates import datetime_to_json_date
 from temba.values.models import Value
 
 from . import fields
@@ -129,8 +132,7 @@ class BroadcastWriteSerializer(WriteSerializer):
 
         for urn in self.validated_data.get('urns', []):
             # create contacts for URNs if necessary
-            contact = Contact.get_or_create(self.context['org'], self.context['user'], urns=[urn])
-            contact_urn = contact.urn_objects[urn]
+            contact, contact_urn = Contact.get_or_create(self.context['org'], urn, user=self.context['user'])
             recipients.append(contact_urn)
 
         text, base_language = self.validated_data['text']
@@ -160,10 +162,7 @@ class ChannelEventReadSerializer(ReadSerializer):
         return self.TYPES.get(obj.event_type)
 
     def get_extra(self, obj):
-        if obj.extra:
-            return obj.extra_json()
-        else:
-            return None
+        return obj.extra
 
     class Meta:
         model = ChannelEvent
@@ -229,7 +228,7 @@ class CampaignEventWriteSerializer(WriteSerializer):
 
     campaign = fields.CampaignField(required=True)
     offset = serializers.IntegerField(required=True)
-    unit = serializers.ChoiceField(required=True, choices=UNITS.keys())
+    unit = serializers.ChoiceField(required=True, choices=list(UNITS.keys()))
     delivery_hour = serializers.IntegerField(required=True, min_value=-1, max_value=23)
     relative_to = fields.ContactFieldField(required=True)
     message = fields.TranslatableField(required=False, max_length=Msg.MAX_TEXT_LEN)
@@ -372,7 +371,7 @@ class ContactReadSerializer(ReadSerializer):
         fields = {}
         for contact_field in self.context['contact_fields']:
             value = obj.get_field(contact_field.key)
-            fields[contact_field.key] = Contact.serialize_field_value(contact_field, value)
+            fields[contact_field.key] = Contact.serialize_field_value(contact_field, value, org=self.context['org'])
         return fields
 
     def get_blocked(self, obj):
@@ -468,8 +467,8 @@ class ContactWriteSerializer(WriteSerializer):
             if changed:
                 self.instance.save(update_fields=changed)
         else:
-            self.instance = Contact.get_or_create(self.context['org'], self.context['user'], name,
-                                                  urns=urns, language=language)
+            self.instance = Contact.get_or_create_by_urns(self.context['org'], self.context['user'], name,
+                                                          urns=urns, language=language)
 
         # update our fields
         if custom_fields is not None:
@@ -502,7 +501,7 @@ class ContactFieldWriteSerializer(WriteSerializer):
     label = serializers.CharField(required=True, max_length=ContactField.MAX_LABEL_LEN, validators=[
         UniqueForOrgValidator(ContactField.objects.filter(is_active=True), ignore_case=True)
     ])
-    value_type = serializers.ChoiceField(required=True, choices=VALUE_TYPES.keys())
+    value_type = serializers.ChoiceField(required=True, choices=list(VALUE_TYPES.keys()))
 
     def validate_label(self, value):
         if not ContactField.is_valid_label(value):
@@ -540,7 +539,13 @@ class ContactFieldWriteSerializer(WriteSerializer):
 
 
 class ContactGroupReadSerializer(ReadSerializer):
+    status = serializers.SerializerMethodField()
     count = serializers.SerializerMethodField()
+
+    STATUSES = extract_constants(ContactGroup.STATUS_CONFIG)
+
+    def get_status(self, obj):
+        return self.STATUSES[obj.status]
 
     def get_count(self, obj):
         # count may be cached on the object
@@ -548,7 +553,7 @@ class ContactGroupReadSerializer(ReadSerializer):
 
     class Meta:
         model = ContactGroup
-        fields = ('uuid', 'name', 'query', 'count')
+        fields = ('uuid', 'name', 'query', 'status', 'count')
 
 
 class ContactGroupWriteSerializer(WriteSerializer):
@@ -679,19 +684,26 @@ class FlowRunReadSerializer(ReadSerializer):
         return {'uuid': str(obj.start.uuid)} if obj.start else None
 
     def get_path(self, obj):
-        return [{'node': s.step_uuid, 'time': format_datetime(s.arrived_on)} for s in obj.steps.all()]
-
-    def get_values(self, obj):
-        values = {}
-        for value in obj.values.all():
-            values[value.ruleset.context_key] = {
-                'value': value.decimal_value if value.decimal_value is not None else value.string_value,
-                'category': value.category,
-                'node': value.ruleset.uuid,
-                'time': value.modified_on,
+        def convert_step(step):
+            arrived_on = iso8601.parse_date(step[FlowRun.PATH_ARRIVED_ON])
+            return {
+                'node': step[FlowRun.PATH_NODE_UUID],
+                'time': format_datetime(arrived_on)
             }
 
-        return values
+        return [convert_step(s) for s in obj.path]
+
+    def get_values(self, obj):
+        def convert_result(result):
+            created_on = iso8601.parse_date(result[FlowRun.RESULT_CREATED_ON])
+            return {
+                'value': result[FlowRun.RESULT_VALUE],
+                'category': result[FlowRun.RESULT_CATEGORY],
+                'node': result[FlowRun.RESULT_NODE_UUID],
+                'time': format_datetime(created_on),
+            }
+
+        return {k: convert_result(r) for k, r in six.iteritems(obj.results)}
 
     def get_exit_type(self, obj):
         return self.EXIT_TYPES.get(obj.exit_type)
@@ -714,16 +726,10 @@ class FlowStartReadSerializer(ReadSerializer):
     status = serializers.SerializerMethodField()
     groups = fields.ContactGroupField(many=True)
     contacts = fields.ContactField(many=True)
-    extra = serializers.SerializerMethodField()
+    extra = serializers.JSONField(required=False)
 
     def get_status(self, obj):
         return FlowStartReadSerializer.STATUSES.get(obj.status)
-
-    def get_extra(self, obj):
-        if not obj.extra:
-            return None
-        else:
-            return json.loads(obj.extra)
 
     class Meta:
         model = FlowStart
@@ -761,7 +767,7 @@ class FlowStartWriteSerializer(WriteSerializer):
 
         # convert URNs to contacts
         for urn in urns:
-            contact = Contact.get_or_create(self.context['org'], self.context['user'], urns=[urn])
+            contact, urn_obj = Contact.get_or_create(self.context['org'], urn, user=self.context['user'])
             contacts.append(contact)
 
         # ok, let's go create our flow start, the actual starting will happen in our view
@@ -994,12 +1000,7 @@ class WebHookEventReadSerializer(ReadSerializer):
         return obj.resthook.slug
 
     def get_data(self, obj):
-        decoded = json.loads(obj.data)
-
-        # also decode values and steps
-        decoded['values'] = json.loads(decoded['values'])
-        decoded['steps'] = json.loads(decoded['steps'])
-        return decoded
+        return obj.data
 
     class Meta:
         model = WebHookEvent
