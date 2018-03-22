@@ -1842,7 +1842,7 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
 
   if $scope.options.dragSource? or !($scope.action.url_buttons? and $scope.action.url_buttons != undefined and $scope.action.url_buttons.length > 0)
     $scope.urlButtons = []
-    $scope.showUrlButton = false
+    $scope.showUrlButton = true
   else
     $scope.urlButtons = $scope.action.url_buttons
     $scope.showUrlButton = false
