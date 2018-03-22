@@ -1,10 +1,14 @@
-from __future__ import print_function, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import six
 import time
+import json
 
-from collections import defaultdict
+from collections import OrderedDict
+
 from django.contrib.postgres.fields import HStoreField
+from django.core import checks
 from django.core.exceptions import ValidationError
 from django.db import models, connection
 from django.utils.functional import cached_property
@@ -42,6 +46,102 @@ class TranslatableField(HStoreField):
         return super(TranslatableField, self).validators + [TranslatableField.Validator(self.max_length)]
 
 
+class CheckFieldDefaultMixin(object):
+    """
+    This was copied from https://github.com/django/django/commit/f6e1789654e82bac08cead5a2d2a9132f6403f52
+
+    More info: https://code.djangoproject.com/ticket/28577
+    """
+    _default_hint = ('<valid default>', '<invalid default>')
+
+    def _check_default(self):
+        if self.has_default() and self.default is not None and not callable(self.default):
+            return [
+                checks.Warning(
+                    '%s default should be a callable instead of an instance so that it\'s not shared between all field '
+                    'instances.' % (self.__class__.__name__,),
+                    hint='Use a callable instead, e.g., use `%s` instead of `%s`.' % self._default_hint,
+                    obj=self,
+                    id='postgres.E003',
+                )
+            ]
+        else:
+            return []
+
+    def check(self, **kwargs):
+        errors = super(CheckFieldDefaultMixin, self).check(**kwargs)
+        errors.extend(self._check_default())
+        return errors
+
+
+class JSONAsTextField(CheckFieldDefaultMixin, models.Field):
+    """
+    Custom JSON field that is stored as Text in the database
+
+    Notes:
+        * uses standard JSON serializers so it expects that all data is a valid JSON data
+        * be careful with default values, it must be a callable returning a dict because using `default={}` will create
+          a mutable default that is share between all instances of the JSONAsTextField
+          * https://docs.djangoproject.com/en/1.11/ref/contrib/postgres/fields/#jsonfield
+        * arg `object_pairs_hook` depends on the json serializer implementation
+          * Python 3.7 will guarantees to preserve dict insert order
+            * https://mail.python.org/pipermail/python-dev/2017-December/151283.html
+    """
+
+    description = 'Custom JSON field that is stored as Text in the database'
+    _default_hint = ('dict', '{}')
+
+    def __init__(self, object_pairs_hook=dict, *args, **kwargs):
+
+        self.object_pairs_hook = object_pairs_hook
+        super(JSONAsTextField, self).__init__(*args, **kwargs)
+
+    def from_db_value(self, value, *args, **kwargs):
+        if self.has_default() and value is None:
+            return self.get_default()
+
+        if value is None:
+            return value
+
+        if isinstance(value, six.string_types):
+            data = json.loads(value, object_pairs_hook=self.object_pairs_hook)
+
+            if type(data) not in (list, dict, OrderedDict):
+                raise ValueError('JSONAsTextField should be a dict or a list, got %s => %s' % (type(data), data))
+            else:
+                return data
+        else:
+            raise ValueError('Unexpected type "%s" for JSONAsTextField' % (type(value), ))  # pragma: no cover
+
+    def get_db_prep_value(self, value, *args, **kwargs):
+        # if the value is falsy we will save is as null
+        if self.null and value in (None, {}, []) and not kwargs.get('force'):
+            return None
+
+        if value is None:
+            return None
+
+        if type(value) not in (list, dict, OrderedDict):
+            raise ValueError('JSONAsTextField should be a dict or a list, got %s => %s' % (type(value), value))
+
+        return json.dumps(value)
+
+    def to_python(self, value):
+        if isinstance(value, six.string_types):
+            value = json.loads(value)
+        return value
+
+    def db_type(self, connection):
+        return 'text'
+
+    def deconstruct(self):
+        name, path, args, kwargs = super(JSONAsTextField, self).deconstruct()
+        # Only include kwarg if it's not the default
+        if self.object_pairs_hook != dict:
+            kwargs['object_pairs_hook'] = self.object_pairs_hook
+        return name, path, args, kwargs
+
+
 class TembaModel(SmartModel):
 
     uuid = models.CharField(max_length=36, unique=True, db_index=True, default=generate_uuid,
@@ -49,6 +149,15 @@ class TembaModel(SmartModel):
 
     class Meta:
         abstract = True
+
+
+class RequireUpdateFieldsMixin(object):
+
+    def save(self, *args, **kwargs):
+        if self.id and 'update_fields' not in kwargs:
+            raise ValueError("Updating without specifying update_fields is disabled for this model")
+
+        return super(RequireUpdateFieldsMixin, self).save(*args, **kwargs)
 
 
 class SquashableModel(models.Model):
@@ -69,7 +178,7 @@ class SquashableModel(models.Model):
     def squash(cls):
         start = time.time()
         num_sets = 0
-        for distinct_set in cls.get_unsquashed().order_by(*cls.SQUASH_OVER).distinct(*cls.SQUASH_OVER):
+        for distinct_set in cls.get_unsquashed().order_by(*cls.SQUASH_OVER).distinct(*cls.SQUASH_OVER)[:5000]:
             with connection.cursor() as cursor:
                 sql, params = cls.get_squash_query(distinct_set)
 
@@ -83,67 +192,3 @@ class SquashableModel(models.Model):
 
     class Meta:
         abstract = True
-
-
-class ChunkIterator(object):
-    """
-    Queryset wrapper to chunk queries and reduce in-memory footprint
-    """
-    def __init__(self, model, ids, order_by=None, select_related=None, prefetch_related=None,
-                 contact_fields=None, max_obj_num=1000):
-        self._model = model
-        self._ids = ids
-        self._order_by = order_by
-        self._select_related = select_related
-        self._prefetch_related = prefetch_related
-        self._contact_fields = contact_fields
-        self._generator = self._setup()
-        self.max_obj_num = max_obj_num
-
-    def _setup(self):
-        from temba.values.models import Value
-
-        for i in six.moves.xrange(0, len(self._ids), self.max_obj_num):
-            chunk_queryset = self._model.objects.filter(id__in=self._ids[i:i + self.max_obj_num])
-
-            if self._order_by:
-                chunk_queryset = chunk_queryset.order_by(*self._order_by)
-
-            if self._select_related:
-                chunk_queryset = chunk_queryset.select_related(*self._select_related)
-
-            if self._prefetch_related:
-                chunk_queryset = chunk_queryset.prefetch_related(*self._prefetch_related)
-
-            if self._contact_fields:
-                # get all our contact ids
-                contact_ids = chunk_queryset.values_list('contact_id', flat=True)
-
-                # fetch the contact field values
-                values = Value.objects.filter(contact_field__in=self._contact_fields, contact_id__in=contact_ids)\
-                                      .order_by('contact_id').prefetch_related('contact_field', 'location_value')
-
-                # map these by contact id
-                cid_to_values = defaultdict(list)
-                for value in values:
-                    cid_to_values[value.contact_id].append(value)
-
-            for obj in chunk_queryset:
-                # cache our contact field values on our contact object if we have any
-                if self._contact_fields:
-                    empty_values = set([cf.key.lower() for cf in self._contact_fields])
-                    for value in cid_to_values[obj.contact_id]:
-                        obj.contact.set_cached_field_value(value.contact_field.key.lower(), value)
-                        empty_values.discard(value.contact_field.key.lower())
-
-                    # set empty values for anything remaining
-                    for empty in empty_values:
-                        obj.contact.set_cached_field_value(empty, None)
-
-                yield obj
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        return self._generator.next()

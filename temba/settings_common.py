@@ -1,8 +1,10 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import iptools
 import os
 import sys
+import socket
 
 from celery.schedules import crontab
 from datetime import timedelta
@@ -144,7 +146,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'temba.context_processors.branding',
                 'temba.orgs.context_processors.user_group_perms_processor',
-                'temba.orgs.context_processors.unread_count_processor',
                 'temba.channels.views.channel_status_processor',
                 'temba.msgs.views.send_message_auto_complete_processor',
                 'temba.orgs.context_processors.settings_includer',
@@ -232,7 +233,6 @@ INSTALLED_APPS = (
     'temba.channels',
     'temba.msgs',
     'temba.flows',
-    'temba.reports',
     'temba.triggers',
     'temba.utils',
     'temba.campaigns',
@@ -436,11 +436,12 @@ PERMISSIONS = {
     'flows.flow': ('activity',
                    'activity_chart',
                    'activity_list',
-                   'analytics',
                    'api',
                    'archived',
+                   'assets',
                    'broadcast',
                    'campaign',
+                   'category_counts',
                    'completion',
                    'copy',
                    'editor',
@@ -448,7 +449,6 @@ PERMISSIONS = {
                    'export_results',
                    'filter',
                    'json',
-                   'read',
                    'recent_messages',
                    'results',
                    'revisions',
@@ -457,12 +457,6 @@ PERMISSIONS = {
                    'upload_action_recording',
                    'upload_media_action',
                    ),
-
-    'flows.ruleset': ('analytics',
-                      'choropleth',
-                      'map',
-                      'results',
-                      ),
 
     'msgs.msg': ('api',
                  'archive',
@@ -505,14 +499,19 @@ PERMISSIONS = {
                          ),
 }
 
+
 # assigns the permissions that each group should have
 GROUP_PERMISSIONS = {
     "Service Users": (  # internal Temba services have limited permissions
-        'msgs.msg_create',
+        'flows.flow_assets',
+        'msgs.msg_create'
     ),
     "Alpha": (
     ),
     "Beta": (
+    ),
+    "Dashboard": (
+        'orgs.org_dashboard',
     ),
     "Surveyors": (
         'contacts.contact_api',
@@ -532,7 +531,6 @@ GROUP_PERMISSIONS = {
         'contacts.contact_break_anon',
         'flows.flow_editor',
         'flows.flow_json',
-        'flows.flow_read',
         'flows.flow_revisions',
         'flows.flowrun_delete',
         'orgs.org_dashboard',
@@ -643,8 +641,6 @@ GROUP_PERMISSIONS = {
         'channels.channellog_read',
         'channels.channellog_session',
 
-        'reports.report.*',
-
         'flows.flow.*',
         'flows.flowstart_api',
         'flows.flowlabel.*',
@@ -747,8 +743,6 @@ GROUP_PERMISSIONS = {
         'channels.channel_update',
         'channels.channelevent.*',
 
-        'reports.report.*',
-
         'flows.flow.*',
         'flows.flowstart_api',
         'flows.flowlabel.*',
@@ -810,22 +804,20 @@ GROUP_PERMISSIONS = {
         'flows.flow_activity',
         'flows.flow_activity_chart',
         'flows.flow_archived',
+        'flows.flow_assets',
         'flows.flow_campaign',
         'flows.flow_completion',
+        'flows.flow_category_counts',
         'flows.flow_export',
         'flows.flow_export_results',
         'flows.flow_filter',
         'flows.flow_list',
-        'flows.flow_read',
         'flows.flow_editor',
         'flows.flow_json',
         'flows.flow_recent_messages',
         'flows.flow_results',
         'flows.flow_run_table',
         'flows.flow_simulate',
-        'flows.ruleset_analytics',
-        'flows.ruleset_results',
-        'flows.ruleset_choropleth',
 
         'msgs.broadcast_schedule_list',
         'msgs.broadcast_schedule_read',
@@ -862,6 +854,29 @@ ANONYMOUS_USER_NAME = 'AnonymousUser'
 # -----------------------------------------------------------------------------------
 TEST_RUNNER = 'temba.tests.TembaTestRunner'
 TEST_EXCLUDE = ('smartmin',)
+
+# -----------------------------------------------------------------------------------
+# Need a PostgreSQL database on localhost with postgis extension installed.
+# -----------------------------------------------------------------------------------
+_default_database_config = {
+    'ENGINE': 'django.contrib.gis.db.backends.postgis',
+    'NAME': 'temba',
+    'USER': 'temba',
+    'PASSWORD': 'temba',
+    'HOST': 'localhost',
+    'PORT': '',
+    'ATOMIC_REQUESTS': True,
+    'CONN_MAX_AGE': 60,
+    'OPTIONS': {}
+}
+
+_direct_database_config = _default_database_config.copy()
+_default_database_config['DISABLE_SERVER_SIDE_CURSORS'] = True
+
+DATABASES = {
+    'default': _default_database_config,
+    'direct': _direct_database_config
+}
 
 # -----------------------------------------------------------------------------------
 # Debug Toolbar
@@ -933,20 +948,12 @@ CELERYBEAT_SCHEDULE = {
         'task': 'trim_webhook_event_task',
         'schedule': crontab(hour=3, minute=0),
     },
-    "calculate-credit-caches": {
-        'task': 'calculate_credit_caches',
-        'schedule': timedelta(days=3),
-    },
     "squash-flowruncounts": {
         'task': 'squash_flowruncounts',
         'schedule': timedelta(seconds=300),
     },
     "squash-flowpathcounts": {
         'task': 'squash_flowpathcounts',
-        'schedule': timedelta(seconds=300),
-    },
-    "prune-recentmessages": {
-        'task': 'prune_recentmessages',
         'schedule': timedelta(seconds=300),
     },
     "squash-channelcounts": {
@@ -965,11 +972,6 @@ CELERYBEAT_SCHEDULE = {
         'task': 'squash_contactgroupcounts',
         'schedule': timedelta(seconds=300),
     },
-    "refresh-jiochat-access-tokens": {
-        'task': 'refresh_jiochat_access_tokens',
-        'schedule': timedelta(seconds=3600),
-    },
-
 }
 
 # Mapping of task name to task function path, used when CELERY_ALWAYS_EAGER is set to True
@@ -1114,6 +1116,8 @@ MESSAGE_HANDLERS = [
 ]
 
 CHANNEL_TYPES = [
+    'temba.channels.types.arabiacell.ArabiaCellType',
+    'temba.channels.types.whatsapp.WhatsAppType',
     'temba.channels.types.twilio.TwilioType',
     'temba.channels.types.twilio_messaging_service.TwilioMessagingServiceType',
     'temba.channels.types.nexmo.NexmoType',
@@ -1138,6 +1142,7 @@ CHANNEL_TYPES = [
     'temba.channels.types.line.LineType',
     'temba.channels.types.m3tech.M3TechType',
     'temba.channels.types.macrokiosk.MacrokioskType',
+    'temba.channels.types.mtarget.MtargetType',
     'temba.channels.types.mblox.MbloxType',
     'temba.channels.types.plivo.PlivoType',
     'temba.channels.types.redrabbit.RedRabbitType',
@@ -1148,9 +1153,8 @@ CHANNEL_TYPES = [
     'temba.channels.types.twiml_api.TwimlAPIType',
     'temba.channels.types.twitter.TwitterType',
     'temba.channels.types.twitter_activity.TwitterActivityType',
+    'temba.channels.types.verboice.VerboiceType',
     'temba.channels.types.viber_public.ViberPublicType',
-    'temba.channels.types.vumi.VumiType',
-    'temba.channels.types.vumi_ussd.VumiUSSDType',
     'temba.channels.types.yo.YoType',
     'temba.channels.types.zenvia.ZenviaType',
 ]
@@ -1198,9 +1202,17 @@ SUCCESS_LOGS_TRIM_TIME = 48
 ALL_LOGS_TRIM_TIME = 24 * 30
 
 # -----------------------------------------------------------------------------------
+# Flowserver - disabled by default. GoFlow defaults to http://localhost:8080
+# -----------------------------------------------------------------------------------
+FLOW_SERVER_URL = None
+FLOW_SERVER_AUTH_TOKEN = None
+FLOW_SERVER_DEBUG = False
+FLOW_SERVER_FORCE = False
+
+# -----------------------------------------------------------------------------------
 # Which channel types will be sent using Courier instead of RapidPro
 # -----------------------------------------------------------------------------------
-COURIER_CHANNELS = set(['DK'])
+COURIER_CHANNELS = set(['CT', 'DK', 'MT', 'WA', 'ZV'])
 
 # -----------------------------------------------------------------------------------
 # Chatbase integration
@@ -1210,6 +1222,8 @@ WEBSOCKET_ADDRESS = 'https://push-websocket.ilhasoft.mobi'
 
 SUPPORT_CHANNEL = '75e71c2f-03b2-46ae-b25e-87c48bd098a0'
 
-
 # To allow manage fields to support up to 1000 fields
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 4000
+
+# When reporting metrics we use the hostname of the physical machine, not the hostname of the service
+MACHINE_HOSTNAME = socket.gethostname().split('.')[0]

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import copy
 import datetime
@@ -9,15 +9,17 @@ import pycountry
 import pytz
 import six
 import time
+import os
 
 from celery.app.task import Task
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth.models import User, Group
-from django.core import mail
+from django.core import checks
 from django.core.management import call_command, CommandError
 from django.core.urlresolvers import reverse
-from django.test import override_settings, SimpleTestCase
+from django.db import models, connection
+from django.test import override_settings, SimpleTestCase, TestCase
 from django.utils import timezone
 from django_redis import get_redis_connection
 from mock import patch, PropertyMock
@@ -27,14 +29,15 @@ from temba.locations.models import AdminBoundary
 from temba.msgs.models import Msg, SystemLabelCount
 from temba.flows.models import FlowRun
 from temba.orgs.models import Org, UserSettings
-from temba.tests import TembaTest
+from temba.tests import TembaTest, matchers
 from temba_expressions.evaluator import EvaluationContext, DateStyle
-from . import format_decimal, str_to_datetime, str_to_time, date_to_utc_range
-from . import json_to_dict, dict_to_struct, datetime_to_ms, ms_to_datetime, dict_to_json, str_to_bool
-from . import percentage, datetime_to_json_date, json_date_to_datetime
-from . import datetime_to_str, chunk_list, get_country_code_by_name, datetime_to_epoch, voicexml
+
+from . import format_decimal, json_to_dict, dict_to_struct, dict_to_json, str_to_bool, percentage, datetime_to_json_date
+from . import chunk_list, get_country_code_by_name, voicexml, json_date_to_datetime
 from .cache import get_cacheable_result, get_cacheable_attr, incrby_existing, QueueRecord
 from .currencies import currency_for_country
+from .dates import str_to_datetime, str_to_time, date_to_utc_range, datetime_to_ms, ms_to_datetime, datetime_to_epoch
+from .dates import datetime_to_str
 from .email import send_simple_email, is_valid_address
 from .export import TableExporter
 from .expressions import migrate_template, evaluate_template, evaluate_template_compat, get_function_listing
@@ -47,6 +50,7 @@ from .queues import start_task, complete_task, push_task, HIGH_PRIORITY, LOW_PRI
 from .timezones import TimeZoneFormField, timezone_to_country_code
 from .text import clean_string, decode_base64, truncate, slugify_with, random_string
 from .voicexml import VoiceXMLException
+from .models import JSONAsTextField
 
 
 class InitTest(TembaTest):
@@ -84,100 +88,6 @@ class InitTest(TembaTest):
 
             self.assertEqual('Tm93IGlzDQp0aGUgdGltZQ0KZm9yIGFsbCBnb29kDQpwZW9wbGUgdG8NCnJlc2lzdC4NCg0KSG93IGFib3V0IGhhaWt1cz8NCkkgZmluZCB0aGVtIHRvIGJlIGZyaWVuZGx5Lg0KcmVmcmlnZXJhdG9yDQoNCjAxMjM0NTY3ODkNCiFAIyQlXiYqKCkgW117fS09Xys7JzoiLC4vPD4/fFx+YA0KQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eg==',
                              decode_base64('Tm93IGlzDQp0aGUgdGltZQ0KZm9yIGFsbCBnb29kDQpwZW9wbGUgdG8NCnJlc2lzdC4NCg0KSG93IGFib3V0IGhhaWt1cz8NCkkgZmluZCB0aGVtIHRvIGJlIGZyaWVuZGx5Lg0KcmVmcmlnZXJhdG9yDQoNCjAxMjM0NTY3ODkNCiFAIyQlXiYqKCkgW117fS09Xys7JzoiLC4vPD4/fFx+YA0KQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eg=='))
-
-    def test_datetime_to_ms(self):
-        d1 = datetime.datetime(2014, 1, 2, 3, 4, 5, tzinfo=pytz.utc)
-        self.assertEqual(datetime_to_ms(d1), 1388631845000)  # from http://unixtimestamp.50x.eu
-        self.assertEqual(ms_to_datetime(1388631845000), d1)
-
-        tz = pytz.timezone("Africa/Kigali")
-        d2 = tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5))
-        self.assertEqual(datetime_to_ms(d2), 1388624645000)
-        self.assertEqual(ms_to_datetime(1388624645000), d2.astimezone(pytz.utc))
-
-    def test_datetime_to_json_date(self):
-        d1 = datetime.datetime(2014, 1, 2, 3, 4, 5, tzinfo=pytz.utc)
-        self.assertEqual(datetime_to_json_date(d1), '2014-01-02T03:04:05.000Z')
-        self.assertEqual(json_date_to_datetime('2014-01-02T03:04:05.000Z'), d1)
-        self.assertEqual(json_date_to_datetime('2014-01-02T03:04:05.000'), d1)
-
-        tz = pytz.timezone("Africa/Kigali")
-        d2 = tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5))
-        self.assertEqual(datetime_to_json_date(d2), '2014-01-02T01:04:05.000Z')
-        self.assertEqual(json_date_to_datetime('2014-01-02T01:04:05.000Z'), d2.astimezone(pytz.utc))
-        self.assertEqual(json_date_to_datetime('2014-01-02T01:04:05.000'), d2.astimezone(pytz.utc))
-
-    def test_datetime_to_str(self):
-        tz = pytz.timezone("Africa/Kigali")
-        d2 = tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5, 6))
-
-        self.assertEqual(datetime_to_str(d2), '2014-01-02T01:04:05.000006Z')  # no format
-        self.assertEqual(datetime_to_str(d2, format='%Y-%m-%d'), '2014-01-02')  # format provided
-        self.assertEqual(datetime_to_str(d2, tz=tz), '2014-01-02T03:04:05.000006Z')  # in specific timezone
-        self.assertEqual(datetime_to_str(d2, ms=False), '2014-01-02T01:04:05Z')  # no ms
-        self.assertEqual(datetime_to_str(d2.date()), '2014-01-02T00:00:00.000000Z')  # no ms
-
-    def test_datetime_to_epoch(self):
-        dt = json_date_to_datetime('2014-01-02T01:04:05.000Z')
-        self.assertEqual(1388624645, datetime_to_epoch(dt))
-
-    def test_str_to_datetime(self):
-        tz = pytz.timezone('Asia/Kabul')
-        with patch.object(timezone, 'now', return_value=tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5, 6))):
-            self.assertIsNone(str_to_datetime(None, tz))  # none
-            self.assertIsNone(str_to_datetime('', tz))  # empty string
-            self.assertIsNone(str_to_datetime('xxx', tz))  # unparseable string
-            self.assertIsNone(str_to_datetime('xxx', tz, fill_time=False))  # unparseable string
-            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 3, 4, 5, 6)),
-                             str_to_datetime('01-02-2013', tz, dayfirst=True))  # day first
-            self.assertEqual(tz.localize(datetime.datetime(2013, 1, 2, 3, 4, 5, 6)),
-                             str_to_datetime('01-02-2013', tz, dayfirst=False))  # month first
-            self.assertEqual(tz.localize(datetime.datetime(2013, 1, 31, 3, 4, 5, 6)),
-                             str_to_datetime('01-31-2013', tz, dayfirst=True))  # impossible as day first
-            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 5, 6)),
-                             str_to_datetime('01-02-2013 07:08', tz, dayfirst=True))  # hour and minute provided
-            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000)),
-                             str_to_datetime('01-02-2013 07:08:09.100000', tz, dayfirst=True))  # complete time provided
-            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 0, 0, 0, 0)),
-                             str_to_datetime('01-02-2013', tz, dayfirst=True, fill_time=False))  # no time filling
-
-            # just year
-            self.assertEqual(datetime.datetime(123, 1, 2, 3, 4, 5, 6, tz),
-                             str_to_datetime('123', tz))
-
-        # localizing while in DST to something outside DST
-        tz = pytz.timezone('US/Eastern')
-        with patch.object(timezone, 'now', return_value=tz.localize(datetime.datetime(2029, 11, 1, 12, 30, 0, 0))):
-            parsed = str_to_datetime('06-11-2029', tz, dayfirst=True)
-            self.assertEqual(tz.localize(datetime.datetime(2029, 11, 6, 12, 30, 0, 0)),
-                             parsed)
-
-            # assert there is no DST offset
-            self.assertFalse(parsed.tzinfo.dst(parsed))
-
-            self.assertEqual(tz.localize(datetime.datetime(2029, 11, 6, 13, 45, 0, 0)),
-                             str_to_datetime('06-11-2029 13:45', tz, dayfirst=True))
-
-        # deal with datetimes that have timezone info
-        self.assertEqual(pytz.utc.localize(datetime.datetime(2016, 11, 21, 20, 36, 51, 215681)).astimezone(tz),
-                         str_to_datetime('2016-11-21T20:36:51.215681Z', tz))
-
-        self.assertEqual(datetime.datetime(123, 1, 2, 5, 4, 5, 6, pytz.utc),
-                         str_to_datetime('123-1-2T5:4:5.000006Z', tz))
-
-    def test_str_to_time(self):
-        tz = pytz.timezone('Asia/Kabul')
-        with patch.object(timezone, 'now', return_value=tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5, 6))):
-            self.assertEqual(datetime.time(3, 4), str_to_time('03:04'))  # zero padded
-            self.assertEqual(datetime.time(3, 4), str_to_time('3:4'))  # not zero padded
-            self.assertEqual(datetime.time(3, 4), str_to_time('01-02-2013 03:04'))  # with date
-            self.assertEqual(datetime.time(15, 4), str_to_time('3:04 PM'))  # as PM
-
-    def test_date_to_utc_range(self):
-        self.assertEqual(date_to_utc_range(datetime.date(2017, 2, 20), self.org), (
-            datetime.datetime(2017, 2, 19, 22, 0, 0, 0, tzinfo=pytz.UTC),
-            datetime.datetime(2017, 2, 20, 22, 0, 0, 0, tzinfo=pytz.UTC)
-        ))
 
     def test_str_to_bool(self):
         self.assertFalse(str_to_bool(None))
@@ -242,6 +152,147 @@ class InitTest(TembaTest):
 
         self.assertEqual(headers, {'User-agent': 'RapidPro', 'Foo': "Bar", 'Token': "123456"})
         self.assertEqual(http_headers(), {'User-agent': 'RapidPro'})  # check changes don't leak
+
+
+class DatesTest(TembaTest):
+    def test_datetime_to_ms(self):
+        d1 = datetime.datetime(2014, 1, 2, 3, 4, 5, tzinfo=pytz.utc)
+        self.assertEqual(datetime_to_ms(d1), 1388631845000)  # from http://unixtimestamp.50x.eu
+        self.assertEqual(ms_to_datetime(1388631845000), d1)
+
+        tz = pytz.timezone("Africa/Kigali")
+        d2 = tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5))
+        self.assertEqual(datetime_to_ms(d2), 1388624645000)
+        self.assertEqual(ms_to_datetime(1388624645000), d2.astimezone(pytz.utc))
+
+    def test_datetime_to_json_date(self):
+        d1 = datetime.datetime(2014, 1, 2, 3, 4, 5, tzinfo=pytz.utc)
+        self.assertEqual(datetime_to_json_date(d1), '2014-01-02T03:04:05.000Z')
+        self.assertEqual(json_date_to_datetime('2014-01-02T03:04:05.000Z'), d1)
+        self.assertEqual(json_date_to_datetime('2014-01-02T03:04:05.000'), d1)
+
+        tz = pytz.timezone("Africa/Kigali")
+        d2 = tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5))
+        self.assertEqual(datetime_to_json_date(d2), '2014-01-02T01:04:05.000Z')
+        self.assertEqual(json_date_to_datetime('2014-01-02T01:04:05.000Z'), d2.astimezone(pytz.utc))
+        self.assertEqual(json_date_to_datetime('2014-01-02T01:04:05.000'), d2.astimezone(pytz.utc))
+
+    def test_datetime_to_str(self):
+        tz = pytz.timezone("Africa/Kigali")
+        d2 = tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5, 6))
+
+        self.assertEqual(datetime_to_str(d2), '2014-01-02T01:04:05.000006Z')  # no format
+        self.assertEqual(datetime_to_str(d2, format='%Y-%m-%d'), '2014-01-02')  # format provided
+        self.assertEqual(datetime_to_str(d2, tz=tz), '2014-01-02T03:04:05.000006Z')  # in specific timezone
+        self.assertEqual(datetime_to_str(d2, ms=False), '2014-01-02T01:04:05Z')  # no ms
+        self.assertEqual(datetime_to_str(d2.date()), '2014-01-02T00:00:00.000000Z')  # no ms
+
+    def test_datetime_to_epoch(self):
+        dt = json_date_to_datetime('2014-01-02T01:04:05.000Z')
+        self.assertEqual(1388624645, datetime_to_epoch(dt))
+
+    def test_str_to_datetime(self):
+        tz = pytz.timezone('Asia/Kabul')
+        with patch.object(timezone, 'now', return_value=tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5, 6))):
+            self.assertIsNone(str_to_datetime(None, tz))  # none
+            self.assertIsNone(str_to_datetime('', tz))  # empty string
+            self.assertIsNone(str_to_datetime('xxx', tz))  # unparseable string
+            self.assertIsNone(str_to_datetime('xxx', tz, fill_time=False))  # unparseable string
+            self.assertIsNone(str_to_datetime('31-02-2017', tz))   # day out of range
+            self.assertIsNone(str_to_datetime('03-13-2017', tz))   # month out of range
+            self.assertIsNone(str_to_datetime('03-12-99999', tz))  # year out of range
+
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 3, 4, 5, 6)),
+                             str_to_datetime('01-02-2013', tz, dayfirst=True))  # day first
+
+            self.assertEqual(tz.localize(datetime.datetime(2013, 1, 2, 3, 4, 5, 6)),
+                             str_to_datetime('01-02-2013', tz, dayfirst=False))  # month first
+
+            # two digit years
+            self.assertEqual(tz.localize(datetime.datetime(2013, 1, 2, 3, 4, 5, 6)),
+                             str_to_datetime('01-02-13', tz, dayfirst=False))
+            self.assertEqual(tz.localize(datetime.datetime(1999, 1, 2, 3, 4, 5, 6)),
+                             str_to_datetime('01-02-99', tz, dayfirst=False))
+
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 0, 0)),
+                             str_to_datetime('01-02-2013 07:08', tz, dayfirst=True))  # hour and minute provided
+
+            # AM / PM edge cases
+            self.assertEqual(tz.localize(datetime.datetime(2017, 11, 21, 12, 0, 0, 0)),
+                             str_to_datetime('11/21/17 at 12:00PM', tz, dayfirst=False))
+            self.assertEqual(tz.localize(datetime.datetime(2017, 11, 21, 0, 0, 0, 0)),
+                             str_to_datetime('11/21/17 at 12:00 am', tz, dayfirst=False))
+            self.assertEqual(tz.localize(datetime.datetime(2017, 11, 21, 23, 59, 0, 0)),
+                             str_to_datetime('11/21/17 at 11:59 pm', tz, dayfirst=False))
+            self.assertEqual(tz.localize(datetime.datetime(2017, 11, 21, 0, 30, 0, 0)),
+                             str_to_datetime('11/21/17 at 00:30 am', tz, dayfirst=False))
+
+            self.assertEqual(tz.localize(datetime.datetime(2017, 11, 21, 0, 0, 0, 0)),  # illogical time ignored
+                             str_to_datetime('11/21/17 at 34:62', tz, dayfirst=False, fill_time=False))
+
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000)),
+                             str_to_datetime('01-02-2013 07:08:09.100000', tz, dayfirst=True))  # complete time provided
+
+            self.assertEqual(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000, tzinfo=pytz.UTC),
+                             str_to_datetime('2013-02-01T07:08:09.100000Z', tz, dayfirst=True))  # Z marker
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000)),
+                             str_to_datetime('2013-02-01T07:08:09.100000+04:30', tz, dayfirst=True))  # ISO in local tz
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000)),
+                             str_to_datetime('2013-02-01T04:38:09.100000+02:00', tz, dayfirst=True))  # ISO in other tz
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000)),
+                             str_to_datetime('2013-02-01T00:38:09.100000-02:00', tz, dayfirst=True))  # ISO in other tz
+            self.assertEqual(datetime.datetime(2013, 2, 1, 7, 8, 9, 0, tzinfo=pytz.UTC),
+                             str_to_datetime('2013-02-01T07:08:09Z', tz, dayfirst=True))  # with no second fraction
+            self.assertEqual(datetime.datetime(2013, 2, 1, 7, 8, 9, 198000, tzinfo=pytz.UTC),
+                             str_to_datetime('2013-02-01T07:08:09.198Z', tz, dayfirst=True))  # with milliseconds
+            self.assertEqual(datetime.datetime(2013, 2, 1, 7, 8, 9, 198537, tzinfo=pytz.UTC),
+                             str_to_datetime('2013-02-01T07:08:09.198537686Z', tz, dayfirst=True))  # with nanoseconds
+            self.assertEqual(datetime.datetime(2013, 2, 1, 7, 8, 9, 198500, tzinfo=pytz.UTC),
+                             str_to_datetime('2013-02-01T07:08:09.1985Z', tz, dayfirst=True))  # with 4 second fraction digits
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 7, 8, 9, 100000)),
+                             str_to_datetime('2013-02-01T07:08:09.100000+04:30.', tz, dayfirst=True))  # trailing period
+            self.assertEqual(tz.localize(datetime.datetime(2013, 2, 1, 0, 0, 0, 0)),
+                             str_to_datetime('01-02-2013', tz, dayfirst=True, fill_time=False))  # no time filling
+
+        # localizing while in DST to something outside DST
+        tz = pytz.timezone('US/Eastern')
+        with patch.object(timezone, 'now', return_value=tz.localize(datetime.datetime(2029, 11, 1, 12, 30, 0, 0))):
+            parsed = str_to_datetime('06-11-2029', tz, dayfirst=True)
+            self.assertEqual(tz.localize(datetime.datetime(2029, 11, 6, 12, 30, 0, 0)),
+                             parsed)
+
+            # assert there is no DST offset
+            self.assertFalse(parsed.tzinfo.dst(parsed))
+
+            self.assertEqual(tz.localize(datetime.datetime(2029, 11, 6, 13, 45, 0, 0)),
+                             str_to_datetime('06-11-2029 13:45', tz, dayfirst=True))
+
+        # deal with datetimes that have timezone info
+        self.assertEqual(pytz.utc.localize(datetime.datetime(2016, 11, 21, 20, 36, 51, 215681)).astimezone(tz),
+                         str_to_datetime('2016-11-21T20:36:51.215681Z', tz))
+
+    def test_str_to_time(self):
+        self.assertEqual(str_to_time(""), None)
+        self.assertEqual(str_to_time("x"), None)
+        self.assertEqual(str_to_time("32:01"), None)
+        self.assertEqual(str_to_time("12:61"), None)
+        self.assertEqual(str_to_time("12:30:61"), None)
+
+        tz = pytz.timezone('Asia/Kabul')
+        with patch.object(timezone, 'now', return_value=tz.localize(datetime.datetime(2014, 1, 2, 3, 4, 5, 6))):
+            self.assertEqual(str_to_time('03:04'), datetime.time(3, 4))  # hour zero padded
+            self.assertEqual(str_to_time('3:04'), datetime.time(3, 4))  # hour not zero padded
+            self.assertEqual(str_to_time('01-02-2013 03:04'), datetime.time(3, 4))  # with date
+            self.assertEqual(str_to_time('3:04 PM'), datetime.time(15, 4))  # as PM
+            self.assertEqual(str_to_time('03:04:30'), datetime.time(3, 4, 30))  # with seconds
+            self.assertEqual(str_to_time('03:04:30.123'), datetime.time(3, 4, 30, 123000))  # with milliseconds
+            self.assertEqual(str_to_time('03:04:30.123000'), datetime.time(3, 4, 30, 123000))  # with microseconds
+
+    def test_date_to_utc_range(self):
+        self.assertEqual(date_to_utc_range(datetime.date(2017, 2, 20), self.org), (
+            datetime.datetime(2017, 2, 19, 22, 0, 0, 0, tzinfo=pytz.UTC),
+            datetime.datetime(2017, 2, 20, 22, 0, 0, 0, tzinfo=pytz.UTC)
+        ))
 
 
 class TimezonesTest(TembaTest):
@@ -340,24 +391,24 @@ class CacheTest(TembaTest):
         self.create_contact("Bob", number="1234")
 
         def calculate():
-            return Contact.objects.all().count()
+            return Contact.objects.all().count(), 60
 
         with self.assertNumQueries(1):
-            self.assertEqual(get_cacheable_result('test_contact_count', 60, calculate), 1)  # from db
+            self.assertEqual(get_cacheable_result('test_contact_count', calculate), 1)  # from db
         with self.assertNumQueries(0):
-            self.assertEqual(get_cacheable_result('test_contact_count', 60, calculate), 1)  # from cache
+            self.assertEqual(get_cacheable_result('test_contact_count', calculate), 1)  # from cache
 
         self.create_contact("Jim", number="2345")
 
         with self.assertNumQueries(0):
-            self.assertEqual(get_cacheable_result('test_contact_count', 60, calculate), 1)  # not updated
+            self.assertEqual(get_cacheable_result('test_contact_count', calculate), 1)  # not updated
 
         get_redis_connection().delete('test_contact_count')  # delete from cache for force re-fetch from db
 
         with self.assertNumQueries(1):
-            self.assertEqual(get_cacheable_result('test_contact_count', 60, calculate), 2)  # from db
+            self.assertEqual(get_cacheable_result('test_contact_count', calculate), 2)  # from db
         with self.assertNumQueries(0):
-            self.assertEqual(get_cacheable_result('test_contact_count', 60, calculate), 2)  # from cache
+            self.assertEqual(get_cacheable_result('test_contact_count', calculate), 2)  # from cache
 
     def test_get_cacheable_attr(self):
         def calculate():
@@ -373,20 +424,20 @@ class CacheTest(TembaTest):
         r.set('bar', 20)
 
         incrby_existing('foo', 3, r)  # positive delta
-        self.assertEqual(r.get('foo'), '13')
+        self.assertEqual(r.get('foo'), b'13')
         self.assertTrue(r.ttl('foo') > 0)
 
         incrby_existing('foo', -1, r)  # negative delta
-        self.assertEqual(r.get('foo'), '12')
+        self.assertEqual(r.get('foo'), b'12')
         self.assertTrue(r.ttl('foo') > 0)
 
         r.setex('foo', 100, 0)
         incrby_existing('foo', 5, r)  # zero val key
-        self.assertEqual(r.get('foo'), '5')
+        self.assertEqual(r.get('foo'), b'5')
         self.assertTrue(r.ttl('foo') > 0)
 
         incrby_existing('bar', 5, r)  # persistent key
-        self.assertEqual(r.get('bar'), '25')
+        self.assertEqual(r.get('bar'), b'25')
         self.assertTrue(r.ttl('bar') < 0)
 
         incrby_existing('xxx', -2, r)  # non-existent key
@@ -418,19 +469,11 @@ class EmailTest(TembaTest):
 
     @override_settings(SEND_EMAILS=True)
     def test_send_simple_email(self):
-        send_simple_email(['recipient@bar.com'], "Test Subject", "Test Body")
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].from_email, settings.DEFAULT_FROM_EMAIL)
-        self.assertEqual(mail.outbox[0].subject, "Test Subject")
-        self.assertEqual(mail.outbox[0].body, "Test Body")
-        self.assertEqual(mail.outbox[0].recipients(), ['recipient@bar.com'])
+        send_simple_email(['recipient@bar.com'], 'Test Subject', 'Test Body')
+        self.assertOutbox(0, settings.DEFAULT_FROM_EMAIL, 'Test Subject', 'Test Body', ['recipient@bar.com'])
 
-        send_simple_email(['recipient@bar.com'], "Test Subject", "Test Body", from_email='no-reply@foo.com')
-        self.assertEqual(len(mail.outbox), 2)
-        self.assertEqual(mail.outbox[1].from_email, 'no-reply@foo.com')
-        self.assertEqual(mail.outbox[1].subject, "Test Subject")
-        self.assertEqual(mail.outbox[1].body, "Test Body")
-        self.assertEqual(mail.outbox[1].recipients(), ["recipient@bar.com"])
+        send_simple_email(['recipient@bar.com'], 'Test Subject', 'Test Body', from_email='no-reply@foo.com')
+        self.assertOutbox(1, 'no-reply@foo.com', 'Test Subject', 'Test Body', ['recipient@bar.com'])
 
     def test_is_valid_address(self):
 
@@ -799,19 +842,19 @@ class ExpressionsTest(TembaTest):
                          evaluate_template("Result: @(-5 - flow.users)", self.context))  # negatives
 
         # test date arithmetic
-        self.assertEqual(("Date: 02-12-2014 09:00", []),
+        self.assertEqual(("Date: 2014-12-02T09:00:00+00:00", []),
                          evaluate_template("Date: @(flow.joined + 1)",
                                            self.context))  # var is datetime
-        self.assertEqual(("Date: 28-11-2014 09:00", []),
+        self.assertEqual(("Date: 2014-11-28T09:00:00+00:00", []),
                          evaluate_template("Date: @(flow.started - 3)",
                                            self.context))  # var is string
         self.assertEqual(("Date: 04-07-2014", []),
                          evaluate_template("Date: @(DATE(2014, 7, 1) + 3)",
                                            self.context))  # date constructor
-        self.assertEqual(("Date: 01-12-2014 11:30", []),
+        self.assertEqual(("Date: 2014-12-01T11:30:00+00:00", []),
                          evaluate_template("Date: @(flow.joined + TIME(2, 30, 0))",
                                            self.context))  # time addition to datetime var
-        self.assertEqual(("Date: 01-12-2014 06:30", []),
+        self.assertEqual(("Date: 2014-12-01T06:30:00+00:00", []),
                          evaluate_template("Date: @(flow.joined - TIME(2, 30, 0))",
                                            self.context))  # time subtraction from string var
 
@@ -830,7 +873,7 @@ class ExpressionsTest(TembaTest):
         self.assertEqual(('3', []),
                          evaluate_template('@(LEN( 1.2 ))',
                                            self.context))  # auto decimal -> string conversion
-        self.assertEqual(('16', []),
+        self.assertEqual(('25', []),
                          evaluate_template('@(LEN(flow.joined))',
                                            self.context))  # auto datetime -> string conversion
         self.assertEqual(('2', []),
@@ -1034,9 +1077,23 @@ class GSM7Test(TembaTest):
         self.assertEqual(3, calculate_num_segments(ten_chars * 13 + "“word”"))
 
 
-class ChunkTest(TembaTest):
+class ModelsTest(TembaTest):
 
-    def test_chunking(self):
+    def test_require_update_fields(self):
+        contact = self.create_contact("Bob", twitter="bobby")
+        flow = self.get_flow('color')
+        run, = flow.start([], [contact])
+
+        # we can save if we specify update_fields
+        run.modified_on = timezone.now()
+        run.save(update_fields=('modified_on',))
+
+        # but not without
+        with self.assertRaises(ValueError):
+            run.modified_on = timezone.now()
+            run.save()
+
+    def test_chunk_list(self):
         curr = 0
         for chunk in chunk_list(six.moves.xrange(100), 7):
             batch_curr = curr
@@ -1114,18 +1171,34 @@ class ExportTest(TembaTest):
         # ok, let's check the result now
         temp_file, file_ext = exporter.save_file()
 
-        with open(temp_file.name, 'rb') as csvfile:
-            import csv
-            reader = csv.reader(csvfile)
+        if six.PY2:
+            csvfile = open(temp_file.name, 'rb')
+        else:
+            csvfile = open(temp_file.name, 'rt')
 
-            for idx, row in enumerate(reader):
-                if idx == 0:
-                    self.assertEqual(cols, row)
-                else:
-                    self.assertEqual(values, row)
+        import csv
+        reader = csv.reader(csvfile)
 
-            # should only be three rows
-            self.assertEqual(2, idx)
+        column_row = next(reader, [])
+        self.assertListEqual(cols, column_row)
+
+        values_row = next(reader, [])
+        self.assertListEqual(values, values_row)
+
+        values_row = next(reader, [])
+        self.assertListEqual(values, values_row)
+
+        # should only be three rows
+        empty_row = next(reader, None)
+        self.assertIsNone(empty_row)
+
+        # remove temporary file on PY3
+        if six.PY3:  # pragma: no cover
+            if hasattr(temp_file, 'delete'):
+                if temp_file.delete is False:
+                    os.unlink(temp_file.name)
+            else:
+                os.unlink(temp_file.name)
 
     @patch('temba.utils.export.BaseExportTask.MAX_EXCEL_ROWS', new_callable=PropertyMock)
     def test_tableexporter_xls(self, mock_max_rows):
@@ -1172,6 +1245,9 @@ class ExportTest(TembaTest):
 
         self.assertEqual(200 + 2, len(list(sheet2.rows)))
         self.assertEqual(32, len(list(sheet2.columns)))
+
+        if six.PY3:
+            os.unlink(temp_file.name)
 
 
 class CurrencyTest(TembaTest):
@@ -1614,7 +1690,6 @@ class MakeTestDBTest(SimpleTestCase):
         def assertOrgCounts(qs, counts):
             self.assertEqual([qs.filter(org=o).count() for o in (org1, org2, org3)], counts)
 
-        print(User.objects.all())
         self.assertEqual(User.objects.exclude(username__in=["AnonymousUser", "root", "rapidpro_flow", "temba_flow"]).count(), 12)
         assertOrgCounts(ContactField.objects.all(), [6, 6, 6])
         assertOrgCounts(ContactGroup.user_groups.all(), [10, 10, 10])
@@ -1635,3 +1710,142 @@ class MakeTestDBTest(SimpleTestCase):
 
         # but simulate can
         call_command('test_db', 'simulate', num_runs=2)
+
+
+class JsonModelTestDefaultNull(models.Model):
+    field = JSONAsTextField(default=dict, null=True)
+
+
+class JsonModelTestDefault(models.Model):
+    field = JSONAsTextField(default=dict, null=False)
+
+
+class JsonModelTestNull(models.Model):
+    field = JSONAsTextField(null=True)
+
+
+class TestJSONAsTextField(TestCase):
+    def test_invalid_default(self):
+
+        class InvalidJsonModel(models.Model):
+            field = JSONAsTextField(default={})
+
+        model = InvalidJsonModel()
+        self.assertEqual(model.check(), [
+            checks.Warning(
+                msg=(
+                    'JSONAsTextField default should be a callable instead of an instance so that it\'s not shared '
+                    'between all field instances.'
+                ),
+                hint='Use a callable instead, e.g., use `dict` instead of `{}`.',
+                obj=InvalidJsonModel._meta.get_field('field'),
+                id='postgres.E003',
+            )
+        ])
+
+    def test_to_python(self):
+
+        field = JSONAsTextField(default=dict)
+
+        self.assertEqual(field.to_python({}), {})
+
+        self.assertEqual(field.to_python('{}'), {})
+
+    def test_default_with_null(self):
+
+        model = JsonModelTestDefaultNull()
+        model.save()
+        model.refresh_from_db()
+
+        # the field in the database is null, and we have set the default value so we get the default value
+        self.assertEqual(model.field, {})
+
+        with connection.cursor() as cur:
+            cur.execute('select * from utils_jsonmodeltestdefaultnull')
+
+            data = cur.fetchall()
+        # but in the database the field is saved as null
+        self.assertEqual(data[0][1], None)
+
+    def test_default_without_null(self):
+
+        model = JsonModelTestDefault()
+        model.save()
+        model.refresh_from_db()
+
+        # the field in the database saves the default value, and we get the default value back
+        self.assertEqual(model.field, {})
+
+        with connection.cursor() as cur:
+            cur.execute('select * from utils_jsonmodeltestdefault')
+
+            data = cur.fetchall()
+        # and in the database the field saved as default value
+        self.assertEqual(data[0][1], '{}')
+
+    def test_invalid_field_values(self):
+        model = JsonModelTestDefault()
+        model.field = '53'
+        self.assertRaises(ValueError, model.save)
+
+        model.field = 34
+        self.assertRaises(ValueError, model.save)
+
+        model.field = ''
+        self.assertRaises(ValueError, model.save)
+
+    def test_write_None_value(self):
+        model = JsonModelTestDefault()
+        # assign None (null) value to the field
+        model.field = None
+
+        self.assertRaises(Exception, model.save)
+
+    def test_read_None_value(self):
+        with connection.cursor() as null_cur:
+            null_cur.execute('DELETE FROM utils_jsonmodeltestnull')
+            null_cur.execute('INSERT INTO utils_jsonmodeltestnull (field) VALUES (%s)', (None,))
+
+            self.assertEqual(JsonModelTestNull.objects.first().field, None)
+
+    def test_invalid_field_values_db(self):
+        with connection.cursor() as cur:
+            cur.execute('DELETE FROM utils_jsonmodeltestdefault')
+            cur.execute('INSERT INTO utils_jsonmodeltestdefault (field) VALUES (%s)', ('53', ))
+            self.assertRaises(ValueError, JsonModelTestDefault.objects.first)
+
+            cur.execute('DELETE FROM utils_jsonmodeltestdefault')
+            cur.execute('INSERT INTO utils_jsonmodeltestdefault (field) VALUES (%s)', ('None',))
+            self.assertRaises(ValueError, JsonModelTestDefault.objects.first)
+
+            cur.execute('DELETE FROM utils_jsonmodeltestdefault')
+            cur.execute('INSERT INTO utils_jsonmodeltestdefault (field) VALUES (%s)', ('null',))
+            self.assertRaises(ValueError, JsonModelTestDefault.objects.first)
+
+
+class MatchersTest(TembaTest):
+    def test_string(self):
+        self.assertEqual("abc", matchers.String())
+        self.assertEqual("", matchers.String())
+        self.assertNotEqual(None, matchers.String())
+        self.assertNotEqual(123, matchers.String())
+
+        self.assertEqual("abc", matchers.String(pattern=r'\w{3}$'))
+        self.assertNotEqual("ab", matchers.String(pattern=r'\w{3}$'))
+        self.assertNotEqual("abcd", matchers.String(pattern=r'\w{3}$'))
+
+    def test_isodate(self):
+        self.assertEqual("2013-02-01T07:08:09.100000+04:30", matchers.ISODate())
+        self.assertEqual("2018-02-21T20:34:07.198537686Z", matchers.ISODate())
+        self.assertEqual("2018-02-21T20:34:07.19853768Z", matchers.ISODate())
+        self.assertEqual("2018-02-21T20:34:07.198Z", matchers.ISODate())
+        self.assertEqual("2018-02-21T20:34:07Z", matchers.ISODate())
+        self.assertEqual("2013-02-01T07:08:09.100000Z", matchers.ISODate())
+        self.assertNotEqual(None, matchers.ISODate())
+        self.assertNotEqual("abc", matchers.ISODate())
+
+    def test_uuid4string(self):
+        self.assertEqual("85ECBE45-E2DF-4785-8FC8-16FA941E0A79", matchers.UUID4String())
+        self.assertEqual("85ecbe45-e2df-4785-8fc8-16fa941e0a79", matchers.UUID4String())
+        self.assertNotEqual(None, matchers.UUID4String())
+        self.assertNotEqual("abc", matchers.UUID4String())

@@ -1,14 +1,16 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 
 from datetime import timedelta
 from django.utils import timezone
+from django.utils.encoding import force_text
 from django_redis import get_redis_connection
 from . import chunk_list
 
 
-def get_cacheable(cache_key, cache_ttl, callable, r=None, force_dirty=False):
+def get_cacheable(cache_key, callable, r=None, force_dirty=False):
     """
     Gets the result of a method call, using the given key and TTL as a cache
     """
@@ -18,19 +20,19 @@ def get_cacheable(cache_key, cache_ttl, callable, r=None, force_dirty=False):
     if not force_dirty:
         cached = r.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            return json.loads(force_text(cached))
 
-    calculated = callable()
+    (calculated, cache_ttl) = callable()
     r.set(cache_key, json.dumps(calculated), cache_ttl)
 
     return calculated
 
 
-def get_cacheable_result(cache_key, cache_ttl, callable, r=None, force_dirty=False):
+def get_cacheable_result(cache_key, callable, r=None, force_dirty=False):
     """
     Gets a cache-able integer calculation result
     """
-    return int(get_cacheable(cache_key, cache_ttl, callable, r=r, force_dirty=force_dirty))
+    return int(get_cacheable(cache_key, callable, r=r, force_dirty=force_dirty))
 
 
 def get_cacheable_attr(obj, attr_name, calculate):

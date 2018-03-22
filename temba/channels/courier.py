@@ -2,7 +2,7 @@
 import time
 import json
 from django_redis import get_redis_connection
-from temba.utils import datetime_to_str
+from temba.utils.dates import datetime_to_str
 
 
 def push_courier_msgs(channel, msgs, high_priority=False):
@@ -53,7 +53,9 @@ def msg_as_task(msg):
                     urn=msg.contact_urn.urn,
                     error_count=msg.error_count,
                     attachments=msg.attachments,
+                    metadata=msg.metadata,
                     response_to_id=msg.response_to_id,
+                    response_to_external_id=msg.response_to.external_id if msg.response_to else "",
                     external_id=msg.external_id,
 
                     tps_cost=msg.channel.calculate_tps_cost(msg),
@@ -65,7 +67,7 @@ def msg_as_task(msg):
                     sent_on=datetime_to_str(msg.sent_on, ms=True))
 
     if msg.contact_urn.auth:  # pragma: no cover
-        msg_json['contact_urn_auth'] = msg.contact_urn.auth
+        msg_json['urn_auth'] = msg.contact_urn.auth
 
     return msg_json
 
