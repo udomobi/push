@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import json
 import logging
 import phonenumbers
+import requests
 import six
 import time
 from six.moves.urllib.parse import urlparse
@@ -47,6 +48,8 @@ from twilio import twiml, TwilioRestException
 from xml.sax.saxutils import escape
 
 logger = logging.getLogger(__name__)
+
+TEMBA_HEADERS = {'User-agent': 'RapidPro'}
 
 # Hub9 is an aggregator in Indonesia, set this to the endpoint for your service
 # and make sure you send from a whitelisted IP Address
@@ -1155,7 +1158,8 @@ class Channel(TembaModel):
         url = settings.WEBSOCKET_ADDRESS
         start = time.time()
 
-        headers = http_headers(extra={'Content-Type': 'application/json'})
+        headers = {'Content-Type': 'application/json'}
+        headers.update(TEMBA_HEADERS)
 
         payload = json.dumps(data)
         event = HttpEvent('POST', url, payload)
@@ -1188,6 +1192,49 @@ class Channel(TembaModel):
 
         # record the message as sent
         Channel.success(channel, msg, WIRED, start, event=event)
+
+    @classmethod
+    def send_gcm_notify(cls, channel, msg, text):
+        from temba.msgs.models import WIRED
+        start = time.time()
+
+        try:
+            api_key = channel.config['api_key']
+        except:
+            api_key = None
+
+        if api_key:
+            url = 'https://gcm-http.googleapis.com/gcm/send'
+            data_message = {'type': 'Rapidpro', 'message': text, 'channel_uuid': channel.uuid, 'message_id': msg.id}
+            payload = json.dumps({
+                'data': data_message,
+                'content_available': True,
+                'to': msg.urn_path,
+                'notification': {
+                    "title": channel.config['notification_title'],
+                    'body': data_message['message']
+                },
+                'priority': 'high'
+            })
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': 'key={0}'.format(api_key)
+            }
+            event = HttpEvent('POST', url, payload)
+            try:
+                response = requests.post(url, data=payload, headers=headers, timeout=5)
+                result = json.loads(response.content)
+                if response.status_code == 200 and 'success' in result and result['success'] == 1:
+                    external_id = result['multicast_id']
+                    Channel.success(channel, msg, WIRED, start, events=[event], external_id=external_id)
+                else:
+                    ChannelLog.log_error(msg, response.content)
+
+            except Exception as e:
+                raise SendException(e.args, event=event, fatal=True, start=start)
+
+        else:
+            ChannelLog.log_error(msg, "API Key not found.")
 
     @classmethod
     def get_pending_messages(cls, org):
