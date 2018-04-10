@@ -122,12 +122,12 @@
         %a.add-reply{href:"javascript:;", ng-click:"addNewQuickReply()", ng-hide:"quickReplies.length == 11"}
           -trans "Add reply"
 
-      .quick-reply{ng-show:"urlButtons.length > 0"}
-        .modal-quick-reply-header
-          .quick-reply-title
+      .url-button{ng-show:"urlButtons.length > 0"}
+        .modal-url-button-header
+          .url-button-title
             -trans "URL Buttons"
 
-        .modal-quick-reply{ng-repeat:"reply in urlButtons", class:""}
+        .modal-url-button{ng-repeat:"reply in urlButtons", class:""}
           .url-button-title
             %input{type:"text", placeholder:"{% trans 'Title' %}", name:"url-button-title", auto-complete:"", ng-model:"reply[base_language].title", ng-required:"true"}
           .url-button-payload
