@@ -2847,7 +2847,7 @@ class FlowRun(models.Model):
             if recording_url:
                 self.voice_response.play(url=recording_url)
             else:
-                self.voice_response.say(text)
+                self.voice_response.say(text, voice='alice', language='pt-BR')
 
         return msg
 
