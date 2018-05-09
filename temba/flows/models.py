@@ -5,7 +5,6 @@ import json
 import logging
 import numbers
 import phonenumbers
-import pycountry
 import regex
 import six
 import time
