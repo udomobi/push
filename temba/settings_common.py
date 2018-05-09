@@ -1176,3 +1176,24 @@ WEBSOCKET_ADDRESS = 'https://push-websocket.ilhasoft.mobi'
 SUPPORT_CHANNEL = '75e71c2f-03b2-46ae-b25e-87c48bd098a0'
 
 WEBHOOK_TIMEOUT = 10
+
+TWILIO_VOICE_LANGUAGES = {
+    'dan': 'da-DK',
+    'ger': 'de-DE',
+    'det': 'de-DE',
+    'spa': 'es-ES',
+    'fin': 'fi-FI',
+    'ita': 'it-IT',
+    'cat': 'ca-ES',
+    'jpn': 'ja-JP',
+    'kor': 'ko-KR',
+    'nob': 'nb-NO',
+    'dut': 'nl-NL',
+    'nld': 'nl-NL',
+    'pol': 'pl-PL',
+    'por': 'pt-BR',
+    'rus': 'ru-RU',
+    'swe': 'sv-SE',
+    'chi': 'zh-CN',
+    'zho': 'zh-CN',
+}
