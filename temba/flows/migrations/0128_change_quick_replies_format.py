@@ -11,7 +11,7 @@ def change_quick_replies_format(ActionSet):
     actionsets = ActionSet.objects.filter(Q(actions__icontains='quick_replies') | Q(actions__icontains='url_buttons')).order_by('created_on')
 
     for item in actionsets:
-        actions_json = json.loads(item.actions)
+        actions_json = json.loads(json.dumps(item.actions))
 
         for action in actions_json:
             quick_replies = action.get('quick_replies', {})
@@ -51,7 +51,6 @@ def change_quick_replies_format(ActionSet):
             except Exception as e:
                 print('Skipping URL Buttons on ActionSet: %s' % e.args)
 
-        actions_json = json.dumps(actions_json)
         item.actions = actions_json
         item.save()
 
