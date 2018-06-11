@@ -57,6 +57,7 @@ window.updateResultsLegacy = (data) ->
     media_viewer_elt = null
 
     quick_replies = null
+    url_buttons = null
 
     metadata = msg.metadata
     if metadata and metadata.quick_replies?
@@ -64,6 +65,11 @@ window.updateResultsLegacy = (data) ->
       for reply in metadata.quick_replies
         quick_replies += "<button class=\"btn quick-reply\" data-payload=\"" + reply + "\"> " + reply + "</button>"
       quick_replies += "</div>"
+
+    if metadata and metadata.url_buttons?
+        url_buttons = ''
+        for button in metadata.url_buttons
+          url_buttons += "<a class=\"btn button-reply\"href='" + button.url + "' target=\"_blank\"> " + button.title + "</a><br>"
 
     if msg.attachments and msg.attachments.length > 0
       attachment = msg.attachments[0]
@@ -90,6 +96,9 @@ window.updateResultsLegacy = (data) ->
       ele += " media-msg"
     ele += "\">"
     ele += msg.text
+
+    if url_buttons
+      ele += url_buttons
     ele += "</div>"
 
     if quick_replies
@@ -108,7 +117,10 @@ window.updateResultsLegacy = (data) ->
   $(".simulator-content textarea").focus()
 
   $(".btn.quick-reply").on "click", (event) ->
-    payload = event.target.innerText
-    sendMessage(payload)
+
+    if window.session and window.session.contact
+      window.sendUpdate({"new_message": event.target.innerText})
+    else
+      window.sendUpdateLegacy({"new_message": event.target.innerText})
 
   window.updateActivity(data)
