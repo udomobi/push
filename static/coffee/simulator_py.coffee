@@ -96,11 +96,14 @@ window.updateResultsLegacy = (data) ->
       ele += " media-msg"
     ele += "\">"
     ele += msg.text
-
-    if url_buttons
-      ele += url_buttons
     ele += "</div>"
 
+    if url_buttons
+      ele_url_buttons = "<div class='ilog " + level + " " + direction + " " + ussd + "'>"
+      ele_url_buttons += url_buttons
+      ele_url_buttons += "</div>"
+      ele += ele_url_buttons
+    
     if quick_replies
       ele_quick_replies = "<div class='ilog " + level + " " + direction + " " + ussd + "'>"
       ele_quick_replies += quick_replies
