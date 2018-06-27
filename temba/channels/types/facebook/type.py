@@ -36,7 +36,7 @@ class FacebookType(ChannelType):
     free_sending = True
 
     def deactivate(self, channel):
-        config = channel.config
+        config = channel.config_json()
         requests.delete('https://graph.facebook.com/v2.12/me/subscribed_apps', params={
             'access_token': config[Channel.CONFIG_AUTH_TOKEN]
         })
