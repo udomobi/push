@@ -176,7 +176,7 @@ class FacebookType(ChannelType):
         if payload:
             body['call_to_actions'].append({'payload': payload})
 
-        access_token = channel.config[Channel.CONFIG_AUTH_TOKEN]
+        access_token = channel.config_json()[Channel.CONFIG_AUTH_TOKEN]
 
         response = requests.post(url, json=body, params={'access_token': access_token},
                                  headers={'Content-Type': 'application/json'})
