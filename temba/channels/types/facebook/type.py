@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import unicode_literals, absolute_import
 
 import json
 import requests
@@ -37,8 +36,8 @@ class FacebookType(ChannelType):
     free_sending = True
 
     def deactivate(self, channel):
-        config = channel.config
-        requests.delete('https://graph.facebook.com/v2.5/me/subscribed_apps', params={
+        config = channel.config_json()
+        requests.delete('https://graph.facebook.com/v2.12/me/subscribed_apps', params={
             'access_token': config[Channel.CONFIG_AUTH_TOKEN]
         })
 
@@ -52,33 +51,42 @@ class FacebookType(ChannelType):
         if trigger.trigger_type == Trigger.TYPE_NEW_CONVERSATION:
             self._set_call_to_action(trigger.channel, None)
 
-    def send(self, channel, msg, text):
-        # build our payload
-        payload = {'message': {'text': text}}
-
-        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
-        quick_replies = metadata.get('quick_replies', [])
-        formatted_replies = [dict(title=item[:self.quick_reply_text_size], payload=item[:self.quick_reply_text_size],
-                                  content_type='text') for item in quick_replies]
-
-        url_buttons = metadata.get('url_buttons', [])
-        if not quick_replies and url_buttons:
-            formatted_replies = [dict(title=item.get('title')[:self.quick_reply_text_size], url=item.get('url'),
-                                      type='web_url', webview_height_ratio='tall') for item in url_buttons]
+    def get_quick_replies(self, metadata, post_body):
+        metadata = json.loads(metadata)
+        quick_replies = metadata.get('quick_replies', None)
+        url_buttons = metadata.get('url_buttons', None)
+        replies = []
 
         if quick_replies:
-            payload['message']['quick_replies'] = formatted_replies
+            for reply in quick_replies:
+                replies.append(dict(title=reply.get('title'), payload=reply.get('title'), content_type='text'))
+
+            post_body['message']['quick_replies'] = replies
+
         elif url_buttons:
-            payload['message'] = dict(
+            for button in url_buttons:
+                replies.append(dict(title=button.get('title'), url=button.get('url'), type='web_url',
+                                    webview_height_ratio='tall'))
+
+            post_body['message'] = dict(
                 attachment=dict(
                     type='template',
                     payload=dict(
                         template_type='button',
-                        text=payload['message']['text'],
-                        buttons=formatted_replies
+                        text=post_body['message']['text'],
+                        buttons=replies
                     )
                 )
             )
+
+        return post_body
+
+    def send(self, channel, msg, text):
+        # build our payload
+        payload = {'message': {'text': text}}
+
+        if hasattr(msg, 'metadata'):
+            payload = self.get_quick_replies(msg.metadata, payload)
 
         # this is a ref facebook id, temporary just for this message
         if URN.is_path_fb_ref(msg.urn_path):
@@ -86,7 +94,7 @@ class FacebookType(ChannelType):
         else:
             payload['recipient'] = dict(id=msg.urn_path)
 
-        url = "https://graph.facebook.com/v2.5/me/messages"
+        url = "https://graph.facebook.com/v2.12/me/messages"
         params = {'access_token': channel.config[Channel.CONFIG_AUTH_TOKEN]}
         headers = {'Content-Type': 'application/json'}
         start = time.time()
@@ -121,7 +129,7 @@ class FacebookType(ChannelType):
             except Exception as e:
                 raise SendException(six.text_type(e), event=event, start=start)
 
-        if response.status_code != 200:  # pragma: no cover
+        if response.status_code != 200:
             raise SendException("Got non-200 response [%d] from Facebook" % response.status_code,
                                 event=event, start=start)
 
@@ -161,14 +169,14 @@ class FacebookType(ChannelType):
     @staticmethod
     def _set_call_to_action(channel, payload):
         # register for get_started events
-        url = 'https://graph.facebook.com/v2.6/%s/thread_settings' % channel.address
+        url = 'https://graph.facebook.com/v2.12/%s/thread_settings' % channel.address
         body = {'setting_type': 'call_to_actions', 'thread_state': 'new_thread', 'call_to_actions': []}
 
         # if we have a payload, set it, otherwise, clear it
         if payload:
             body['call_to_actions'].append({'payload': payload})
 
-        access_token = channel.config[Channel.CONFIG_AUTH_TOKEN]
+        access_token = channel.config_json()[Channel.CONFIG_AUTH_TOKEN]
 
         response = requests.post(url, json=body, params={'access_token': access_token},
                                  headers={'Content-Type': 'application/json'})

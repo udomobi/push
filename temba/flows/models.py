@@ -3611,9 +3611,19 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
             if recording_url:
                 self.voice_response.play(url=recording_url)
             else:
-                self.voice_response.say(text)
+                language = self.get_voice_language()
+                self.voice_response.say(text, voice='alice', language=language)
 
         return msg
+
+    def get_voice_language(self):
+        language = 'en-US'
+        if self.org.primary_language:
+            try:
+                return settings.TWILIO_VOICE_LANGUAGES[self.org.primary_language.iso_code]
+            except KeyError:
+                pass
+        return language
 
     @classmethod
     def serialize_value(cls, value):

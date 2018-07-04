@@ -726,7 +726,7 @@ class Channel(TembaModel):
             base = self.config.get(Channel.CONFIG_SEND_URL, None)
 
             if account_sid and auth_token:
-                return TwilioClient(account_sid, auth_token, org=self, base=base)
+                return TwilioClient(account_sid, auth_token, org=self.org, base=base)
 
         return None
 

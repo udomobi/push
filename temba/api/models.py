@@ -266,10 +266,11 @@ class WebHookEvent(SmartModel):
 
                 # some hosts deny generic user agents, use Temba as our user agent
                 if action == 'GET':
-                    response = requests.get(webhook_url, headers=requests_headers, timeout=10)
+                    response = requests.get(webhook_url, headers=requests_headers, timeout=settings.WEBHOOK_TIMEOUT)
                 else:
                     requests_headers['Content-type'] = 'application/json'
-                    response = requests.post(webhook_url, data=json.dumps(post_data), headers=requests_headers, timeout=10)
+                    response = requests.post(webhook_url, data=json.dumps(post_data), headers=requests_headers,
+                                             timeout=settings.WEBHOOK_TIMEOUT)
 
                 body = response.text
                 if body:

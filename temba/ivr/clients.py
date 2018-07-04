@@ -163,7 +163,7 @@ class TwilioClient(TembaTwilioRestClient):
         """
         response = None
         attempts = 0
-        while attempts < 4:
+        while attempts < 10:
             response = requests.get(media_url, stream=True, auth=self.auth)
 
             # in some cases Twilio isn't ready for us to fetch the recording URL yet, if we get a 404

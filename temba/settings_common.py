@@ -1227,3 +1227,26 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 4000
 
 # When reporting metrics we use the hostname of the physical machine, not the hostname of the service
 MACHINE_HOSTNAME = socket.gethostname().split('.')[0]
+
+WEBHOOK_TIMEOUT = 10
+
+TWILIO_VOICE_LANGUAGES = {
+    'dan': 'da-DK',
+    'ger': 'de-DE',
+    'det': 'de-DE',
+    'spa': 'es-ES',
+    'fin': 'fi-FI',
+    'ita': 'it-IT',
+    'cat': 'ca-ES',
+    'jpn': 'ja-JP',
+    'kor': 'ko-KR',
+    'nob': 'nb-NO',
+    'dut': 'nl-NL',
+    'nld': 'nl-NL',
+    'pol': 'pl-PL',
+    'por': 'pt-BR',
+    'rus': 'ru-RU',
+    'swe': 'sv-SE',
+    'chi': 'zh-CN',
+    'zho': 'zh-CN',
+}
