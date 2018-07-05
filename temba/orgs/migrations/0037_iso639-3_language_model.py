@@ -17,7 +17,11 @@ def migrate_language(language_qs):
             except AttributeError:
                 country_code = None
 
-            new_iso_code = iso6392_to_iso6393(language.iso_code, country_code=country_code)
+            try:
+                new_iso_code = iso6392_to_iso6393(language.iso_code, country_code=country_code)
+            except ValueError:
+                new_iso_code = 'eng'
+
             new_lang_name = get_language_name(new_iso_code)
 
             if new_lang_name is None:
