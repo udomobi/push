@@ -1593,7 +1593,7 @@ class ChannelCRUDL(SmartCRUDL):
         fields = ('name',)
         name = _("WebSite Name")
         permission = 'channels.channel_claim'
-        success_url = "id@channels.channel_configuration"
+        success_url = "uuid@channels.channel_configuration"
 
         def form_valid(self, form):
             cleaned_data = form.cleaned_data
