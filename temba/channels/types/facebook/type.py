@@ -52,14 +52,13 @@ class FacebookType(ChannelType):
             self._set_call_to_action(trigger.channel, None)
 
     def get_quick_replies(self, metadata, post_body):
-        metadata = json.loads(metadata)
         quick_replies = metadata.get('quick_replies', None)
         url_buttons = metadata.get('url_buttons', None)
         replies = []
 
         if quick_replies:
             for reply in quick_replies:
-                replies.append(dict(title=reply.get('title'), payload=reply.get('title'), content_type='text'))
+                replies.append(dict(title=reply, payload=reply, content_type='text'))
 
             post_body['message']['quick_replies'] = replies
 
