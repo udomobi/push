@@ -611,8 +611,8 @@ class WsHandler(BaseChannelHandler):
             ws_urn = URN.from_ws(self.get_param('urn'))
             name = self.get_param('name', None)
             language = self.get_param('language', None)
-            contact = Contact.get_or_create(channel.org, channel.created_by, name=name, urns=[ws_urn],
-                                            channel=channel, language=language)
+            contact = Contact.get_or_create_by_urns(channel.org, channel.created_by, name=name, urns=[ws_urn],
+                                                    channel=channel, language=language)
             return HttpResponse(json.dumps({'contact_uuid': contact.uuid}), content_type='application/json')
 
         elif action == 'referrer':
