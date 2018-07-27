@@ -106,20 +106,6 @@
               %div
                 {% include ch_type.get_claim_blurb %}
 
-    .claim-row.external-channel
-      .row
-        .span3
-          %a.btn.btn-primary.btn-primary-muted.btn-claim{href:"{% url 'channels.channel_claim_ws' %}"}
-            .btn-container
-              .claim-glyph.icon-channel-external
-              %p.claim-text
-                -trans "WebSite"
-
-        .span9
-          .claim-description
-            %div
-              -trans "Connect to your website."
-
     %h3
       -trans "API Channels"
 
@@ -151,22 +137,6 @@
             .claim-description
               %div
                 {% include ch_type.get_claim_blurb %}
-
-    .claim-row
-      .row
-        .span3
-          %a.btn.btn-primary.btn-primary-muted.btn-claim.connect-gcm{href:"{% url 'channels.channel_claim_gcm' %}"}
-            .claim-glyph.icon-gcm
-            %p.claim-text
-              -trans "Google Cloud Messaging"
-
-        .span9
-          .claim-description
-            %div
-              -blocktrans
-                Add a GCM Channel to send and receive messages.
-                Your users will need an App to send and
-                receive messages.
 
 -block form-buttons
 

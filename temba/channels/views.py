@@ -1053,8 +1053,7 @@ class ChannelCRUDL(SmartCRUDL):
     model = Channel
     actions = ('list', 'claim', 'update', 'read', 'delete', 'search_numbers', 'claim_android', 'configuration',
                'search_nexmo', 'bulk_sender_options', 'create_bulk_sender', 'create_caller',
-               'search_plivo', 'facebook_whitelist',
-               'claim_gcm', 'claim_ws')
+               'search_plivo', 'facebook_whitelist')
     permissions = True
 
     class Read(OrgObjPermsMixin, SmartReadView):
@@ -1318,8 +1317,6 @@ class ChannelCRUDL(SmartCRUDL):
 
                 if channel.channel_type == 'T' and not channel.is_delegate_sender():
                     messages.info(request, _("We have disconnected your Twilio number. If you do not need this number you can delete it from the Twilio website."))
-                elif channel.channel_type == Channel.TYPE_GCM:
-                    messages.info(request, _("Your GCM channel has been removed."))
                 else:
                     messages.info(request, _("Your phone number has been removed."))
 
@@ -1417,7 +1414,6 @@ class ChannelCRUDL(SmartCRUDL):
                     recommended_channels.append(ch_type)
                 elif ch_type.is_available_to(user) and ch_type.category:
                     types_by_category[ch_type.category.name].append(ch_type)
-
             context['recommended_channels'] = recommended_channels
             context['channel_types'] = types_by_category
             return context
@@ -1584,55 +1580,6 @@ class ChannelCRUDL(SmartCRUDL):
                 org = Org.objects.get(pk=org_id)
 
             return org
-
-    class ClaimWs(OrgPermsMixin, SmartFormView):
-        class ClaimWsForm(forms.Form):
-            name = forms.CharField(label=_('WebSite Name'))
-
-        form_class = ClaimWsForm
-        fields = ('name',)
-        name = _("WebSite Name")
-        permission = 'channels.channel_claim'
-        success_url = "uuid@channels.channel_configuration"
-
-        def form_valid(self, form):
-            cleaned_data = form.cleaned_data
-
-            self.object = Channel.add_ws_channel(org=self.request.user.get_org(), user=self.request.user,
-                                                 name=cleaned_data['name'])
-
-            return super(ChannelCRUDL.ClaimWs, self).form_valid(form)
-
-    class ClaimGcm(OrgPermsMixin, SmartFormView):
-        class ClaimGCMForm(forms.Form):
-            notification_title = forms.CharField(label=_('Notification title'),
-                                                 help_text=_("The title of the notification that reaches the device."))
-            api_key = forms.CharField(label=_('API Key'),
-                                      help_text=_("The API KEY generated on Google Console when a new app is created."))
-
-            def __init__(self, *args, **kwargs):
-                super(ChannelCRUDL.ClaimGcm.ClaimGCMForm, self).__init__(*args, **kwargs)
-
-        form_class = ClaimGCMForm
-        fields = ('notification_title', 'api_key',)
-        permission = 'channels.channel_claim'
-        title = _("Connect Google Cloud Messaging")
-        success_url = "id@channels.channel_configuration"
-
-        def form_valid(self, form):
-            org = self.request.user.get_org()
-
-            if not org:  # pragma: no cover
-                raise Exception(_("No org for this user, cannot claim"))
-
-            data = form.cleaned_data
-            obj = {
-                'notification_title': data['notification_title'],
-                'api_key': data['api_key']
-            }
-            self.object = Channel.add_gcm_channel(org=org, user=self.request.user, data=obj)
-
-            return super(ChannelCRUDL.ClaimGcm, self).form_valid(form)
 
     class List(OrgPermsMixin, SmartListView):
         title = _("Channels")

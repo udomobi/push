@@ -1157,6 +1157,7 @@ CHANNEL_TYPES = [
     'temba.channels.types.viber_public.ViberPublicType',
     'temba.channels.types.yo.YoType',
     'temba.channels.types.zenvia.ZenviaType',
+    'temba.channels.types.ws.WsType',
 ]
 
 # -----------------------------------------------------------------------------------
