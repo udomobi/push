@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import json
 import logging
 import phonenumbers
-import requests
 import six
 import time
 from six.moves.urllib.parse import urlparse
@@ -250,7 +249,7 @@ class Channel(TembaModel):
     TYPE_DUMMY = 'DM'
     TYPE_GCM = 'GCM'
     TYPE_WS = 'WS'
-    
+
     # keys for various config options stored in the channel config dict
     CONFIG_BASE_URL = 'base_url'
     CONFIG_SEND_URL = 'send_url'
@@ -339,15 +338,11 @@ class Channel(TembaModel):
     # various hard coded settings for the channel types
     CHANNEL_SETTINGS = {
         TYPE_ANDROID: dict(schemes=['tel'], max_length=-1),
-        TYPE_DUMMY: dict(schemes=['tel'], max_length=160),
-        TYPE_GCM: dict(schemes=['gcm'], max_length=1600),
-        TYPE_WS: dict(schemes=['ws'], max_length=10000)
+        TYPE_DUMMY: dict(schemes=['tel'], max_length=160)
     }
 
     TYPE_CHOICES = ((TYPE_ANDROID, "Android"),
-                    (TYPE_DUMMY, "Dummy"),
-                    (TYPE_WS, "WebSite"),
-                    (TYPE_GCM, "GCM"))
+                    (TYPE_DUMMY, "Dummy"))
 
     TYPE_ICONS = {
         TYPE_ANDROID: "icon-channel-android",
@@ -474,22 +469,6 @@ class Channel(TembaModel):
         return self.get_type_from_code(self.channel_type)
 
     @classmethod
-    def add_gcm_channel(cls, org, user, data):
-        """
-        Creates a new Google Cloud Messaging channel
-        """
-        from temba.contacts.models import GCM_SCHEME
-        existing = Channel.objects.filter(is_active=True, org=org, channel_type=Channel.TYPE_GCM).first()
-        api_key = data['api_key']
-        notification_title = data['notification_title']
-        if existing:
-            existing.config = json.dumps({'api_key': api_key, 'notification_title': notification_title})
-            existing.save(update_fields=('config',))
-            return existing
-        else:
-            return Channel.create(org, user, None, Channel.TYPE_GCM, name=org.name, address="gcm-%s" % org.slug[:12], config={'api_key': api_key, 'notification_title': notification_title}, schemes=[GCM_SCHEME])
-
-    @classmethod
     def add_authenticated_external_channel(cls, org, user, country, phone_number, username, password, channel_type,
                                            url, role=DEFAULT_ROLE, extra_config=None):
         try:
@@ -511,12 +490,6 @@ class Channel(TembaModel):
                                     schemes=['tel'], parent=None):
         return Channel.create(org, user, country, channel_type, name=address, address=address,
                               config=config, role=role, schemes=schemes, parent=parent)
-
-    @classmethod
-    def add_ws_channel(cls, org, user, name):
-        from temba.contacts.models import WS_SCHEME
-
-        return Channel.create(org, user, None, 'WS', name=name, address=settings.WEBSOCKET_ADDRESS, schemes=[WS_SCHEME])
 
     @classmethod
     def add_send_channel(cls, user, channel):
@@ -1128,57 +1101,6 @@ class Channel(TembaModel):
                                       CHATBASE_TYPE_AGENT)
 
     @classmethod
-    def send_ws_message(cls, channel, msg, text):
-        from temba.msgs.models import WIRED
-
-        data = {
-            'id': str(msg.id),
-            'text': text,
-            'to': msg.urn_path,
-            'to_no_plus': msg.urn_path.lstrip('+'),
-            'from': channel.address,
-            'from_no_plus': channel.address.lstrip('+'),
-            'channel': str(channel.id)
-        }
-
-        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
-        quick_replies = metadata.get('quick_replies', [])
-
-        formatted_replies = [dict(title=item) for item in quick_replies]
-
-        url_buttons = metadata.get('url_buttons', [])
-        if not quick_replies and url_buttons:
-            formatted_replies = [dict(title=item.get('title'), url=item.get('url')) for item in url_buttons]
-
-        if quick_replies:
-            data['metadata'] = dict(quick_replies=formatted_replies)
-        elif url_buttons:
-            data['metadata'] = dict(url_buttons=formatted_replies)
-
-        url = settings.WEBSOCKET_ADDRESS
-        start = time.time()
-
-        headers = {'Content-Type': 'application/json'}
-        headers.update(TEMBA_HEADERS)
-
-        payload = json.dumps(data)
-        event = HttpEvent('POST', url, payload)
-
-        try:
-            response = requests.post(url, data=payload, headers=headers, timeout=5)
-            event.status_code = response.status_code
-            event.response_body = response.text
-
-        except Exception as e:
-            raise SendException(six.text_type(e), event=event, start=start)
-
-        if response.status_code != 200 and response.status_code != 201 and response.status_code != 202:
-            raise SendException("Got non-200 response [%d] from WebSocket Server" % response.status_code,
-                                event=event, start=start)
-
-        Channel.success(channel, msg, WIRED, start, event=event)
-
-    @classmethod
     def send_dummy_message(cls, channel, msg, text):  # pragma: no cover
         from temba.msgs.models import WIRED
 
@@ -1192,49 +1114,6 @@ class Channel(TembaModel):
 
         # record the message as sent
         Channel.success(channel, msg, WIRED, start, event=event)
-
-    @classmethod
-    def send_gcm_notify(cls, channel, msg, text):
-        from temba.msgs.models import WIRED
-        start = time.time()
-
-        try:
-            api_key = channel.config['api_key']
-        except:
-            api_key = None
-
-        if api_key:
-            url = 'https://gcm-http.googleapis.com/gcm/send'
-            data_message = {'type': 'Rapidpro', 'message': text, 'channel_uuid': channel.uuid, 'message_id': msg.id}
-            payload = json.dumps({
-                'data': data_message,
-                'content_available': True,
-                'to': msg.urn_path,
-                'notification': {
-                    "title": channel.config['notification_title'],
-                    'body': data_message['message']
-                },
-                'priority': 'high'
-            })
-            headers = {
-                'Content-Type': 'application/json',
-                'Authorization': 'key={0}'.format(api_key)
-            }
-            event = HttpEvent('POST', url, payload)
-            try:
-                response = requests.post(url, data=payload, headers=headers, timeout=5)
-                result = json.loads(response.content)
-                if response.status_code == 200 and 'success' in result and result['success'] == 1:
-                    external_id = result['multicast_id']
-                    Channel.success(channel, msg, WIRED, start, events=[event], external_id=external_id)
-                else:
-                    ChannelLog.log_error(msg, response.content)
-
-            except Exception as e:
-                raise SendException(e.args, event=event, fatal=True, start=start)
-
-        else:
-            ChannelLog.log_error(msg, "API Key not found.")
 
     @classmethod
     def get_pending_messages(cls, org):
@@ -1448,9 +1327,7 @@ STATUS_NOT_CHARGING = "NOT"
 STATUS_FULL = "FUL"
 
 SEND_FUNCTIONS = {
-    Channel.TYPE_DUMMY: Channel.send_dummy_message,
-    Channel.TYPE_WS: Channel.send_ws_message,
-    Channel.TYPE_GCM: Channel.send_gcm_notify
+    Channel.TYPE_DUMMY: Channel.send_dummy_message
 }
 
 
