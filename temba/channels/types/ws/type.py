@@ -25,7 +25,7 @@ class WsType(ChannelType):
 
     name = "WebSite"
     icon = 'icon-channel-external'
-    show_config_page = False
+    show_config_page = True
 
     claim_blurb = _("""Connect to your website.""")
     claim_view = ClaimView
