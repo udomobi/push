@@ -63,7 +63,8 @@ class FirebaseCloudMessagingType(ChannelType):
                 'type': 'rapidpro',
                 'title': title,
                 'message': text,
-                'message_id': msg.id
+                'message_id': msg.id,
+                'metadata': {}
             },
             'content_available': False,
             'to': msg.auth,
@@ -79,8 +80,7 @@ class FirebaseCloudMessagingType(ChannelType):
 
         metadata = msg.metadata if hasattr(msg, 'metadata') else {}
         quick_replies = metadata.get('quick_replies', [])
-        formatted_replies = [dict(title=item[:self.quick_reply_text_size], payload=item[:self.quick_reply_text_size])
-                             for item in quick_replies]
+        formatted_replies = [item[:self.quick_reply_text_size] for item in quick_replies]
 
         url_buttons = metadata.get('url_buttons', [])
         if not quick_replies and url_buttons:
@@ -88,9 +88,9 @@ class FirebaseCloudMessagingType(ChannelType):
                                  for item in url_buttons]
 
         if quick_replies:
-            data['data']['quick_replies'] = formatted_replies
+            data['data']['metadata']['quick_replies'] = formatted_replies
         elif url_buttons:
-            data['data']['url_buttons'] = formatted_replies
+            data['data']['metadata']['url_buttons'] = formatted_replies
 
         payload = json.dumps(data)
         headers = http_headers(extra={'Content-Type': 'application/json', 'Authorization': 'key=%s' % channel.config.get('FCM_KEY')})
