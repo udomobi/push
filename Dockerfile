@@ -12,7 +12,7 @@ RUN apt-get install -qyy \
     build-essential python-imaging git python-setuptools ncurses-dev python-virtualenv postgresql-client-9.3 libpq-dev \
     libpython-dev lib32ncurses5-dev pypy libffi6 openssl libgeos-dev \
     coffeescript node-less yui-compressor gcc libreadline6 libreadline6-dev patch libffi-dev libssl-dev libxml2-dev libxslt1-dev  python-dev \
-    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev libmagic-dev
+    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev libmagic-dev gettext
 
 WORKDIR /tmp
 RUN easy_install pip
@@ -43,6 +43,7 @@ RUN npm install -g less
 RUN npm install -g coffee-script
 RUN bower install --allow-root
 RUN python manage.py collectstatic --noinput
+RUN python manage.py compilemessages
 
 RUN touch `echo $RANDOM`.txt
 
