@@ -12,7 +12,7 @@ RUN apt-get install -qyy \
     build-essential python-imaging git python-setuptools ncurses-dev python-virtualenv postgresql-client-9.3 libpq-dev \
     libpython-dev lib32ncurses5-dev pypy libffi6 openssl libgeos-dev \
     coffeescript node-less yui-compressor gcc libreadline6 libreadline6-dev patch libffi-dev libssl-dev libxml2-dev libxslt1-dev  python-dev \
-    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev libmagic-dev gettext
+    python-zmq libzmq-dev nginx libpcre3 libpcre3-dev supervisor wget libjpeg-dev libjpeg-turbo8-dev libmagic-dev
 
 WORKDIR /tmp
 RUN easy_install pip
@@ -35,7 +35,7 @@ ADD . /udo-rapidpro
 COPY settings.py.pre /udo-rapidpro/temba/settings.py
 
 RUN apt-get update
-RUN apt-get install -y curl --fix-missing
+RUN apt-get install -y curl gettext --fix-missing
 RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y nodejs
 RUN npm install -g bower
