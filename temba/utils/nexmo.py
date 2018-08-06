@@ -1,4 +1,5 @@
-from __future__ import absolute_import, print_function, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 import time
@@ -8,6 +9,7 @@ import jwt
 import requests
 import nexmo as nx
 import six
+from django.utils.encoding import force_bytes
 
 from temba.utils.gsm7 import is_gsm7
 from django.utils.http import urlencode
@@ -45,10 +47,11 @@ class NexmoClient(nx.Client):
         try:
             response = nx.Client.get_account_numbers(self, params=params)
         except nx.ClientError as e:
-            if e.message.startswith('429'):
+            message = six.text_type(e)
+            if message.startswith('420') or message.startswith('429'):
                 time.sleep(1)
                 response = nx.Client.get_account_numbers(self, params=params)
-            else:
+            else:  # pragma: no cover
                 raise e
 
         if int(response.get('count', 0)):
@@ -56,7 +59,7 @@ class NexmoClient(nx.Client):
         else:
             return []
 
-    def send_message_via_nexmo(self, from_number, to_number, text):
+    def send_message_via_nexmo(self, from_number, to_number, text, callback_url=None):
         from temba.channels.models import SendException
 
         params = dict(api_key=self.api_key, api_secret=self.api_secret)
@@ -64,6 +67,9 @@ class NexmoClient(nx.Client):
         params['to'] = to_number.strip('+')
         params['text'] = text
         params['status-report-req'] = 1
+
+        if callback_url:
+            params['callback'] = callback_url
 
         # if this isn't going to work as plaintext, send as unicode instead
         if not is_gsm7(text):
@@ -82,7 +88,7 @@ class NexmoClient(nx.Client):
 
             response_json = response.json()
             messages = response_json.get('messages', [])
-        except:
+        except Exception:
             raise SendException(u"Failed sending message: %s" % response.text, event=event)
 
         if not messages or int(messages[0]['status']) != 0:
@@ -112,7 +118,8 @@ class NexmoClient(nx.Client):
         try:
             nx.Client.buy_number(self, params=params)
         except nx.ClientError as e:
-            if e.message.startswith('429'):
+            message = six.text_type(e)
+            if message.startswith('420') or message.startswith('429'):
                 time.sleep(1)
                 nx.Client.buy_number(self, params=params)
             else:  # pragma: needs cover
@@ -125,8 +132,9 @@ class NexmoClient(nx.Client):
         try:
             nx.Client.update_number(self, params=params)
         except nx.ClientError as e:
-            if e.message.startswith('429'):
-                time.sleep(1)
+            message = six.text_type(e)
+            if message.startswith('420') or message.startswith('429'):
+                time.sleep(2)
                 nx.Client.update_number(self, params=params)
             else:  # pragma: needs cover
                 raise e
@@ -152,7 +160,7 @@ class NexmoClient(nx.Client):
 
         token = jwt.encode(payload, self.private_key, algorithm='RS256')
 
-        return dict(self.headers, Authorization=b'Bearer ' + token)
+        return dict(self.headers, Authorization=b'Bearer ' + force_bytes(token))
 
 
 def __main__():  # pragma: no cover

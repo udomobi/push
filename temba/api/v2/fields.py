@@ -1,13 +1,14 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import six
 
 from django.db.models import Q
-from rest_framework import serializers
+from rest_framework import serializers, relations
 
 from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel
-from temba.contacts.models import Contact, ContactGroup, ContactField as ContactFieldModel, URN
+from temba.contacts.models import Contact, ContactGroup, ContactURN, ContactField as ContactFieldModel, URN
 from temba.flows.models import Flow
 from temba.msgs.models import Label, Msg
 
@@ -132,7 +133,7 @@ class TembaModelField(serializers.RelatedField):
         """
         list_kwargs = {'child_relation': cls(*args, **kwargs)}
         for key in kwargs.keys():
-            if key in serializers.MANY_RELATION_KWARGS:
+            if key in relations.MANY_RELATION_KWARGS:
                 list_kwargs[key] = kwargs[key]
         return TembaModelField.LimitedSizeList(**list_kwargs)
 
@@ -193,7 +194,9 @@ class ContactField(TembaModelField):
         except ValueError:
             as_urn = value
 
-        return self.get_queryset().filter(Q(uuid=value) | Q(urns__identity=as_urn)).first()
+        contact_ids_with_urn = list(ContactURN.objects.filter(identity=as_urn).values_list('contact_id', flat=True))
+
+        return self.get_queryset().filter(Q(uuid=value) | Q(id__in=contact_ids_with_urn)).first()
 
 
 class ContactFieldField(TembaModelField):

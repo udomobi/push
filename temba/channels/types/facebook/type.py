@@ -36,7 +36,7 @@ class FacebookType(ChannelType):
     free_sending = True
 
     def deactivate(self, channel):
-        config = channel.config_json()
+        config = channel.config
         requests.delete('https://graph.facebook.com/v2.12/me/subscribed_apps', params={
             'access_token': config[Channel.CONFIG_AUTH_TOKEN]
         })
@@ -52,14 +52,13 @@ class FacebookType(ChannelType):
             self._set_call_to_action(trigger.channel, None)
 
     def get_quick_replies(self, metadata, post_body):
-        metadata = json.loads(metadata)
         quick_replies = metadata.get('quick_replies', None)
         url_buttons = metadata.get('url_buttons', None)
         replies = []
 
         if quick_replies:
             for reply in quick_replies:
-                replies.append(dict(title=reply.get('title'), payload=reply.get('title'), content_type='text'))
+                replies.append(dict(title=reply, payload=reply, content_type='text'))
 
             post_body['message']['quick_replies'] = replies
 
@@ -176,7 +175,7 @@ class FacebookType(ChannelType):
         if payload:
             body['call_to_actions'].append({'payload': payload})
 
-        access_token = channel.config_json()[Channel.CONFIG_AUTH_TOKEN]
+        access_token = channel.config[Channel.CONFIG_AUTH_TOKEN]
 
         response = requests.post(url, json=body, params={'access_token': access_token},
                                  headers={'Content-Type': 'application/json'})

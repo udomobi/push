@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 import requests
@@ -8,7 +9,8 @@ from django.core.exceptions import ValidationError
 from django.db.models.query import Q
 from django.utils.translation import ugettext_lazy as _
 from smartmin.views import SmartFormView
-from ...models import Channel, TEMBA_HEADERS
+from temba.utils.http import http_headers
+from ...models import Channel
 from ...views import ClaimViewMixin
 
 
@@ -22,8 +24,10 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             access_token = self.cleaned_data.get('access_token')
             secret = self.cleaned_data.get('secret')
 
-            headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % access_token}
-            headers.update(TEMBA_HEADERS)
+            headers = http_headers(extra={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer %s' % access_token
+            })
 
             response = requests.get('https://api.line.me/v1/oauth/verify', headers=headers)
             content = response.json()
@@ -74,8 +78,8 @@ class ClaimView(ClaimViewMixin, SmartFormView):
 
         config = {
             'auth_token': channel_access_token,
+            'secret': channel_secret,
             'channel_id': channel_id,
-            'channel_secret': channel_secret,
             'channel_mid': channel_mid
         }
 

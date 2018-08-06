@@ -1,4 +1,5 @@
-from __future__ import print_function, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import requests
 import logging
@@ -33,10 +34,10 @@ def setup_periodic_tasks(sender, **kwargs):
         from .types import TYPES
         for channel_type in TYPES.values():
             channel_type.setup_periodic_tasks(sender)
-    except Exception as e:  # pragma: no cover
+    except Exception:  # pragma: no cover
         # we print this out because celery just silently swallows exceptions here
         import traceback
-        traceback.print_exc(e)
+        traceback.print_exc()
 
 
 @task(track_started=True, name='sync_channel_gcm_task')
@@ -77,11 +78,6 @@ def send_msg_task():
                 msg = dict_to_struct('MockMsg', msg_task,
                                      datetime_fields=['modified_on', 'sent_on', 'created_on', 'queued_on',
                                                       'next_attempt'])
-
-                # we renamed msg.session_id to msg.connection_id but might still have queued messages with the former
-                if hasattr(msg, 'session_id'):
-                    msg.connection_id = msg.session_id
-
                 Channel.send_message(msg)
 
                 # if there are more messages to send for this contact, sleep a second before moving on
@@ -165,7 +161,7 @@ def fb_channel_subscribe(channel_id):
     channel = Channel.objects.filter(id=channel_id, is_active=True).first()
 
     if channel:
-        page_access_token = channel.config_json()[Channel.CONFIG_AUTH_TOKEN]
+        page_access_token = channel.config[Channel.CONFIG_AUTH_TOKEN]
 
         # subscribe to messaging events for this channel
         response = requests.post('https://graph.facebook.com/v2.6/me/subscribed_apps',

@@ -1,4 +1,5 @@
-from __future__ import absolute_import, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import itertools
 import six
@@ -22,10 +23,11 @@ from temba.api.models import APIToken, Resthook, ResthookSubscriber, WebHookEven
 from temba.campaigns.models import Campaign, CampaignEvent
 from temba.channels.models import Channel, ChannelEvent
 from temba.contacts.models import Contact, ContactURN, ContactGroup, ContactGroupCount, ContactField, URN
-from temba.flows.models import Flow, FlowRun, FlowStep, FlowStart, RuleSet
+from temba.flows.models import Flow, FlowRun, FlowStart
 from temba.locations.models import AdminBoundary, BoundaryAlias
 from temba.msgs.models import Broadcast, Msg, Label, LabelCount, SystemLabel
-from temba.utils import str_to_bool, json_date_to_datetime, splitting_getlist
+from temba.utils import str_to_bool, splitting_getlist
+from temba.utils.dates import json_date_to_datetime
 from uuid import UUID
 from .serializers import AdminBoundaryReadSerializer, BroadcastReadSerializer, BroadcastWriteSerializer
 from .serializers import CampaignReadSerializer, CampaignWriteSerializer, CampaignEventReadSerializer
@@ -123,7 +125,7 @@ class RootView(views.APIView):
     ## Translatable Values
 
     Some endpoints return or accept text fields that may be translated into different languages. These should be objects
-    with ISO-639-2 language codes as keys, e.g. `{"eng": "Hello", "fre": "Bonjour"}`
+    with ISO-639-3 language codes as keys, e.g. `{"eng": "Hello", "fra": "Bonjour"}`
 
     ## Authentication
 
@@ -309,7 +311,7 @@ class BaseAPIView(generics.GenericAPIView):
                 lookup_values[field] = param_value
 
         if len(lookup_values) > 1:
-            raise InvalidQueryError("URL can only contain one of the following parameters: " + ", ".join(self.lookup_params.keys()))
+            raise InvalidQueryError("URL can only contain one of the following parameters: " + ", ".join(sorted(self.lookup_params.keys())))
 
         return lookup_values
 
@@ -482,7 +484,7 @@ class DeleteAPIMixin(mixins.DestroyModelMixin):
         self.lookup_values = self.get_lookup_values()
 
         if not self.lookup_values:
-            raise InvalidQueryError("URL must contain one of the following parameters: " + ", ".join(self.lookup_params.keys()))
+            raise InvalidQueryError("URL must contain one of the following parameters: " + ", ".join(sorted(self.lookup_params.keys())))
 
         instance = self.get_object()
         self.perform_destroy(instance)
@@ -567,7 +569,7 @@ class BoundariesEndpoint(ListAPIMixin, BaseAPIView):
             Prefetch('aliases', queryset=BoundaryAlias.objects.filter(org=org).order_by('name')),
         )
 
-        return queryset.select_related('parent')
+        return queryset.defer(None).defer('geometry').select_related('parent')
 
     def get_serializer_context(self):
         context = super(BoundariesEndpoint, self).get_serializer_context()
@@ -667,12 +669,12 @@ class BroadcastsEndpoint(ListAPIMixin, WriteAPIMixin, BaseAPIView):
             queryset = queryset.filter(id=broadcast_id)
 
         queryset = queryset.prefetch_related(
-            Prefetch('contacts', queryset=Contact.objects.only('uuid', 'name')),
-            Prefetch('groups', queryset=ContactGroup.user_groups.only('uuid', 'name')),
+            Prefetch('contacts', queryset=Contact.objects.only('uuid', 'name').order_by('pk')),
+            Prefetch('groups', queryset=ContactGroup.user_groups.only('uuid', 'name').order_by('pk')),
         )
 
         if not org.is_anon:
-            queryset = queryset.prefetch_related(Prefetch('urns', queryset=ContactURN.objects.only('scheme', 'path', 'display')))
+            queryset = queryset.prefetch_related(Prefetch('urns', queryset=ContactURN.objects.only('scheme', 'path', 'display').order_by('pk')))
 
         return self.filter_before_after(queryset, 'created_on')
 
@@ -717,6 +719,7 @@ class CampaignsEndpoint(ListAPIMixin, WriteAPIMixin, BaseAPIView):
 
      * **uuid** - the UUID of the campaign (string), filterable as `uuid`.
      * **name** - the name of the campaign (string).
+     * **archived** - whether this campaign is archived (boolean)
      * **group** - the group this campaign operates on (object).
      * **created_on** - when the campaign was created (datetime), filterable as `before` and `after`.
 
@@ -733,6 +736,7 @@ class CampaignsEndpoint(ListAPIMixin, WriteAPIMixin, BaseAPIView):
             {
                 "uuid": "f14e4ff0-724d-43fe-a953-1d16aefd1c00",
                 "name": "Reminders",
+                "archived": false,
                 "group": {"uuid": "7ae473e8-f1b5-4998-bd9c-eb8e28c92fa9", "name": "Reporters"},
                 "created_on": "2013-08-19T19:11:21.088Z"
             },
@@ -760,6 +764,7 @@ class CampaignsEndpoint(ListAPIMixin, WriteAPIMixin, BaseAPIView):
         {
             "uuid": "f14e4ff0-724d-43fe-a953-1d16aefd1c00",
             "name": "Reminders",
+            "archived": false,
             "group": {"uuid": "7ae473e8-f1b5-4998-bd9c-eb8e28c92fa9", "name": "Reporters"},
             "created_on": "2013-08-19T19:11:21.088Z"
         }
@@ -1115,8 +1120,8 @@ class ChannelEventsEndpoint(ListAPIMixin, BaseAPIView):
      * **channel** - the UUID and name of the channel that handled this call (object).
      * **type** - the type of event (one of "call-in", "call-in-missed", "call-out", "call-out-missed").
      * **contact** - the UUID and name of the contact (object), filterable as `contact` with UUID.
-     * **time** - when this event happened on the channel (datetime).
-     * **duration** - the duration in seconds if event is a call (int, 0 for missed calls).
+     * **extra** - any extra attributes collected for this event
+     * **occurred_on** - when this event happened on the channel (datetime).
      * **created_on** - when this event was created (datetime), filterable as `before` and `after`.
 
     Example:
@@ -1134,8 +1139,8 @@ class ChannelEventsEndpoint(ListAPIMixin, BaseAPIView):
                 "channel": {"uuid": "9a8b001e-a913-486c-80f4-1356e23f582e", "name": "Nexmo"},
                 "type": "call-in"
                 "contact": {"uuid": "d33e9ad5-5c35-414c-abd4-e7451c69ff1d", "name": "Bob McFlow"},
-                "time": "2013-02-27T09:06:12.123"
-                "duration": 606,
+                "extra": { "duration": 606 },
+                "occurred_on": "2013-02-27T09:06:12.123"
                 "created_on": "2013-02-27T09:06:15.456"
             },
             ...
@@ -1148,7 +1153,6 @@ class ChannelEventsEndpoint(ListAPIMixin, BaseAPIView):
 
     def filter_queryset(self, queryset):
         params = self.request.query_params
-        queryset = queryset.filter(is_active=True)
         org = self.request.user.get_org()
 
         # filter by id (optional)
@@ -1350,7 +1354,8 @@ class ContactsEndpoint(ListAPIMixin, WriteAPIMixin, DeleteAPIMixin, BaseAPIView)
 
         # use prefetch rather than select_related for foreign keys to avoid joins
         queryset = queryset.prefetch_related(
-            Prefetch('all_groups', queryset=ContactGroup.user_groups.only('uuid', 'name'), to_attr='prefetched_user_groups')
+            Prefetch('all_groups', queryset=ContactGroup.user_groups.only('uuid', 'name').order_by('pk'),
+                     to_attr='prefetched_user_groups')
         )
 
         return self.filter_before_after(queryset, 'modified_on')
@@ -1805,6 +1810,8 @@ class FlowsEndpoint(ListAPIMixin, BaseAPIView):
     def filter_queryset(self, queryset):
         params = self.request.query_params
 
+        queryset = queryset.exclude(is_active=False).exclude(flow_type=Flow.MESSAGE)
+
         # filter by UUID (optional)
         uuid = params.get('uuid')
         if uuid:
@@ -2174,7 +2181,6 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
      * **type** - the type of the message (one of "inbox", "flow", "ivr").
      * **status** - the status of the message (one of "initializing", "queued", "wired", "sent", "delivered", "handled", "errored", "failed", "resent").
      * **media** - the media if set for a message (ie, the recording played for IVR messages, audio-xwav:http://domain.com/recording.wav)
-     * **metadata** - the metadata if set for a message (object)
      * **visibility** - the visibility of the message (one of "visible", "archived" or "deleted")
      * **text** - the text of the message received (string). Note this is the logical view and the message may have been received as multiple physical messages.
      * **labels** - any labels set on this message (array of objects), filterable as `label` with label name or UUID.
@@ -2210,7 +2216,6 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
                 "visibility": "visible",
                 "text": "How are you?",
                 "media": "wav:http://domain.com/recording.wav",
-                "metadata": {},
                 "labels": [{"name": "Important", "uuid": "5a4eb79e-1b1f-4ae3-8700-09384cca385f"}],
                 "created_on": "2016-01-06T15:33:00.813162Z",
                 "sent_on": "2016-01-06T15:35:03.675716Z"
@@ -2305,7 +2310,7 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
             Prefetch('contact', queryset=Contact.objects.only('uuid', 'name')),
             Prefetch('contact_urn', queryset=ContactURN.objects.only('scheme', 'path', 'display')),
             Prefetch('channel', queryset=Channel.objects.only('uuid', 'name')),
-            Prefetch('labels', queryset=Label.label_objects.only('uuid', 'name')),
+            Prefetch('labels', queryset=Label.label_objects.only('uuid', 'name').order_by('pk')),
         )
 
         # incoming folder gets sorted by 'modified_on'
@@ -2407,7 +2412,7 @@ class OrgEndpoint(BaseAPIView):
         {
             "name": "Nyaruka",
             "country": "RW",
-            "languages": ["eng", "fre"],
+            "languages": ["eng", "fra"],
             "primary_language": "eng",
             "timezone": "Africa/Kigali",
             "date_style": "day_first",
@@ -2650,47 +2655,51 @@ class ResthookEventsEndpoint(ListAPIMixin, BaseAPIView):
             {
                 "resthook": "new-report",
                 "data": {
-                    "channel": 105,
-                    "flow": 50505,
-                    "flow_base_language": "eng",
-                    "run": 50040405,
-                    "text": "Incoming text",
-                    "step: "d33e9ad5-5c35-414c-abd4-e7451c69ff1d",
-                    "contact": "d33e9ad5-5c35-414c-abd4-e7451casdf",
-                    "urn": "tel:+12067781234",
-                    "values": [
+                    "flow": {
+                        "name": "Water Survey",
+                        "uuid": "13fed2d2-160e-48e5-b52e-6eea3f74f27d"
+                    },
+                    "contact": {
+                        "uuid": "dc2b3709-3261-465f-b39a-fc7312b2ab95",
+                        "name": "Ben Haggerty",
+                        "urn": "tel:+12065551212"
+                    },
+                    "channel": {
+                        "name": "Twilio +12065552020",
+                        "uuid": "f49d3dd6-beef-40ba-b86b-f526c649175c"
+                    },
+                    "run": {
+                        "uuid": "7facea33-9fbc-4bdd-ba63-b2600cd4f69b",
+                        "created_on":"2014-06-03T08:20:03.242525+00:00"
+                    },
+                    "input": {
+                        "urn": "tel:+12065551212",
+                        "text": "stream",
+                        "attachments": []
+                    }
+                    "path": [
                         {
-                            "category": {
-                                "eng": "All Responses"
-                            },
-                            "node": "c33724d7-1064-4dd6-9aa3-efd29252cb88",
-                            "text": "Ryan Lewis",
-                            "rule_value": "Ryan Lewis",
-                            "value": "Ryan Lewis",
-                            "label": "Name",
-                            "time": "2016-08-10T21:18:51.186826Z"
-                        }
-                    ],
-                    "steps": [
-                        {
-                            "node": "2d4f8c9a-cf12-4f6c-ad55-a6cc633954f6",
-                            "left_on": "2016-08-10T21:18:45.391114Z",
-                            "text": "What is your name?",
-                            "value": null,
-                            "arrived_on": "2016-08-10T21:18:45.378598Z",
-                            "type": "A"
+                            "node_uuid": "40019102-e621-4b88-acd2-1288961dc214",
+                            "arrived_on": "2014-06-03T08:21:09.865526+00:00",
+                            "exit_uuid": "207d919d-ac4d-451a-9892-3ceca16430ff"
                         },
                         {
-                            "node": "c33724d7-1064-4dd6-9aa3-efd29252cb88",
-                            "left_on": "2016-08-10T21:18:51.186826Z",
-                            "text": "Eric Newcomer",
-                            "value": "Eric Newcomer",
-                            "arrived_on": "2016-08-10T21:18:45.391114Z",
-                            "type": "R"
+                            "node_uuid": "207d919d-ac4d-451a-9892-3ceca16430ff",
+                            "arrived_on": "2014-06-03T08:21:09.865526+00:00"
                         }
                     ],
+                    "results": {
+                        "water_source": {
+                            "node_uuid": "40019102-e621-4b88-acd2-1288961dc214",
+                            "name": "Water Source",
+                            "category": "Stream",
+                            "value": "stream",
+                            "input": "stream",
+                            "created_on": "2017-12-05T16:47:57.875680+00:00"
+                        }
+                    }
                 },
-                "created_on": "2015-11-11T13:05:57.457742Z",
+                "created_on": "2017-11-11T13:05:57.457742Z",
             },
             ...
         }
@@ -2834,9 +2843,6 @@ class RunsEndpoint(ListAPIMixin, BaseAPIView):
             Prefetch('flow', queryset=Flow.objects.only('uuid', 'name', 'base_language')),
             Prefetch('contact', queryset=Contact.objects.only('uuid', 'name', 'language')),
             Prefetch('start', queryset=FlowStart.objects.only('uuid')),
-            Prefetch('values'),
-            Prefetch('values__ruleset', queryset=RuleSet.objects.only('uuid', 'label')),
-            Prefetch('steps', queryset=FlowStep.objects.only('run', 'step_uuid', 'arrived_on').order_by('arrived_on'))
         )
 
         return self.filter_before_after(queryset, 'modified_on')
@@ -2980,8 +2986,8 @@ class FlowStartsEndpoint(ListAPIMixin, WriteAPIMixin, BaseAPIView):
 
         # use prefetch rather than select_related for foreign keys to avoid joins
         queryset = queryset.prefetch_related(
-            Prefetch('contacts', queryset=Contact.objects.only('uuid', 'name')),
-            Prefetch('groups', queryset=ContactGroup.user_groups.only('uuid', 'name')),
+            Prefetch('contacts', queryset=Contact.objects.only('uuid', 'name').order_by('pk')),
+            Prefetch('groups', queryset=ContactGroup.user_groups.only('uuid', 'name').order_by('pk')),
         )
 
         return self.filter_before_after(queryset, 'modified_on')

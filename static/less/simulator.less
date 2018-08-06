@@ -26,6 +26,12 @@
   top: 130px;
   right: 30px;
 
+  &.disabled {
+    .simulator-footer {
+      visibility: hidden;
+    }
+  }
+
   &:hover {
   }
 
@@ -40,6 +46,11 @@
     margin-top:-540px;
   }
 
+}
+
+.link {
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .simulator-spacer {
@@ -129,6 +140,7 @@
   textarea {
     line-height: 20px;
   }
+
 }
 
 #footer {
@@ -139,11 +151,15 @@
 .simulator-body {
   width: 240px;
   padding-top: 5px;
-  margin-left: 20px;
+  margin-left: 18px;
   margin-top: -20px;
   height: 355px;
   overflow-x: hidden;
   overflow-y: scroll;
+
+  &.v2 {
+    background-color: #fff6c0;
+  }
 
   .imsg {
     .media-file {
@@ -179,6 +195,7 @@
   border: 1px solid #ddd;
   border-top: 0 none;
 }
+
 .simulator-footer {
   width: 234px;
   height: 35px;
@@ -273,37 +290,6 @@
   }
 }
 
-.button-reply{
-  display: block;
-  width: 100%;
-  margin-left: -20px;
-  margin-bottom: -30px;
-  text-align: center;
-  background-image: none !important;
-  background-image: -webkit-linear-gradient(top, #005485, #004475);
-  background: -moz-linear-gradient(top, #005485, #004475);
-  color: rgb(51, 51, 51);
-  background-color: #E5E4E9;
-  margin-top: 8px;
-  transition: color 0.8s ease;
-  border: none;
-  border-top: 1px solid #CCCCCC;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-  font-size: 12px;
-  outline: none;
-}
-
-.button-reply:hover{
-  color: #2095FE;
-  background-color: inherit;
-  transition: background-color 0.5s ease;
-}
-.button-reply:focus{
-  background-color: #E5E4E9;
-  color: rgb(51, 51, 51);
-}
-
 .quick-reply{
   outline: none;
   margin: 0 2px 6px 2px;
@@ -314,4 +300,8 @@
 
 .quick-reply:hover{
   transition: background-color 0.5s ease;
+}
+
+.quick-reply:focus{
+  outline: none;
 }

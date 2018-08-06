@@ -1,6 +1,8 @@
-from __future__ import print_function, unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import six
+
 from celery.task import task
 from django_redis import get_redis_connection
 from twython import Twython

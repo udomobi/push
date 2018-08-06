@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from django.db import migrations
 from django.core.urlresolvers import reverse
@@ -33,8 +32,8 @@ def fix_twilio_twiml_apps(Org):
             client = get_twilio_client(twilio_org)
 
             if client:
-                app_name = "%s/%d" % (settings.TEMBA_HOST.lower(), twilio_org.pk)
-                app_url = "https://" + settings.TEMBA_HOST + "%s" % reverse('handlers.twilio_handler')
+                app_name = "%s/%d" % (settings.HOSTNAME.lower(), twilio_org.pk)
+                app_url = "https://" + settings.HOSTNAME + "%s" % reverse('handlers.twilio_handler')
 
                 try:
                     apps = client.applications.list(friendly_name=app_name)

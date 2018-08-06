@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import telegram
 
@@ -21,7 +22,7 @@ class ClaimView(ClaimViewMixin, SmartFormView):
 
             # does a bot already exist on this account with that auth token
             for channel in Channel.objects.filter(org=org, is_active=True, channel_type=self.channel_type.code):
-                if channel.config_json()['auth_token'] == value:
+                if channel.config['auth_token'] == value:
                     raise ValidationError(_("A telegram channel for this bot already exists on your account."))
 
             try:
@@ -40,8 +41,9 @@ class ClaimView(ClaimViewMixin, SmartFormView):
 
         bot = telegram.Bot(auth_token)
         me = bot.get_me()
+        channel_config = {Channel.CONFIG_AUTH_TOKEN: auth_token, Channel.CONFIG_CALLBACK_DOMAIN: org.get_brand_domain()}
 
         self.object = Channel.create(org, self.request.user, None, self.channel_type,
-                                     name=me.first_name, address=me.username, config={'auth_token': auth_token})
+                                     name=me.first_name, address=me.username, config=channel_config)
 
         return super(ClaimView, self).form_valid(form)

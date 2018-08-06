@@ -2,6 +2,12 @@
 -load smartmin sms contacts
 -load i18n humanize
 
+-block page-title
+  -if current_group
+    {{current_group.name}}
+  -else
+    {{title}}
+  
 -block page-top
   {% render as page_top %}
     {{block.super}}
@@ -42,7 +48,11 @@
               - for group in groups
                 %li{'class':'{% if current_group.id == group.pk %}active{% endif %}'}
                   %a{'href':'{% url "contacts.contact_filter" group.uuid %}'}
-                    {{group.label}} ({{ group.count | intcomma }})
+                    -if group.is_ready
+                      {{group.label}} ({{ group.count | intcomma }})
+                    -else
+                      {{group.label}}
+                      %i.spin.icon-loop
 
           %div{style:"margin-top: 10px"}
             - if org_perms.contacts.contact_create
@@ -394,6 +404,7 @@
     });
 
     $('.page-content').on('click', ".add-dynamic-group", function() {
+    {% if save_dynamic_search %}
       var modal = new Modax('{% trans "Save Search as Group" %}', '{% url "contacts.contactgroup_create"%}');
       modal.setIcon('icon-users');
       modal.setListeners({
@@ -401,6 +412,12 @@
       });
       modal.setRedirectOnSuccess(true);
       modal.show();
+    {% else %}
+      var modal = new Modal('{% trans "Unable to create a dynamic group" %}','{% trans "You cannot create a dynamic group based on <strong>name</strong> or <strong>id</strong>." %}')
+      modal.setListeners({});
+      modal.show();
+    {% endif %}
+
     });
 
     {% endif %}

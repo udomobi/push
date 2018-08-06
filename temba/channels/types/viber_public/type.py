@@ -1,18 +1,18 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 import requests
 import six
 import time
 
-from django.conf import settings
 from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 from temba.contacts.models import VIBER_SCHEME
 from temba.msgs.models import WIRED
-from temba.utils.http import HttpEvent
+from temba.utils.http import HttpEvent, http_headers
 from .views import ClaimView
-from ...models import Channel, ChannelType, SendException, TEMBA_HEADERS
+from ...models import Channel, ChannelType, SendException
 
 
 class ViberPublicType(ChannelType):
@@ -25,19 +25,38 @@ class ViberPublicType(ChannelType):
     name = "Viber"
     icon = 'icon-viber'
 
-    claim_blurb = _("""Connect a <a href="http://viber.com/en/">Viber</a> public channel to send and receive messages to
-    Viber users for free. Your users will need an Android, Windows or iOS device and a Viber account to send and receive
-    messages.""")
-    claim_view = ClaimView
-
     schemes = [VIBER_SCHEME]
     max_length = 7000
     attachment_support = False
     free_sending = True
+    quick_reply_text_size = 36
+
+    claim_view = ClaimView
+
+    claim_blurb = _(
+        """
+        Connect a <a href="http://viber.com/en/">Viber</a> public channel to send and receive messages to
+        Viber users for free. Your users will need an Android, Windows or iOS device and a Viber account to send and receive
+        messages.
+        """
+    )
+
+    configuration_blurb = _(
+        """
+        Your Viber channel is connected. If needed the webhook endpoints are listed below.
+        """
+    )
+
+    configuration_urls = (
+        dict(
+            label=_("Webhook URL"),
+            url="https://{{ channel.callback_domain }}{% url 'courier.vp' channel.uuid %}",
+        ),
+    )
 
     def activate(self, channel):
-        auth_token = channel.config_json()['auth_token']
-        handler_url = "https://" + settings.TEMBA_HOST + reverse('handlers.viber_public_handler', args=[channel.uuid])
+        auth_token = channel.config['auth_token']
+        handler_url = "https://" + channel.callback_domain + reverse('courier.vp', args=[channel.uuid])
 
         requests.post('https://chatapi.viber.com/pa/set_webhook', json={
             'auth_token': auth_token,
@@ -46,28 +65,8 @@ class ViberPublicType(ChannelType):
         })
 
     def deactivate(self, channel):
-        auth_token = channel.config_json()['auth_token']
+        auth_token = channel.config['auth_token']
         requests.post('https://chatapi.viber.com/pa/set_webhook', json={'auth_token': auth_token, 'url': ''})
-
-    def get_quick_replies(self, metadata, post_body):
-        metadata = json.loads(metadata)
-        url_buttons = metadata.get('url_buttons', None)
-        quick_replies = metadata.get('quick_replies', None)
-        buttons = []
-
-        if quick_replies:
-            for quick_reply in quick_replies:
-                buttons.append(dict(Text=quick_reply.get('title'), ActionBody=quick_reply.get('title'),
-                                    ActionType='reply', TextSize='regular'))
-        elif url_buttons:
-            for url_button in url_buttons:
-                buttons.append(dict(Text=url_button['title'], ActionBody=url_button['url'],
-                                    ActionType='open-url', TextSize='regular'))
-
-        if quick_replies or url_buttons:
-            post_body['keyboard'] = dict(Type="keyboard", DefaultHeight=True, Buttons=buttons)
-
-        return post_body
 
     def send(self, channel, msg, text):
         url = 'https://chatapi.viber.com/pa/send_message'
@@ -79,15 +78,22 @@ class ViberPublicType(ChannelType):
             'tracking_data': msg.id
         }
 
-        if hasattr(msg, 'metadata'):
-            payload = self.get_quick_replies(msg.metadata, payload)
+        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
+        quick_replies = metadata.get('quick_replies', [])
+        formatted_replies = [dict(Text=item[:self.quick_reply_text_size], ActionBody=item[:self.quick_reply_text_size],
+                                  ActionType='reply', TextSize='regular') for item in quick_replies]
+
+        url_buttons = metadata.get('url_buttons', [])
+        if not quick_replies and url_buttons:
+            formatted_replies = [dict(Text=item.get('title')[:self.quick_reply_text_size], ActionBody=item.get('url'),
+                                      ActionType='open-url', TextSize='regular') for item in url_buttons]
+
+        if quick_replies or url_buttons:
+            payload['keyboard'] = dict(Type="keyboard", DefaultHeight=True, Buttons=formatted_replies)
 
         event = HttpEvent('POST', url, json.dumps(payload))
-
         start = time.time()
-
-        headers = {'Accept': 'application/json'}
-        headers.update(TEMBA_HEADERS)
+        headers = http_headers(extra={'Accept': 'application/json'})
 
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=5)

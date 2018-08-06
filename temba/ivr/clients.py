@@ -1,4 +1,5 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 import requests
@@ -27,7 +28,7 @@ class IVRException(Exception):
 
 class NexmoClient(NexmoCli):
 
-    def __init__(self, api_key, api_secret, app_id, app_private_key, org=None):
+    def __init__(self, api_key, api_secret, app_id, app_private_key, org):
         self.org = org
         NexmoCli.__init__(self, api_key, api_secret, app_id, app_private_key)
         self.events = []
@@ -56,7 +57,7 @@ class NexmoClient(NexmoCli):
             raise ServerError(message)
 
     def start_call(self, call, to, from_, status_callback):
-        url = 'https://%s%s' % (settings.TEMBA_HOST, reverse('ivr.ivrcall_handle', args=[call.pk]))
+        url = 'https://%s%s' % (self.org.get_brand_domain(), reverse('ivr.ivrcall_handle', args=[call.pk]))
 
         params = dict()
         params['answer_url'] = [url]
@@ -80,7 +81,7 @@ class NexmoClient(NexmoCli):
 
             call.status = IVRCall.FAILED
             call.save()
-            raise IVRException(_("Nexmo call failed, with error %s") % six.text_type(e.message))
+            raise IVRException(_("Nexmo call failed, with error %s") % six.text_type(e))
 
     def download_media(self, call, media_url):
         """
@@ -121,7 +122,7 @@ class NexmoClient(NexmoCli):
 
 class TwilioClient(TembaTwilioRestClient):
 
-    def __init__(self, account, token, org=None, **kwargs):
+    def __init__(self, account, token, org, **kwargs):
         self.org = org
         super(TwilioClient, self).__init__(account=account, token=token, **kwargs)
 
@@ -151,8 +152,7 @@ class TwilioClient(TembaTwilioRestClient):
         validator = RequestValidator(self.auth[1])
         signature = request.META.get('HTTP_X_TWILIO_SIGNATURE', '')
 
-        base_url = settings.TEMBA_HOST
-        url = "https://%s%s" % (base_url, request.get_full_path())
+        url = "https://%s%s" % (request.get_host(), request.get_full_path())
         return validator.validate(url, request.POST, signature)
 
     def download_media(self, media_url):
@@ -192,7 +192,7 @@ class VerboiceClient:  # pragma: needs cover
     def __init__(self, channel):
         self.endpoint = 'https://verboice.instedd.org/api/call'
 
-        config = json.loads(channel.config)
+        config = channel.config
         self.auth = (config.get('username', None), config.get('password', None))
 
         # this is the verboice channel, not our channel
@@ -207,7 +207,7 @@ class VerboiceClient:  # pragma: needs cover
             raise IVRException("SEND_CALLS set to False, skipping call start")
 
         channel = call.channel
-        Contact.get_or_create(channel.org, channel.created_by, urns=[URN.from_tel(to)])
+        Contact.get_or_create(channel.org, URN.from_tel(to), channel)
 
         # Verboice differs from Twilio in that they expect the first block of twiml up front
         payload = six.text_type(Flow.handle_call(call))

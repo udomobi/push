@@ -5,6 +5,8 @@
 -block html-tag
   <html lang="en" ng-app="app">
 
+-block page-title
+  {{object.name}}
 
 -block extra-less
   -compress css
@@ -31,6 +33,15 @@
 -block extra-script
   {{ block.super }}
 
+  -if org_perms.flows.flow_delete
+    :javascript
+      $(".delete-flow").live('click', function() {    
+        var modal = new Modax('{% trans "Delete Flow" %}', '{% url "flows.flow_delete" flow.id %}');
+        modal.addClass("alert");
+        modal.setRedirectOnSuccess(true);
+        modal.show();
+      });
+
   -compress js
     %script{type:'text/javascript', src:'{{ STATIC_URL }}bower/jsPlumb/dist/js/dom.jsPlumb-1.7.5.js'}
     %script{type:'text/javascript', src:"{{ STATIC_URL }}bower/jquery-autosize/jquery.autosize.js"}
@@ -38,10 +49,9 @@
     %script{type:'text/javascript', src:"{{ STATIC_URL }}bower/angular-ui-sortable/sortable.js"}
     %script{type:'text/javascript', src:"{{ STATIC_URL }}js/temba-ui-bootstrap-tpls.js"}
 
-  %script{src:"{{ STATIC_URL }}js/excellent.js"}
-
   :javascript
-    window.flowId = {{ object.pk }};
+    window.orgId = {{object.org.id}};
+    window.flowId = {{object.id}};
     window.simulateURL = '{% url "flows.flow_simulate" object.pk %}';
     window.activityURL = '{% url "flows.flow_activity" object.pk %}';
     window.uploadURL = '{% url "flows.flow_upload_action_recording" object.pk %}';
@@ -54,6 +64,7 @@
     window.mediaURL = '{{media_url}}';
     window.hasAirtimeService = {{has_airtime_service|lower}};
     window.connectAirtimeServiceURL = '{% url "orgs.org_home" %}#id-transferto';
+    window.contactName = '{{user.get_full_name}}';
 
     $('.draggable').draggable();
     // TODO: All inline javascript below should be replaced with corresponding angular implementations
@@ -79,7 +90,7 @@
         var modal = new Modax(gettext('Start Flow'), '{% url "flows.flow_broadcast" object.pk %}');
         var onActions = {
           onSuccess: function(data) {
-            $('html').scope().pending = 'P';
+            $('html').scope().is_starting = true;
           },
           onFormLoaded: function() { }
         }
@@ -115,8 +126,8 @@
     }
 
     $(document).ready(function() {
-      {% if starting %}
-        $("html").scope().pending = 'P';
+      {% if is_starting %}
+        $("html").scope().is_starting = true;
       {% endif %}
     })
 
@@ -129,6 +140,8 @@
     %script{src:"{{ STATIC_URL }}coffee/flows/controllers.coffee", type:'text/coffeescript'}
     %script{src:"{{ STATIC_URL }}coffee/flows/directives.coffee", type:'text/coffeescript'}
     %script{src:"{{ STATIC_URL }}coffee/simulator.coffee", type:'text/coffeescript'}
+    %script{src:"{{ STATIC_URL }}coffee/simulator_py.coffee", type:'text/coffeescript'}
+    %script{src:"{{ STATIC_URL }}coffee/simulator_go.coffee", type:'text/coffeescript'}
 
 
   :javascript
@@ -209,7 +222,7 @@
           .icon-mobile
         {{ flow.name }}
 
-      #pending{ng-show:'pending == "S" || pending == "P"'}
+      #pending{ng-show:'is_starting'}
         %div{class:"alert alert-info"}
           -blocktrans
             This flow is in the process of being sent, this message will disappear once all contacts have been added to the flow.
@@ -223,6 +236,8 @@
         .translated
           %span.pct{ng-show:'flow.base_language != language.iso_code'}
             [[flow._pctTranslated]]% translated
+
+    #simulator
 
     #status.hide
       #error
@@ -376,7 +391,9 @@
                   %span.reply{ng-show:'action.type == "reply" || action.type == "send"'}
 
                     .node-attachment.viewer-button{ng-class:'{"icon-videocam": action._media.type == "video", "icon-photo": action._media.type=="image", "icon-arrow-right-8": action._media.type=="audio"}', ng-show:'action._media', ng-click:'clickShowActionMedia(action); $event.stopPropagation();'}
-                    .node-attachment.viewer-button{ng-class:'{"icon-button-quick-reply": action.quick_replies[language.iso_code].length > 0, "icon-button-response": action.url_buttons[language.iso_code].length > 0 }', ng-show:'action.quick_replies[language.iso_code].length > 0 || action.url_buttons[language.iso_code].length > 0', ng-click:'clickShowActionMedia(action); $event.stopPropagation();'}
+                    .node-attachment.icon-attachment{ng-show:'action._attachURL'}
+                    .node-attachment.viewer-button.icon-quick-reply{ng-show:'action.quick_replies.length > 0'}
+                    .node-attachment.viewer-button.icon-button-url{ng-show:'action.url_buttons.length > 0'}
 
                     .uploading{ng-show:'action.uploading'}
                       %img.throbber{ src: "{{ STATIC_URL }}images/loader-bars.gif" }
@@ -446,7 +463,7 @@
                     [[action.name]]
 
 
-          .add.icon-plus-circle2{ng-show:'!hasEndUssd(action_set)', ng-click:'addAction(action_set, true);'}
+          .add.icon-plus-circle2{ng-show:'!hasEndUssd(action_set)', ng-click:'addAction(action_set);'}
           .source{ng-show:'!hasEndUssd(action_set)', ng-attr-id:'[[action_set.uuid]]_source', drop-scope:'rules', ng-class:'{connected:action_set.destination}', ng-click:'clickActionSource(action_set); $event.stopPropagation()'}
             .recent-messages{ng-show:'action_set._showMessages'}
               .title

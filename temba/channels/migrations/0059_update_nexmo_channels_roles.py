@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from django.core.urlresolvers import reverse
 from django.conf import settings
@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         Channel = apps.get_model('channels', 'Channel')
 
         if settings.IS_PROD:
-            nexmo_channels = Channel.objects.filter(channel_type='NX').exclude(org=None)
+            nexmo_channels = Channel.objects.filter(is_active=True, channel_type='NX')
 
             updated = []
             updated_orgs = []
@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
                         mo_path = reverse('handlers.nexmo_handler', args=['receive', org_uuid])
 
                         nexmo_client.update_nexmo_number(channel.country, channel.address,
-                                                         'http://%s%s' % (settings.TEMBA_HOST, mo_path),
+                                                         'http://%s%s' % (settings.HOSTNAME, mo_path),
                                                          app_id)
 
                     updated.append(channel.id)

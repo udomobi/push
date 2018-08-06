@@ -426,9 +426,7 @@ describe 'Controllers:', ->
         scope.ruleset.ruleset_type = 'webhook'
         scope.formData.webhook = 'http://www.nyaruka.com'
         scope.formData.webhook_action = 'POST'
-        scope.formData.webhook_headers = [{name: '', key: ''}]
-        scope.webhook_headers_name[0] = 'Authorization'
-        scope.webhook_headers_value[0] = 'Token 12345'
+        scope.formData.webhook_headers = [{name: 'Authorization', value: 'Token 12345'}]
 
       ruleset = flowService.flow.rule_sets[0]
       expect(ruleset.ruleset_type).toBe('webhook')
@@ -773,41 +771,17 @@ describe 'Controllers:', ->
       actionset = flowService.flow.action_sets[0]
       action = actionset.actions[0]
     
-      json_quick_reply = 'base':[{'title':'Quick reply', 'payload':'Test quick reply is ok'}]
+      json_quick_reply = ['Yes', 'No']
 
       editAction actionset, action, (scope) ->
-        scope.actions_buttons_reply = []
-        scope.actions_quick_reply = []
+        scope.quickReplies = []
         scope.action.quick_replies = {}
         scope.addNewQuickReply()
-        scope.actions_quick_reply[0]['payload'] = 'Test quick reply is ok'
-        scope.actions_quick_reply[0]['title'] = 'Quick reply'
+        scope.quickReplies[0] = 'Yes'
+        scope.quickReplies[1] = 'No'
         scope.formData.msg = "test"
         scope.saveMessage('test', type='reply')
 
       actionset = flowService.flow.action_sets[0]
       action = actionset.actions[0]
       expect(JSON.stringify(action.quick_replies)).toBe(JSON.stringify(json_quick_reply))
-
-    it 'should generate json button url replies to send', ->
-      loadFavoritesFlow()
-
-      actionset = flowService.flow.action_sets[0]
-      action = actionset.actions[0]
-    
-      json_buttons_reply = 'base':[{'title':'URL title', 'url':'example.com'}]
-
-      editAction actionset, action, (scope) ->
-        scope.actions_buttons_reply = []
-        scope.actions_quick_reply = []
-        scope.action.url_buttons = {}
-        scope.addNewUrlButton()
-        scope.actions_buttons_reply[0]['title'] = 'URL title'
-        scope.actions_buttons_reply[0]['url'] = 'example.com'
-        scope.formData.msg = "test"
-        scope.saveMessage('test', type='reply')
-
-      actionset = flowService.flow.action_sets[0]
-      action = actionset.actions[0]
-      
-      expect(JSON.stringify(action.url_buttons)).toBe(JSON.stringify(json_buttons_reply))

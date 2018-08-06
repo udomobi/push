@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from django.db import migrations
 from django.db.models import F, Q
@@ -29,7 +28,7 @@ def do_populate(ChannelSession, Msg):
                                   created_on__lte=session.ended_on)
         updated += msgs.filter(Q(msg_type='V') | Q(channel__channel_type='VMU')).update(session=session)
         if idx % 1000 == 0:
-            print ("Populated %d of %d sessions (%d msgs)" % (idx, count, updated))
+            print("Populated %d of %d sessions (%d msgs)" % (idx, count, updated))
             updated = 0
 
 

@@ -1,4 +1,5 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 import six
@@ -105,6 +106,7 @@ class InboxView(OrgPermsMixin, SmartListView):
     paginate_by = 100
     actions = ()
     allow_export = False
+    show_channel_logs = False
 
     def derive_label(self):
         return self.system_label
@@ -128,7 +130,7 @@ class InboxView(OrgPermsMixin, SmartListView):
             last_90 = timezone.now() - timedelta(days=90)
             queryset = queryset.filter(created_on__gte=last_90)
 
-        return queryset
+        return queryset.order_by('-created_on', '-id')
 
     def get_context_data(self, **kwargs):
         org = self.request.user.get_org()
@@ -165,6 +167,7 @@ class InboxView(OrgPermsMixin, SmartListView):
         context['actions'] = self.actions
         context['current_label'] = label
         context['export_url'] = self.derive_export_url()
+        context['show_channel_logs'] = self.show_channel_logs
         return context
 
     def get_gear_links(self):
@@ -592,7 +595,7 @@ class MsgCRUDL(SmartCRUDL):
 
         def get_queryset(self, **kwargs):
             qs = super(MsgCRUDL.Inbox, self).get_queryset(**kwargs)
-            return qs.order_by('-created_on').prefetch_related('labels').select_related('contact')
+            return qs.prefetch_related('labels').select_related('contact')
 
     class Flow(MsgActionMixin, InboxView):
         title = _("Flow Messages")
@@ -603,7 +606,7 @@ class MsgCRUDL(SmartCRUDL):
 
         def get_queryset(self, **kwargs):
             qs = super(MsgCRUDL.Flow, self).get_queryset(**kwargs)
-            return qs.order_by('-created_on').prefetch_related('labels', 'steps__run__flow').select_related('contact')
+            return qs.prefetch_related('labels', 'steps__run__flow').select_related('contact')
 
     class Archived(MsgActionMixin, InboxView):
         title = _("Archived")
@@ -614,7 +617,7 @@ class MsgCRUDL(SmartCRUDL):
 
         def get_queryset(self, **kwargs):
             qs = super(MsgCRUDL.Archived, self).get_queryset(**kwargs)
-            return qs.order_by('-created_on').prefetch_related('labels', 'steps__run__flow').select_related('contact')
+            return qs.prefetch_related('labels', 'steps__run__flow').select_related('contact')
 
     class Outbox(MsgActionMixin, InboxView):
         title = _("Outbox Messages")
@@ -622,10 +625,11 @@ class MsgCRUDL(SmartCRUDL):
         system_label = SystemLabel.TYPE_OUTBOX
         actions = ()
         allow_export = True
+        show_channel_logs = True
 
         def get_queryset(self, **kwargs):
             qs = super(MsgCRUDL.Outbox, self).get_queryset(**kwargs)
-            return qs.order_by('-created_on').prefetch_related('channel_logs', 'steps__run__flow').select_related('contact')
+            return qs.prefetch_related('channel_logs', 'steps__run__flow').select_related('contact')
 
     class Sent(MsgActionMixin, InboxView):
         title = _("Sent Messages")
@@ -633,10 +637,11 @@ class MsgCRUDL(SmartCRUDL):
         system_label = SystemLabel.TYPE_SENT
         actions = ()
         allow_export = True
+        show_channel_logs = True
 
         def get_queryset(self, **kwargs):  # pragma: needs cover
             qs = super(MsgCRUDL.Sent, self).get_queryset(**kwargs)
-            return qs.order_by('-created_on').prefetch_related('channel_logs', 'steps__run__flow').select_related('contact')
+            return qs.prefetch_related('channel_logs', 'steps__run__flow').select_related('contact')
 
     class Failed(MsgActionMixin, InboxView):
         title = _("Failed Outgoing Messages")
@@ -645,10 +650,11 @@ class MsgCRUDL(SmartCRUDL):
         system_label = SystemLabel.TYPE_FAILED
         actions = ['resend']
         allow_export = True
+        show_channel_logs = True
 
         def get_queryset(self, **kwargs):
             qs = super(MsgCRUDL.Failed, self).get_queryset(**kwargs)
-            return qs.order_by('-created_on').prefetch_related('channel_logs', 'steps__run__flow').select_related('contact')
+            return qs.prefetch_related('channel_logs', 'steps__run__flow').select_related('contact')
 
     class Filter(MsgActionMixin, InboxView):
         template_name = 'msgs/msg_filter.haml'
@@ -688,7 +694,7 @@ class MsgCRUDL(SmartCRUDL):
             qs = super(MsgCRUDL.Filter, self).get_queryset(**kwargs)
             qs = self.derive_label().filter_messages(qs).filter(visibility=Msg.VISIBILITY_VISIBLE)
 
-            return qs.order_by('-created_on').prefetch_related('labels', 'steps__run__flow').select_related('contact')
+            return qs.prefetch_related('labels', 'steps__run__flow').select_related('contact')
 
 
 class BaseLabelForm(forms.ModelForm):
@@ -696,11 +702,17 @@ class BaseLabelForm(forms.ModelForm):
         name = self.cleaned_data['name']
 
         if not Label.is_valid_name(name):
-            raise forms.ValidationError("Name must not be blank or begin with punctuation")
+            raise forms.ValidationError(_("Name must not be blank or begin with punctuation"))
 
         existing_id = self.existing.pk if self.existing else None
         if Label.all_objects.filter(org=self.org, name__iexact=name).exclude(pk=existing_id).exists():
-            raise forms.ValidationError("Name must be unique")
+            raise forms.ValidationError(_("Name must be unique"))
+
+        labels_count = Label.all_objects.filter(org=self.org, is_active=True).count()
+        if labels_count >= Label.MAX_ORG_LABELS:
+            raise forms.ValidationError(_("This org has %s labels and the limit is %s. "
+                                          "You must delete existing ones before you can "
+                                          "create new ones." % (labels_count, Label.MAX_ORG_LABELS)))
 
         return name
 

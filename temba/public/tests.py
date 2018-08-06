@@ -1,4 +1,5 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -16,25 +17,25 @@ class PublicTest(SmartminTest):
     def test_index(self):
         home_url = reverse('public.public_index')
         response = self.client.get(home_url, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], '/')
+        self.assertEqual(response.request['PATH_INFO'], '/')
 
         # try to create a lead from the homepage
         lead_create_url = reverse('public.lead_create')
         post_data = dict()
         response = self.client.post(lead_create_url, post_data, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], '/')
+        self.assertEqual(response.request['PATH_INFO'], '/')
         self.assertTrue(response.context['errors'])
-        self.assertEquals(response.context['error_msg'], 'This field is required.')
+        self.assertEqual(response.context['error_msg'], 'This field is required.')
 
         post_data['email'] = 'wrong_email_format'
         response = self.client.post(lead_create_url, post_data, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], '/')
+        self.assertEqual(response.request['PATH_INFO'], '/')
         self.assertTrue(response.context['errors'])
-        self.assertEquals(response.context['error_msg'], 'Enter a valid email address.')
+        self.assertEqual(response.context['error_msg'], 'Enter a valid email address.')
 
         post_data['email'] = 'immortal@temba.com'
         response = self.client.post(lead_create_url, post_data, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], reverse('orgs.org_signup'))
+        self.assertEqual(response.request['PATH_INFO'], reverse('orgs.org_signup'))
 
     def test_privacy(self):
         response = self.client.get(reverse('public.public_privacy'))
@@ -43,12 +44,12 @@ class PublicTest(SmartminTest):
     def test_welcome(self):
         welcome_url = reverse('public.public_welcome')
         response = self.client.get(welcome_url, follow=True)
-        self.assertTrue('next' in response.request['QUERY_STRING'])
-        self.assertEquals(response.request['PATH_INFO'], reverse('users.user_login'))
+        self.assertIn('next', response.request['QUERY_STRING'])
+        self.assertEqual(response.request['PATH_INFO'], reverse('users.user_login'))
 
         self.login(self.user)
         response = self.client.get(welcome_url, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], reverse('public.public_welcome'))
+        self.assertEqual(response.request['PATH_INFO'], reverse('public.public_welcome'))
 
     def test_leads(self):
         create_url = reverse('public.lead_create')
@@ -56,46 +57,46 @@ class PublicTest(SmartminTest):
         post_data = dict()
         post_data['email'] = 'eugene@temba.com'
         response = self.client.post(create_url, post_data, follow=True)
-        self.assertEquals(len(Lead.objects.all()), 1)
+        self.assertEqual(len(Lead.objects.all()), 1)
 
         # create mailing list with the same email again, we actually allow dupes now
         post_data['email'] = 'eugene@temba.com'
         response = self.client.post(create_url, post_data, follow=True)
-        self.assertEquals(len(Lead.objects.all()), 2)
+        self.assertEqual(len(Lead.objects.all()), 2)
 
         # invalid email
         post_data['email'] = 'asdfasdf'
         response = self.client.post(create_url, post_data, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], '/')
-        self.assertEquals(len(Lead.objects.all()), 2)
+        self.assertEqual(response.request['PATH_INFO'], '/')
+        self.assertEqual(len(Lead.objects.all()), 2)
 
     def test_demo_coupon(self):
         coupon_url = reverse('demo.generate_coupon')
         response = self.client.get(coupon_url, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], coupon_url)
-        self.assertIn('coupon', response.content)
+        self.assertEqual(response.request['PATH_INFO'], coupon_url)
+        self.assertContains(response, 'coupon')
 
     def test_demo_status(self):
         status_url = reverse('demo.order_status')
         response = self.client.get(status_url, follow=True)
-        self.assertEquals(response.request['PATH_INFO'], status_url)
-        self.assertIn('Invalid', response.content)
+        self.assertEqual(response.request['PATH_INFO'], status_url)
+        self.assertContains(response, 'Invalid')
 
         response = self.client.get("%s?text=somethinginvalid" % status_url)
-        self.assertEquals(response.request['PATH_INFO'], status_url)
-        self.assertIn('Invalid', response.content)
+        self.assertEqual(response.request['PATH_INFO'], status_url)
+        self.assertContains(response, 'Invalid')
 
         response = self.client.get("%s?text=cu001" % status_url)
-        self.assertEquals(response.request['PATH_INFO'], status_url)
-        self.assertIn('Shipped', response.content)
+        self.assertEqual(response.request['PATH_INFO'], status_url)
+        self.assertContains(response, 'Shipped')
 
         response = self.client.get("%s?text=cu002" % status_url)
-        self.assertEquals(response.request['PATH_INFO'], status_url)
-        self.assertIn('Pending', response.content)
+        self.assertEqual(response.request['PATH_INFO'], status_url)
+        self.assertContains(response, 'Pending')
 
         response = self.client.get("%s?text=cu003" % status_url)
-        self.assertEquals(response.request['PATH_INFO'], status_url)
-        self.assertIn('Cancelled', response.content)
+        self.assertEqual(response.request['PATH_INFO'], status_url)
+        self.assertContains(response, 'Cancelled')
 
     def test_templatetags(self):
         from .templatetags.public import gear_link_classes
@@ -118,11 +119,11 @@ class PublicTest(SmartminTest):
         response = self.client.get(sitemap_url)
 
         # but first item is always home page
-        self.assertEquals(response.context['urlset'][0], {'priority': '0.5',
-                                                          'item': 'public.public_index',
-                                                          'lastmod': None,
-                                                          'changefreq': 'daily',
-                                                          'location': u'http://example.com/'})
+        self.assertEqual(response.context['urlset'][0], {'priority': '0.5',
+                                                         'item': 'public.public_index',
+                                                         'lastmod': None,
+                                                         'changefreq': 'daily',
+                                                         'location': u'http://example.com/'})
 
         num_fixed_items = len(response.context['urlset'])
 

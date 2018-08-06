@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import six
 import time
@@ -10,6 +11,7 @@ from temba.utils.twitter import TembaTwython
 from .views import ClaimView
 from ...models import Channel, ChannelType, SendException
 from ...tasks import MageStreamAction, notify_mage_task
+from ...views import UpdateTwitterForm
 
 
 class TwitterType(ChannelType):
@@ -26,10 +28,13 @@ class TwitterType(ChannelType):
     claim_blurb = _("""Add a <a href="http://twitter.com">Twitter</a> account to send messages as direct messages.""")
     claim_view = ClaimView
 
+    update_form = UpdateTwitterForm
+
     schemes = [TWITTER_SCHEME, TWITTERID_SCHEME]
     max_length = 10000
     show_config_page = False
     free_sending = True
+    quick_reply_text_size = 36
 
     FATAL_403S = ("messages to this user right now",  # handle is suspended
                   "users who are not following you")  # handle no longer follows us
@@ -53,10 +58,46 @@ class TwitterType(ChannelType):
             # this is a legacy URN (no display), the path is our screen name
             if scheme == TWITTER_SCHEME:
                 dm = twitter.send_direct_message(screen_name=path, text=text)
+                external_id = dm['id']
 
             # this is a new twitterid URN, our path is our user id
             else:
-                dm = twitter.send_direct_message(user_id=path, text=text)
+                metadata = msg.metadata if hasattr(msg, 'metadata') else {}
+                quick_replies = metadata.get('quick_replies', [])
+                formatted_replies = dict(type='options', options=[dict(label=item[:self.quick_reply_text_size])
+                                                                  for item in quick_replies])
+
+                url_buttons = metadata.get('url_buttons', [])
+                if not quick_replies and url_buttons:
+                    formatted_replies = [dict(type='web_url', label=item.get('title')[:self.quick_reply_text_size],
+                                              url=item.get('url')) for item in url_buttons]
+
+                if quick_replies or url_buttons:
+                    params = {
+                        'event': {
+                            'type': 'message_create',
+                            'message_create': {
+                                'target': {'recipient_id': path},
+                                'message_data': {
+                                    'text': text
+                                }
+                            }
+                        }
+                    }
+
+                    if quick_replies:
+                        params['event']['message_create']['message_data']['quick_reply'] = formatted_replies
+                    else:
+                        params['event']['message_create']['message_data']['ctas'] = formatted_replies
+
+                    dm = twitter.post('direct_messages/events/new', params=params)
+                    external_id = dm['event']['id']
+
+                elif url_buttons:
+                    pass
+                else:
+                    dm = twitter.send_direct_message(user_id=path, text=text)
+                    external_id = dm['id']
 
         except Exception as e:
             error_code = getattr(e, 'error_code', 400)
@@ -77,5 +118,4 @@ class TwitterType(ChannelType):
 
             raise SendException(str(e), events=twitter.events, fatal=fatal, start=start)
 
-        external_id = dm['id']
         Channel.success(channel, msg, WIRED, start, events=twitter.events, external_id=external_id)

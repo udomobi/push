@@ -11,17 +11,32 @@ from __future__ import absolute_import, unicode_literals
 # -----------------------------------------------------------------------------------
 
 import warnings
+import copy
 
 from .settings_common import *  # noqa
 
 DEBUG_TOOLBAR = False
 
 # -----------------------------------------------------------------------------------
+# Add a custom brand for development
+# -----------------------------------------------------------------------------------
+
+custom = copy.deepcopy(BRANDING['rapidpro.io'])
+custom['name'] = 'Custom Brand'
+custom['slug'] = 'custom'
+custom['org'] = 'Custom'
+custom['api_link'] = 'http://custom-brand.io'
+custom['domain'] = 'custom-brand.io'
+custom['email'] = 'join@custom-brand.io'
+custom['support_email'] = 'support@custom-brand.io'
+custom['allow_signups'] = True
+BRANDING['custom-brand.io'] = custom
+
+# -----------------------------------------------------------------------------------
 # Used when creating callbacks for Twilio, Nexmo etc..
 # -----------------------------------------------------------------------------------
 HOSTNAME = 'temba.ngrok.io'
-TEMBA_HOST = 'temba.ngrok.io'
-ALLOWED_HOSTS = ['localhost', 'temba.ngrok.io']
+ALLOWED_HOSTS = ['*']
 
 # -----------------------------------------------------------------------------------
 # Redis & Cache Configuration (we expect a Redis instance on localhost)
@@ -36,33 +51,33 @@ CACHES = {
     }
 }
 
-ANONYMOUS_USER_NAME = 'AnonymousUser'
-
 # -----------------------------------------------------------------------------------
 # Need a PostgreSQL database on localhost with postgis extension installed.
 # -----------------------------------------------------------------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'rapidpro_push_production',
+        'NAME': 'ilhapush',
         'USER': 'postgres',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'PASSWORD': 't.amaral',
+        'HOST': 'localhost',
         'PORT': '',
         'ATOMIC_REQUESTS': True,
         'CONN_MAX_AGE': 60,
-        'OPTIONS': {}
+        'OPTIONS': {
+        }
     },
     'default2': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'rapidpro_push_production',
+        'NAME': 'ilhapush',
         'USER': 'postgres',
-        'PASSWORD': '123456',
-        'HOST': '127.0.0.1',
+        'PASSWORD': 't.amaral',
+        'HOST': 'localhost',
         'PORT': '',
         'ATOMIC_REQUESTS': True,
         'CONN_MAX_AGE': 60,
-        'OPTIONS': {}
+        'OPTIONS': {
+        }
     }
 }
 

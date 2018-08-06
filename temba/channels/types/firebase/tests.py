@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 
@@ -18,7 +19,7 @@ class FirebaseCloudMessagingTypeTest(TembaTest):
 
     @patch('requests.get')
     def test_claim(self, mock_get):
-        url = reverse('channels.claim_firebase')
+        url = reverse('channels.types.firebase.claim')
 
         self.login(self.admin)
 
@@ -26,8 +27,9 @@ class FirebaseCloudMessagingTypeTest(TembaTest):
         response = self.client.get(reverse('channels.channel_claim'))
         self.assertContains(response, url)
 
-        mock_get.return_value = MockResponse(200, json.dumps({'title': 'FCM Channel', 'key': 'abcde12345', 'send_notification': 'True'}))
-
+        mock_get.return_value = MockResponse(
+            200, json.dumps({'title': 'FCM Channel', 'key': 'abcde12345', 'send_notification': 'True'})
+        )
         response = self.client.post(url, {
             'title': 'FCM Channel',
             'key': 'abcde12345',
@@ -35,6 +37,9 @@ class FirebaseCloudMessagingTypeTest(TembaTest):
         }, follow=True)
 
         channel = Channel.objects.get(address='abcde12345')
-        self.assertRedirects(response, reverse('channels.channel_configuration', args=[channel.id]))
+        self.assertRedirects(response, reverse('channels.channel_configuration', args=[channel.uuid]))
         self.assertEqual(channel.channel_type, "FCM")
-        self.assertEqual(channel.config_json(), {'FCM_KEY': 'abcde12345', 'FCM_TITLE': 'FCM Channel', 'FCM_NOTIFICATION': True})
+        self.assertEqual(
+            channel.config,
+            {'FCM_KEY': 'abcde12345', 'FCM_TITLE': 'FCM Channel', 'FCM_NOTIFICATION': True}
+        )

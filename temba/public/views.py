@@ -1,7 +1,8 @@
-from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
-import urlparse
+from six.moves.urllib.parse import parse_qs, urlencode
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -12,19 +13,26 @@ from django.views.generic import RedirectView, View
 from random import randint
 from smartmin.views import SmartCRUDL, SmartReadView, SmartFormView, SmartCreateView, SmartListView, SmartTemplateView
 from temba.public.models import Lead, Video
-from temba.utils import analytics, random_string, get_anonymous_user
-from urllib import urlencode
+from temba.utils import analytics, get_anonymous_user
+from temba.utils.text import random_string
 
 
 class IndexView(SmartTemplateView):
     template_name = 'public/public_index.haml'
+
+    def pre_process(self, request, *args, **kwargs):
+        response = super(IndexView, self).pre_process(request, *args, **kwargs)
+        redirect = self.request.branding.get('redirect')
+        if redirect:
+            return HttpResponseRedirect(redirect)
+        return response
 
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
         context['thanks'] = 'thanks' in self.request.GET
         context['errors'] = 'errors' in self.request.GET
         if context['errors']:
-            context['error_msg'] = urlparse.parse_qs(context['url_params'][1:])['errors'][0]
+            context['error_msg'] = parse_qs(context['url_params'][1:])['errors'][0]
 
         return context
 
@@ -138,6 +146,7 @@ class LeadCRUDL(SmartCRUDL):
 
 
 class Blog(RedirectView):
+    # whitelabels don't have blogs, so we don't use the brand domain here
     url = "http://blog." + settings.HOSTNAME
 
 

@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
 import requests
@@ -8,9 +9,9 @@ import time
 from django.utils.translation import ugettext_lazy as _
 from temba.contacts.models import FCM_SCHEME
 from temba.msgs.models import WIRED
-from temba.utils.http import HttpEvent
+from temba.utils.http import HttpEvent, http_headers
 from .views import ClaimView
-from ...models import Channel, ChannelType, SendException, TEMBA_HEADERS
+from ...models import Channel, ChannelType, SendException
 
 
 class FirebaseCloudMessagingType(ChannelType):
@@ -31,18 +32,26 @@ class FirebaseCloudMessagingType(ChannelType):
     max_length = 10000
     attachment_support = False
     free_sending = True
+    quick_reply_text_size = 36
 
-    def get_quick_replies(self, metadata, post_body):
-        metadata = json.loads(metadata)
-        quick_replies = metadata.get('quick_replies') if metadata.get('quick_replies') else None
-        url_buttons = metadata.get('url_buttons') if metadata.get('url_buttons') else None
+    configuration_blurb = _(
+        """
+        To use your Firebase Cloud Messaging channel you'll have to POST to the following URLs with the parameters below.
+        """
+    )
 
-        if quick_replies:
-            post_body['data']['metadata'] = dict(quick_replies=quick_replies)
-        elif url_buttons:
-            post_body['data']['metadata'] = dict(url_buttons=url_buttons)
-
-        return post_body
+    configuration_urls = (
+        dict(
+            label=_("Contact Register"),
+            url="https://{{ channel.callback_domain }}{% url 'handlers.fcm_handler' 'register' channel.uuid %}",
+            description=_("To register contacts, POST to the following URL with the parameters urn, fcm_token and optionally name."),
+        ),
+        dict(
+            label=_("Receive URL"),
+            url="https://{{ channel.callback_domain }}{% url 'handlers.fcm_handler' 'receive' channel.uuid %}",
+            description=_("To handle incoming messages, POST to the following URL with the parameters from, msg and fcm_token."),
+        ),
+    )
 
     def send(self, channel, msg, text):
         start = time.time()
@@ -54,7 +63,8 @@ class FirebaseCloudMessagingType(ChannelType):
                 'type': 'rapidpro',
                 'title': title,
                 'message': text,
-                'message_id': msg.id
+                'message_id': msg.id,
+                'metadata': {}
             },
             'content_available': False,
             'to': msg.auth,
@@ -68,12 +78,22 @@ class FirebaseCloudMessagingType(ChannelType):
             }
             data['content_available'] = True
 
-        if hasattr(msg, 'metadata'):
-            data = self.get_quick_replies(msg.metadata, data)
+        metadata = msg.metadata if hasattr(msg, 'metadata') else {}
+        quick_replies = metadata.get('quick_replies', [])
+        formatted_replies = [item[:self.quick_reply_text_size] for item in quick_replies]
+
+        url_buttons = metadata.get('url_buttons', [])
+        if not quick_replies and url_buttons:
+            formatted_replies = [dict(title=item.get('title')[:self.quick_reply_text_size], url=item.get('url'))
+                                 for item in url_buttons]
+
+        if quick_replies:
+            data['data']['metadata']['quick_replies'] = formatted_replies
+        elif url_buttons:
+            data['data']['metadata']['url_buttons'] = formatted_replies
 
         payload = json.dumps(data)
-        headers = {'Content-Type': 'application/json', 'Authorization': 'key=%s' % channel.config.get('FCM_KEY')}
-        headers.update(TEMBA_HEADERS)
+        headers = http_headers(extra={'Content-Type': 'application/json', 'Authorization': 'key=%s' % channel.config.get('FCM_KEY')})
 
         event = HttpEvent('POST', url, payload)
 

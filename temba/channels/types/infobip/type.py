@@ -1,4 +1,5 @@
-from __future__ import unicode_literals, absolute_import
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import base64
 import json
@@ -6,12 +7,14 @@ import requests
 import six
 import time
 
+from django.urls import reverse
+from django.utils.encoding import force_bytes
 from django.utils.translation import ugettext_lazy as _
-
-from temba.channels.types.infobip.views import ClaimView
+from temba.channels.views import AuthenticatedExternalCallbackClaimView
 from temba.contacts.models import TEL_SCHEME
-from temba.utils.http import HttpEvent
-from ...models import Channel, ChannelType, SendException, TEMBA_HEADERS
+from temba.msgs.models import SENT
+from temba.utils.http import HttpEvent, http_headers
+from ...models import Channel, ChannelType, SendException
 
 
 class InfobipType(ChannelType):
@@ -23,30 +26,71 @@ class InfobipType(ChannelType):
     category = ChannelType.Category.PHONE
 
     name = "Infobip"
-    icon = 'icon-power-cord'
 
     claim_blurb = _("""Easily add a two way number you have configured with <a href="http://infobip.com">Infobip</a> using their APIs.""")
-    claim_view = ClaimView
+    claim_view = AuthenticatedExternalCallbackClaimView
 
     schemes = [TEL_SCHEME]
     max_length = 1600
     attachment_support = False
 
+    configuration_blurb = _(
+        """
+        To finish configuring your Infobip connection you'll need to set the following callback URLs on the Infobip website under your account.
+        """
+    )
+
+    configuration_urls = (
+        dict(
+            label=_("Received URL"),
+            url="https://{{ channel.callback_domain }}{% url 'courier.ib' channel.uuid 'receive' %}",
+            description=_(
+                """
+                This endpoint should be called with a POST by Infobip when new messages are received to your number.
+                You can set the receive URL on your Infobip account by contacting your sales agent.
+                """
+            ),
+        ),
+        dict(
+            label=_("Delivered URL"),
+            url="https://{{ channel.callback_domain }}{% url 'courier.ib' channel.uuid 'delivered' %}",
+            description=_(
+                """
+                This endpoint should be called with a POST by Infobip when a message has been to the final recipient. (delivery reports)
+                You can set the delivery callback URL on your Infobip account by contacting your sales agent.
+                """
+            ),
+        ),
+    )
+
     def send(self, channel, msg, text):
-        from temba.msgs.models import SENT
+        url = "https://api.infobip.com/sms/1/text/advanced"
 
-        url = "https://api.infobip.com/sms/1/text/single"
+        username = force_bytes(channel.config['username'])
+        password = force_bytes(channel.config['password'])
+        encoded_auth = base64.b64encode(username + b":" + password)
 
-        username = channel.config['username']
-        password = channel.config['password']
-        encoded_auth = base64.b64encode(username + ":" + password)
+        headers = http_headers(extra={
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Basic %s' % encoded_auth
+        })
 
-        headers = {'Content-Type': 'application/json', 'Accept': 'application/json',
-                   'Authorization': 'Basic %s' % encoded_auth}
-        headers.update(TEMBA_HEADERS)
+        # the event url InfoBip will forward delivery reports to
+        status_url = 'https://%s%s' % (channel.callback_domain, reverse('courier.ib', args=[channel.uuid, 'delivered']))
 
-        payload = {'from': channel.address.lstrip('+'), 'to': msg.urn_path.lstrip('+'),
-                   'text': text}
+        payload = {"messages": [
+            {
+                "from": channel.address.lstrip('+'),
+                "destinations": [
+                    {"to": msg.urn_path.lstrip('+'), "messageId": msg.id}
+                ],
+                "text": text,
+                "notifyContentType": "application/json",
+                "intermediateReport": True,
+                "notifyUrl": status_url
+            }
+        ]}
 
         event = HttpEvent('POST', url, json.dumps(payload))
         events = [event]
@@ -68,10 +112,8 @@ class InfobipType(ChannelType):
         messages = response_json['messages']
 
         # if it wasn't successfully delivered, throw
-        if int(messages[0]['status']['id']) != 0:  # pragma: no cover
-            raise SendException("Received non-zero status code [%s]" % messages[0]['status']['id'],
+        if int(messages[0]['status']['groupId']) not in [1, 3]:
+            raise SendException("Received error status: %s" % messages[0]['status']['description'],
                                 events=events, start=start)
 
-        external_id = messages[0]['messageid']
-
-        Channel.success(channel, msg, SENT, start, events=events, external_id=external_id)
+        Channel.success(channel, msg, SENT, start, events=events)
