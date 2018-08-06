@@ -123,3 +123,4 @@ xlrd==1.0.0               # via pyexcel-xls, smartmin, xlutils
 xlutils==2.0.0
 xlwt==1.2.0               # via pyexcel-xls, smartmin, xlutils
 django-cors-headers==2.0.2
+whitenoise>=3.3,<=3.4
