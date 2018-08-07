@@ -26,6 +26,7 @@ from temba.contacts.models import TEL_SCHEME
 from temba.flows.models import FlowRun, ActionLog
 from temba.orgs.models import Org
 from temba.utils import prepped_request_to_str, on_transaction_commit
+from temba.utils.dates import datetime_to_str
 from temba.utils.cache import get_cacheable_attr
 from temba.utils.http import http_headers
 from temba.utils.models import JSONAsTextField
@@ -35,6 +36,7 @@ class APIPermission(BasePermission):
     """
     Verifies that the user has the permission set on the endpoint view
     """
+
     def has_permission(self, request, view):
 
         if getattr(view, 'permission', None):
@@ -68,6 +70,7 @@ class SSLPermission(BasePermission):  # pragma: no cover
     """
     Verifies that the request used SSL if that is required
     """
+
     def has_permission(self, request, view):
         if getattr(settings, 'SESSION_COOKIE_SECURE', False):
             return request.is_secure()
@@ -221,18 +224,37 @@ class WebHookEvent(SmartModel):
         org = flow.org
         channel = msg.channel if msg else None
         contact_urn = msg.contact_urn if (msg and msg.contact_urn) else contact.get_urn()
+        json_time = datetime_to_str(timezone.now())
 
         contact_dict = dict(uuid=contact.uuid, name=contact.name)
         if contact_urn:
             contact_dict['urn'] = contact_urn.urn
 
-        post_data = {
-            'contact': contact_dict,
-            'flow': dict(name=flow.name, uuid=flow.uuid),
-            'path': run.path,
-            'results': run.results,
-            'run': dict(uuid=six.text_type(run.uuid), created_on=run.created_on.isoformat())
-        }
+        if msg:
+            text = msg.text
+        else:
+            # if the action is on the first node we might not have an sms (or channel) yet
+            text = None
+
+        post_data = dict(channel=channel.id if channel else -1,
+                         channel_uuid=channel.uuid if channel else None,
+                         relayer=channel.id if channel else -1,
+                         flow=flow.id,
+                         flow_uuid=flow.uuid,
+                         flow_name=flow.name,
+                         flow_base_language=flow.base_language,
+                         run=run.id,
+                         text=text,
+                         step=six.text_type(node_uuid),
+                         phone=contact.get_urn_display(org=org, scheme=TEL_SCHEME, formatted=False),
+                         contact=contact.uuid,
+                         contact_name=contact.name,
+                         urn=six.text_type(contact_urn),
+                        #  values=json.dumps(values),
+                        #  steps=json.dumps(steps),
+                         time=json_time,
+                         header=headers
+                         )
 
         if msg and msg.id > 0:
             post_data['input'] = dict(urn=msg.contact_urn.urn if msg.contact_urn else None, text=msg.text, attachments=(msg.attachments or []))
@@ -268,10 +290,9 @@ class WebHookEvent(SmartModel):
                 if action == 'GET':
                     response = requests.get(webhook_url, headers=requests_headers, timeout=settings.WEBHOOK_TIMEOUT)
                 else:
-                    requests_headers['Content-type'] = 'application/json'
-                    response = requests.post(webhook_url, data=json.dumps(post_data), headers=requests_headers,
+                    # requests_headers['Content-type'] = 'application/json'
+                    response = requests.post(webhook_url, data=urlencode(post_data, doseq=True), headers=requests_headers,
                                              timeout=settings.WEBHOOK_TIMEOUT)
-
                 body = response.text
                 if body:
                     body = body.strip()
