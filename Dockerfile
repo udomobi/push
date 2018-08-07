@@ -3,6 +3,7 @@ FROM ilha/rapidpro-india:base
 COPY . .
 COPY settings.py.pre ${WEBAPP_HOME}/temba/settings.py
 
+RUN apt-get install -y postgresql-client-9.3
 RUN pip install -r requirements.txt --upgrade
 RUN npm install -g coffeescript less && npm install
 
