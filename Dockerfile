@@ -1,10 +1,13 @@
 FROM ilha/rapidpro-india:base
 
 COPY . .
-COPY settings.py.static ${WEBAPP_HOME}/temba/settings.py
+COPY settings.py.pre ${WEBAPP_HOME}/temba/settings.py
 
 RUN pip install -r requirements.txt --upgrade
-RUN npm install -g coffeescript less && npm install && python manage.py collectstatic --noinput
+RUN npm install -g coffeescript less && npm install
+
+RUN python manage.py collectstatic --noinput
+COPY settings.py.static ${WEBAPP_HOME}/temba/settings.py
 
 EXPOSE 8000
 
