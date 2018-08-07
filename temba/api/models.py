@@ -236,6 +236,21 @@ class WebHookEvent(SmartModel):
             # if the action is on the first node we might not have an sms (or channel) yet
             text = None
 
+        results = run.results
+        values = []
+
+        for key in results.keys():
+            value = results[key]
+            values.append({
+                'category': {"base": value['category']},
+                'node': value['node_uuid'],
+                'time': value['created_on'],
+                'text': value['input'],
+                'rule_value': value['value'],
+                'value': six.text_type(value['value']),
+                'label': value['name']
+            })
+
         post_data = dict(channel=channel.id if channel else -1,
                          channel_uuid=channel.uuid if channel else None,
                          relayer=channel.id if channel else -1,
@@ -250,6 +265,7 @@ class WebHookEvent(SmartModel):
                          contact=contact.uuid,
                          contact_name=contact.name,
                          urn=six.text_type(contact_urn),
+                         values=json.dumps(values),
                          time=json_time,
                          header=headers
                          )
