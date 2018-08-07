@@ -250,8 +250,6 @@ class WebHookEvent(SmartModel):
                          contact=contact.uuid,
                          contact_name=contact.name,
                          urn=six.text_type(contact_urn),
-                        #  values=json.dumps(values),
-                        #  steps=json.dumps(steps),
                          time=json_time,
                          header=headers
                          )
