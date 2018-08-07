@@ -1,0 +1,9 @@
+version: "3.3"
+
+services:
+
+  push_base:
+    image: ilha/push:base
+    build:
+      context: .
+      dockerfile: push_base.Dockerfile
