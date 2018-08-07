@@ -28,14 +28,17 @@ RUN mkdir /udo-rapidpro
 WORKDIR /udo-rapidpro
 RUN virtualenv env
 RUN . env/bin/activate
+
+RUN apt-get update
+RUN apt-get install -y curl gettext --fix-missing
+
 ADD pip-freeze.txt /udo-rapidpro/pip-freeze.txt
 RUN pip install -r pip-freeze.txt
+RUN curl https://bootstrap.pypa.io/get-pip.py | sudo python
 RUN pip install uwsgi
 ADD . /udo-rapidpro
 COPY settings.py.pre /udo-rapidpro/temba/settings.py
 
-RUN apt-get update
-RUN apt-get install -y curl gettext --fix-missing
 RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y nodejs
 RUN npm install -g bower
