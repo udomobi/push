@@ -7,3 +7,10 @@ services:
     build:
       context: .
       dockerfile: push_base.Dockerfile
+  push_prod:
+    image: ilha/push:prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"

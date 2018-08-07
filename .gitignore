@@ -128,3 +128,6 @@ ansible/site.retry
 
 # VS Code projects
 .vscode/
+
+# Settings Build/Deploy
+settings.py.pre
