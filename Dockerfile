@@ -34,7 +34,8 @@ RUN apt-get install -y curl gettext --fix-missing
 
 ADD pip-freeze.txt /udo-rapidpro/pip-freeze.txt
 RUN pip install -r pip-freeze.txt
-RUN python -m pip install --trusted-host pypi.python.org --trusted-host files.pythonhosted.org --trusted-host pypi.org --upgrade pip
+RUN apt-get --auto-remove --yes remove python-openssl
+RUN pip install pyOpenSSL
 RUN pip install uwsgi
 ADD . /udo-rapidpro
 COPY settings.py.pre /udo-rapidpro/temba/settings.py
