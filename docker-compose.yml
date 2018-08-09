@@ -1,0 +1,16 @@
+version: "3.3"
+
+services:
+
+  push_base:
+    image: ilha/rapidpro-base:base
+    build:
+      context: .
+      dockerfile: push_base.Dockerfile
+  push_prod:
+    image: ilha/push:prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"

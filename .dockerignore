@@ -1,0 +1,7 @@
+**/node_modules
+**/env
+.vscode
+temba.backup
+temba.7z
+.env
+.git
