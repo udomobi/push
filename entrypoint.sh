@@ -1,3 +1,10 @@
 #!/bin/bash
+set -e
 
-gunicorn temba.wsgi --log-config gunicorn-logging.conf -c gunicorn.conf.py
+case $1 in
+    supervisor)
+        /usr/bin/supervisord -n -c supervisor-app.conf
+    ;;
+esac
+
+exec "$@"

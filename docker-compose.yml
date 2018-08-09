@@ -3,7 +3,7 @@ version: "3.3"
 services:
 
   push_base:
-    image: ilha/push:base
+    image: ilha/rapidpro-base:base
     build:
       context: .
       dockerfile: push_base.Dockerfile

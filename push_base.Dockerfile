@@ -22,13 +22,3 @@ RUN apt-get update && \
     curl -sL https://deb.nodesource.com/setup_8.x | bash - && apt-get install -y nodejs
 
 RUN npm install -g coffeescript less
-
-COPY pip-freeze.txt .
-
-RUN pip install -r pip-freeze.txt
-
-COPY package.json .
-
-RUN npm install
-
-COPY . .
