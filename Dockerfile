@@ -13,7 +13,7 @@ COPY . .
 COPY settings.py.pre temba/settings.py
 
 RUN python manage.py collectstatic --noinput
-RUN python manage.py compress --extension=.haml
+RUN python manage.py compress --extension=.haml,.html
 
 EXPOSE 8000
 
