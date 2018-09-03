@@ -45,6 +45,7 @@ from temba.utils import analytics, languages
 from temba.utils.http import http_headers
 from temba.utils.timezones import TimeZoneFormField
 from temba.utils.email import is_valid_address
+from temba.nlu.models import BothubConsumer
 from twilio.rest import TwilioRestClient
 from .models import Org, OrgCache, TopUp, Invitation, UserSettings, get_stripe_credentials, ACCOUNT_SID, ACCOUNT_TOKEN
 from .models import MT_SMS_EVENTS, MO_SMS_EVENTS, MT_CALL_EVENTS, MO_CALL_EVENTS, ALARM_EVENTS
@@ -452,7 +453,7 @@ class OrgCRUDL(SmartCRUDL):
                'chatbase', 'choose', 'manage_accounts', 'manage_accounts_sub_org', 'manage', 'update', 'country',
                'languages', 'clear_cache', 'twilio_connect', 'twilio_account', 'nexmo_configuration', 'nexmo_account',
                'nexmo_connect', 'sub_orgs', 'create_sub_org', 'export', 'import', 'plivo_connect', 'resthooks',
-               'service', 'surveyor', 'transfer_credits', 'transfer_to_account', 'smtp_server')
+               'service', 'surveyor', 'transfer_credits', 'transfer_to_account', 'smtp_server', 'bothub')
 
     model = Org
 
@@ -2046,6 +2047,79 @@ class OrgCRUDL(SmartCRUDL):
 
             return super(OrgCRUDL.Chatbase, self).form_valid(form)
 
+    class Bothub(InferOrgMixin, OrgPermsMixin, SmartUpdateView):
+
+        class BothubForm(forms.ModelForm):
+            bothub_authorization_key = forms.CharField(
+                max_length=255,
+                label=_("Bot Authorization Key"),
+                required=False,
+                help_text=_('You can get it inside the bot page on the "Analyze text" tab;'),
+            )
+
+            def clean(self):
+                super(OrgCRUDL.Bothub.BothubForm, self).clean()
+                bothub_authorization_key = self.cleaned_data.get("bothub_authorization_key")
+
+                if not bothub_authorization_key:
+                    raise ValidationError(
+                        _("Missing data: Bothub Authorization Key." "Please check them again and retry")
+                    )
+                else:
+                    bothub = BothubConsumer(bothub_authorization_key)
+                    if not bothub.is_valid_token():
+                        raise ValidationError(_("Incorrect data. Please check Bothub Authorization Key."))
+                    else:
+                        bothub_config = self.instance.bothub_config_json()
+                        repository = bothub.get_repository_info()
+                        if repository.get("uuid") in bothub_config.get("repositories", {}):
+                            raise ValidationError(_("This bot is already connected in your workspace."))
+                return self.cleaned_data
+
+            class Meta:
+                model = Org
+                fields = ("bothub_authorization_key",)
+
+        success_message = ""
+        success_url = "@orgs.org_home"
+        form_class = BothubForm
+
+        def derive_initial(self):
+            initial = super(OrgCRUDL.Bothub, self).derive_initial()
+            org = self.get_object()
+            config = org.bothub_config_json()
+            initial["repositories"] = config.get("repositories", None)
+            return initial
+
+        def get_context_data(self, **kwargs):
+            context = super(OrgCRUDL.Bothub, self).get_context_data(**kwargs)
+            repositories = self.object.get_bothub_repositories()
+
+            if repositories:
+                context["repositories"] = repositories.values()
+
+            return context
+
+        def get(self, *args, **kwargs):
+            user = self.request.user
+            org = user.get_org()
+
+            delete = self.request.GET.get("delete", False) == "true"
+            repository_uuid = self.request.GET.get("repository_uuid", None)
+
+            if delete and repository_uuid:
+                org.bothub_remove_repository(repository_uuid, user)
+                return HttpResponseRedirect(reverse("orgs.org_home"))
+
+            return super(OrgCRUDL.Bothub, self).get(self, *args, **kwargs)
+
+        def form_valid(self, form):
+            user = self.request.user
+            org = user.get_org()
+            bothub_authorization_key = form.cleaned_data.get("bothub_authorization_key")
+            org.bothub_add_repository(bothub_authorization_key, user)
+            return super(OrgCRUDL.Bothub, self).form_valid(form)
+
     class Home(FormaxMixin, InferOrgMixin, OrgPermsMixin, SmartReadView):
         title = _("Your Account")
 
@@ -2128,6 +2202,11 @@ class OrgCRUDL(SmartCRUDL):
                 else:  # pragma: needs cover
                     formax.add_section('chatbase', reverse('orgs.org_chatbase'), icon='icon-chatbase',
                                        action='redirect', nobutton=True)
+
+            if self.has_org_perm("orgs.org_bothub"):
+                formax.add_section(
+                    "bothub", reverse("orgs.org_bothub"), icon="icon-bothub", action="redirect", nobutton=True
+                )
 
             if self.has_org_perm('orgs.org_webhook'):
                 formax.add_section('webhook', reverse('orgs.org_webhook'), icon='icon-cloud-upload')

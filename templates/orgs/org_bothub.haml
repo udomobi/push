@@ -1,0 +1,60 @@
+-extends 'smartmin/form.html'
+
+-load compress temba smartmin i18n
+
+-block form-span
+
+-block title-text
+  .title-text
+    %h1
+      -trans "Bothub Service"
+
+-block summary
+  -trans "Connect your Bothub repository"
+
+-block pre-form
+  -blocktrans
+    Adding a bot from Bothub will allow you to use Artificial Intelligence to predict intents and entities from messages on triggers and flows.
+  %br
+  -blocktrans
+    Visit
+    %a{href: 'https://bothub.it', target: '_blank'}=
+      https://bothub.it
+    to get an open bot or create your own;
+  %hr
+
+-block fields
+  {{ block.super }}
+
+  %button{class: 'btn btn-add-token'}
+    -trans "Add token"
+
+  -if repositories
+    %p
+      %table{class: "table"}
+        %tbody
+          %tr
+            %th
+              -trans "Name"
+            %th
+              -trans "Token"
+            %th
+              -trans "Action"
+
+        -for repository in repositories
+          %tr
+            %td
+              {{ repository.name }}
+            %td
+              {{ repository.authorization_key }}
+            %td
+              %a{href:'{% url "orgs.org_bothub" %}?delete=true&repository_uuid={{ repository.uuid }}'}
+                -trans "Delete"
+
+-block form-buttons
+
+-block extra-style
+  :css
+    .btn-add-token {
+      margin: 0 0 10px 0;
+    }

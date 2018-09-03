@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import regex
 import six
+import json
 
 from django.conf import settings
 from django.db import models
@@ -16,6 +17,7 @@ from temba.flows.models import Flow, FlowRun, FlowStart
 from temba.ivr.models import IVRCall
 from temba.msgs.models import Msg
 from temba.orgs.models import Org
+from temba.nlu.models import BothubConsumer
 from temba_expressions.utils import tokenize
 
 
@@ -34,6 +36,7 @@ class Trigger(SmartModel):
     TYPE_SCHEDULE = 'S'
     TYPE_USSD_PULL = 'U'
     TYPE_INBOUND_CALL = 'V'
+    TYPE_NLU_API = "L"
 
     TRIGGER_TYPES = ((TYPE_KEYWORD, _("Keyword Trigger")),
                      (TYPE_SCHEDULE, _("Schedule Trigger")),
@@ -43,7 +46,8 @@ class Trigger(SmartModel):
                      (TYPE_FOLLOW, _("Follow Account Trigger")),
                      (TYPE_NEW_CONVERSATION, _("New Conversation Trigger")),
                      (TYPE_USSD_PULL, _("USSD Pull Session Trigger")),
-                     (TYPE_REFERRAL, _("Referral Trigger")))
+                     (TYPE_REFERRAL, _("Referral Trigger")),
+                     (TYPE_NLU_API, _("NLU API Trigger")))
 
     KEYWORD_MAX_LEN = 16
 
@@ -91,6 +95,12 @@ class Trigger(SmartModel):
 
     channel = models.ForeignKey(Channel, verbose_name=_("Channel"), null=True, related_name='triggers',
                                 help_text=_("The associated channel"))
+
+    nlu_data = models.TextField(
+        null=True,
+        verbose_name=_("NLU Data"),
+        help_text=_("Intents, confidence, bots, somethings that will be used to nlu"),
+    )
 
     @classmethod
     def create(cls, org, user, trigger_type, flow, channel=None, **kwargs):
@@ -153,7 +163,7 @@ class Trigger(SmartModel):
         """
         now = timezone.now()
 
-        if not self.trigger_type == Trigger.TYPE_SCHEDULE:
+        if not self.trigger_type == Trigger.TYPE_SCHEDULE and not self.trigger_type == Trigger.TYPE_NLU_API:
             matches = Trigger.objects.filter(org=self.org, is_active=True, is_archived=False, trigger_type=self.trigger_type)
 
             # if this trigger has a keyword, only archive others with the same keyword
@@ -440,3 +450,96 @@ class Trigger(SmartModel):
             start.async_start()
 
         self.save()
+
+    def get_nlu_data(self):
+        nlu_data = json.loads(self.nlu_data) if self.nlu_data else {}
+        repositories = self.org.get_bothub_repositories()
+        intents = nlu_data.get("intents", [])
+
+        if repositories:
+            for counter, intent in enumerate(intents):
+                if "intents_replaced" not in nlu_data:
+                    nlu_data["intents_replaced"] = ""
+
+                if "repositories" not in nlu_data:
+                    nlu_data["repositories"] = []
+
+                nlu_data["repositories"].append(intent.get("repository_uuid"))
+                sufix = ", " if counter + 1 < len(intents) else ""
+
+                if intent.get("repository_uuid") in repositories.keys():
+                    repository = repositories[intent.get("repository_uuid")]
+                    nlu_data["intents_replaced"] += "{} - {}{}".format(
+                        intent.get("intent"), repository.get("name"), sufix
+                    )
+
+            if "repositories" in nlu_data:
+                nlu_data["repositories"] = set(nlu_data["repositories"])
+                for repository in nlu_data["repositories"]:
+                    nlu_data[repository] = [
+                        intent.get("intent")
+                        for intent in nlu_data.get("intents")
+                        if repository == intent.get("repository_uuid")
+                    ]
+
+        return nlu_data
+
+    @classmethod
+    def nlu_find_and_handle(cls, msg):
+        words = tokenize(msg.text)
+
+        # skip if message doesn't have any words
+        if not words:
+            return False
+
+        # skip if message contact is currently active in a flow
+        active_run_qs = FlowRun.objects.filter(
+            is_active=True, contact=msg.contact, flow__is_active=True, flow__is_archived=False
+        )
+        active_run = active_run_qs.order_by("-created_on", "-pk").first()
+
+        if active_run and active_run.flow.ignore_triggers and not active_run.is_completed():
+            return False
+
+        triggers = Trigger.get_triggers_of_type(msg.org, Trigger.TYPE_NLU_API)
+
+        for trigger in triggers:
+            nlu_data = trigger.get_nlu_data()
+            repositories = msg.org.get_bothub_repositories()
+
+            if repositories and nlu_data and nlu_data.get("intents", None):
+                responses = {}
+                for nlu_bot in nlu_data.get("intents"):
+                    repository_uuid = nlu_bot.get("repository_uuid")
+                    try:
+                        if repository_uuid not in responses.keys():
+                            bothub = BothubConsumer(repositories[repository_uuid].get("authorization_key"))
+                            responses[repository_uuid] = bothub.predict(msg, msg.contact.language)
+                    except Exception:  # pragma: needs cover
+                        return False
+
+                    intent, confidence, entities = responses[repository_uuid]
+                    if intent in nlu_bot.get("intent") and confidence * 100 >= nlu_data.get("confidence"):
+                        contact = msg.contact
+                        contact.ensure_unstopped()
+
+                        trigger.flow.start(
+                            [],
+                            [contact],
+                            start_msg=msg,
+                            restart_participants=True,
+                            extra=dict(intent=intent, entities=entities),
+                        )
+                        return True
+        return False
+
+    @classmethod
+    def remove_triggers_nlu(cls, repository_uuid, user):
+        triggers = Trigger.get_triggers_of_type(user.get_org(), Trigger.TYPE_NLU_API)
+        for trigger in triggers:
+            nlu_data = json.loads(trigger.nlu_data)
+            intents = nlu_data.get("intents", [])
+            for intent in intents:
+                if repository_uuid == intent.get("repository_uuid"):
+                    trigger.archive(user)
+        return True

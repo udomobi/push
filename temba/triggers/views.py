@@ -25,6 +25,7 @@ from temba.flows.models import Flow
 from temba.msgs.views import ModalMixin
 from temba.utils import analytics, on_transaction_commit
 from temba.utils.views import BaseActionForm
+from temba.nlu.models import BothubConsumer
 from .models import Trigger
 
 
@@ -365,6 +366,62 @@ class UssdTriggerForm(BaseTriggerForm):
         fields = ('keyword', 'channel', 'flow')
 
 
+class BothubTriggerForm(GroupBasedTriggerForm):
+    """
+    For for catch NLU triggers
+    """
+    confidence_choice = tuple(((n * 10, "{0}%".format(n * 10)) for n in range(1, 10)))
+    confidence = forms.ChoiceField(
+        confidence_choice,
+        initial=60,
+        required=True,
+        label=_("Confidence Rate"),
+        help_text=_("Only apply this trigger to messages which has a confidence level between 10% and 90%"),
+    )
+    bots = forms.MultipleChoiceField(
+        label=_("Intents"),
+        required=True,
+        help_text=_("Intents from bots that you've added in the organization settings"),
+    )
+    intents = forms.CharField(widget=forms.HiddenInput(attrs={"id": "bothub_trigger_intents"}), required=True)
+
+    def __init__(self, user, *args, **kwargs):
+        org = user.get_org()
+        flows = Flow.objects.filter(org=org, is_active=True, is_archived=False, flow_type__in=[Flow.FLOW])
+        super(BothubTriggerForm, self).__init__(user, flows, *args, **kwargs)
+        self.fields["bots"].choices = BothubTriggerForm.get_repositories_by_org(org)
+
+    def clean(self):
+        cleaned_data = super(BaseTriggerForm, self).clean()
+        cleaned_data["confidence"] = int(cleaned_data["confidence"])
+        return cleaned_data
+
+    @staticmethod
+    def get_repositories_by_org(org):
+        repositories = org.get_bothub_repositories()
+        intents_items = dict()
+
+        if repositories:
+            repositories = repositories.values()
+
+            for repository in repositories:
+                bothub = BothubConsumer(repository.get("authorization_key"))
+                intents = bothub.get_intents()
+
+                for intent in intents:
+                    repository_name = repository.get("name")
+                    if repository_name not in intents_items.keys():
+                        intents_items[repository_name] = ()
+
+                    if intent:
+                        intents_items[repository_name] += (("{}${}".format(intent, repository.get("uuid")), intent),)
+
+        return intents_items.items()
+
+    class Meta(BaseTriggerForm.Meta):
+        fields = ("flow", "groups", "confidence")
+
+
 class TriggerActionForm(BaseActionForm):
     allowed_actions = (('archive', _("Archive Triggers")),
                        ('restore', _("Restore Triggers")))
@@ -396,7 +453,7 @@ class TriggerCRUDL(SmartCRUDL):
     model = Trigger
     actions = ('list', 'create', 'update', 'archived',
                'keyword', 'register', 'schedule', 'inbound_call', 'missed_call', 'catchall', 'follow',
-               'new_conversation', 'referral', 'ussd')
+               'new_conversation', 'referral', 'ussd', 'bothub',)
 
     class OrgMixin(OrgPermsMixin):
         def derive_queryset(self, *args, **kwargs):
@@ -433,6 +490,9 @@ class TriggerCRUDL(SmartCRUDL):
                 add_section('trigger-ussd', 'triggers.trigger_ussd', 'icon-mobile')
             add_section('trigger-catchall', 'triggers.trigger_catchall', 'icon-bubble')
 
+            if self.org.get_bothub_repositories():
+                add_section("trigger-nlu-api", "triggers.trigger_bothub", "icon-bothub")
+
     class Update(ModalMixin, OrgMixin, SmartUpdateView):
         success_message = ''
         trigger_forms = {Trigger.TYPE_KEYWORD: KeywordTriggerForm,
@@ -443,7 +503,8 @@ class TriggerCRUDL(SmartCRUDL):
                          Trigger.TYPE_FOLLOW: FollowTriggerForm,
                          Trigger.TYPE_NEW_CONVERSATION: NewConversationTriggerForm,
                          Trigger.TYPE_USSD_PULL: UssdTriggerForm,
-                         Trigger.TYPE_REFERRAL: ReferralTriggerForm}
+                         Trigger.TYPE_REFERRAL: ReferralTriggerForm,
+                         Trigger.TYPE_NLU_API: BothubTriggerForm}
 
         def get_form_class(self):
             trigger_type = self.object.trigger_type
@@ -890,4 +951,42 @@ class TriggerCRUDL(SmartCRUDL):
         def get_form_kwargs(self):
             kwargs = super(TriggerCRUDL.Ussd, self).get_form_kwargs()
             kwargs['auto_id'] = "id_ussd_%s"
+            return kwargs
+
+    class Bothub(CreateTrigger):
+        form_class = BothubTriggerForm
+
+        def pre_process(self, request, *args, **kwargs):
+            if not request.user.get_org().get_bothub_repositories():
+                return HttpResponseRedirect(reverse("triggers.trigger_create"))
+            return super(TriggerCRUDL.Bothub, self).pre_process(request, *args, **kwargs)
+
+        def form_valid(self, form):
+            user = self.request.user
+            org = user.get_org()
+
+            groups = form.cleaned_data["groups"]
+            intents = form.cleaned_data["intents"]
+            nlu_data = dict()
+
+            if intents:
+                nlu_data.update(
+                    {"intents": list(json.loads(intents).values()), "confidence": form.cleaned_data["confidence"]}
+                )
+
+            self.object = Trigger.create(
+                org, user, Trigger.TYPE_NLU_API, form.cleaned_data["flow"], nlu_data=json.dumps(nlu_data)
+            )
+
+            for group in groups:
+                self.object.groups.add(group)
+
+            analytics.track(self.request.user.username, "temba.trigger_created_bothub")
+            response = self.render_to_response(self.get_context_data(form=form))
+            response["REDIRECT"] = self.get_success_url()
+            return response
+
+        def get_form_kwargs(self):
+            kwargs = super(TriggerCRUDL.Bothub, self).get_form_kwargs()
+            kwargs["auto_id"] = "id_nlu_api_%s"
             return kwargs

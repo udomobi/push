@@ -1,0 +1,38 @@
+-extends 'smartmin/form.html'
+-load i18n
+
+-block summary
+  -trans "Start a flow based on NLU intent"
+
+-block extra-script
+  :javascript
+    $(document).ready(function() {
+      select2div("#id_nlu_api_flow", "520px");
+      select2div("#id_nlu_api_confidence", "520px");
+      var intentsToSave = {};
+
+      $("#id_nlu_api_bots, #id_nlu_api_groups").select2({
+        containerCssClass: "select2-temba-field"
+      });
+
+      $('#id_nlu_api_bots').change((event) => {
+        if (event.added) {
+          var selectSplited = event.added.id.split('$');
+          intentsToSave[event.added.id] = {
+            intent: selectSplited[0],
+            repository_uuid: selectSplited[1],
+          };
+        } else if (event.removed) {
+          delete intentsToSave[event.removed.id];
+        }
+        $('#bothub_trigger_intents').val(JSON.stringify(intentsToSave));
+      });
+    });
+
+-block extra-style
+  :css
+    @media (min-width: 1200px) {
+      .span12 {
+        width: 100% !important;
+      }
+    }

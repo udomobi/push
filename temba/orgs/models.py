@@ -13,6 +13,7 @@ import regex
 import six
 import stripe
 import traceback
+import json
 
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -37,6 +38,7 @@ from requests import Session
 from smartmin.models import SmartModel
 from temba.bundles import get_brand_bundles, get_bundle_map
 from temba.locations.models import AdminBoundary, BoundaryAlias
+from temba.nlu.models import BothubConsumer
 from temba.utils import analytics, languages
 from temba.utils.cache import get_cacheable_result, get_cacheable_attr, incrby_existing
 from temba.utils.currencies import currency_for_country
@@ -234,6 +236,10 @@ class Org(SmartModel):
 
     parent = models.ForeignKey('orgs.Org', null=True, blank=True, help_text=_('The parent org that manages this org'))
 
+    nlu_api_config = models.TextField(
+        null=True, verbose_name=_("NLU API Configuration"), help_text=_("Settings for Natural Language Understand API")
+    )
+
     @classmethod
     def get_unique_slug(cls, name):
         slug = slugify(name)
@@ -387,6 +393,11 @@ class Org(SmartModel):
                     flows=exported_flows,
                     campaigns=exported_campaigns,
                     triggers=exported_triggers)
+
+    def bothub_config_json(self):
+        if self.nlu_api_config:
+            return json.loads(self.nlu_api_config)
+        return dict()
 
     def can_add_sender(self):  # pragma: needs cover
         """
@@ -898,6 +909,49 @@ class Org(SmartModel):
             return chatbase_api_key, chatbase_version
         else:
             return None, None
+
+    def bothub_add_repository(self, authorization_key, user):
+        bothub_config = self.bothub_config_json()
+
+        if "repositories" not in bothub_config.keys():
+            bothub_config.update({"repositories": dict()})
+
+        bothub = BothubConsumer(authorization_key)
+        if bothub.is_valid_token():
+            repository = bothub.get_repository_info()
+
+            if repository.get("uuid") not in bothub_config.get("repositories"):
+                bothub_config.get("repositories").update(
+                    {
+                        repository.get("uuid"): {
+                            "name": repository.get("name"),
+                            "authorization_key": bothub.get_authorization_key(),
+                            "uuid": repository.get("uuid"),
+                        }
+                    }
+                )
+                self.save_nlu_config(user, json.dumps(bothub_config))
+
+    def bothub_remove_repository(self, repository_uuid, user):
+        from temba.triggers.models import Trigger
+
+        bothub_config = self.bothub_config_json()
+
+        if repository_uuid in bothub_config.get("repositories", {}):
+            bothub_config.get("repositories").pop(repository_uuid)
+            Trigger.remove_triggers_nlu(repository_uuid, user)
+            self.save_nlu_config(user, json.dumps(bothub_config))
+
+    def save_nlu_config(self, user, config):
+        self.nlu_api_config = config
+        self.modified_by = user
+        self.save()
+
+    def get_bothub_repositories(self):
+        bothub_config = self.bothub_config_json()
+        if bothub_config:
+            return bothub_config.get("repositories")
+        return None
 
     def get_verboice_client(self):  # pragma: needs cover
         from temba.ivr.clients import VerboiceClient

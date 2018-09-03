@@ -19,3 +19,12 @@ class CatchAllHandler(MessageHandler):
 
     def handle(self, msg):
         return Trigger.catch_triggers(msg, Trigger.TYPE_CATCH_ALL, msg.channel)
+
+
+class TriggerNluHandler(MessageHandler):
+
+    def __init__(self):
+        super(TriggerNluHandler, self).__init__("triggers nlu")
+
+    def handle(self, msg):
+        return Trigger.nlu_find_and_handle(msg)

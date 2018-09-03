@@ -379,6 +379,7 @@ PERMISSIONS = {
     'orgs.org': ('accounts',
                  'smtp_server',
                  'api',
+                 'bothub',
                  'country',
                  'chatbase',
                  'clear_cache',
@@ -490,6 +491,7 @@ PERMISSIONS = {
 
     'triggers.trigger': ('archived',
                          'catchall',
+                         'bothub',
                          'follow',
                          'inbound_call',
                          'keyword',
@@ -593,6 +595,7 @@ GROUP_PERMISSIONS = {
         'locations.adminboundary_geometry',
 
         'orgs.org_accounts',
+        'orgs.org_bothub',
         'orgs.org_smtp_server',
         'orgs.org_api',
         'orgs.org_dashboard',
@@ -1120,6 +1123,7 @@ SEND_CALLS = False
 
 MESSAGE_HANDLERS = [
     'temba.triggers.handlers.TriggerHandler',
+    'temba.triggers.handlers.TriggerNluHandler',
     'temba.flows.handlers.FlowHandler',
     'temba.triggers.handlers.CatchAllHandler'
 ]
@@ -1260,3 +1264,8 @@ TWILIO_VOICE_LANGUAGES = {
     'chi': 'zh-CN',
     'zho': 'zh-CN',
 }
+
+# -----------------------------------------------------------------------------------
+# Bothub and WIT.AI integration url
+# -----------------------------------------------------------------------------------
+BOTHUB_BASE_URL = "http://staging.bothub.it:2657"

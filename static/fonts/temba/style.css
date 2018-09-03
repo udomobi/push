@@ -1,10 +1,10 @@
 @font-face {
   font-family: 'temba';
-  src:  url('fonts/temba.eot?nnh7cv');
-  src:  url('fonts/temba.eot?nnh7cv#iefix') format('embedded-opentype'),
-    url('fonts/temba.ttf?nnh7cv') format('truetype'),
-    url('fonts/temba.woff?nnh7cv') format('woff'),
-    url('fonts/temba.svg?nnh7cv#icomoon') format('svg');
+  src:  url('fonts/temba.eot?t3r2t7');
+  src:  url('fonts/temba.eot?t3r2t7#iefix') format('embedded-opentype'),
+    url('fonts/temba.ttf?t3r2t7') format('truetype'),
+    url('fonts/temba.woff?t3r2t7') format('woff'),
+    url('fonts/temba.svg?t3r2t7#temba') format('svg');
   font-weight: normal;
   font-style: normal;
 }
@@ -24,6 +24,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-bothub:before {
+  content: "\e900";
+}
 .icon-circle-2:before {
   content: "\e000";
 }
@@ -742,37 +745,37 @@
   content: "\e80b";
 }
 .icon-telegram:before {
-  content: "\e900";
-}
-.icon-file_download:before {
   content: "\e901";
 }
-.icon-mtarget:before {
+.icon-file_download:before {
   content: "\e902";
 }
-.icon-icon-chatbase:before {
+.icon-mtarget:before {
   content: "\e903";
 }
-.icon-quick-reply:before {
+.icon-chatbase:before {
   content: "\e904";
 }
-.icon-facebook-official:before {
+.icon-quick-reply:before {
   content: "\e905";
 }
-.icon-jiochat:before {
+.icon-facebook-official:before {
   content: "\e906";
 }
-.icon-line:before {
+.icon-jiochat:before {
   content: "\e907";
 }
-.icon-viber:before {
+.icon-line:before {
   content: "\e908";
 }
-.icon-cloud-lightning:before {
+.icon-viber:before {
   content: "\e909";
 }
-.icon-junebug:before {
+.icon-cloud-lightning:before {
   content: "\e90a";
+}
+.icon-junebug:before {
+  content: "\e90b";
 }
 .icon-fcm:before {
   content: "\e90c";
@@ -786,8 +789,14 @@
 .icon-whatsapp:before {
   content: "\ea93";
 }
+.icon-wechat:before {
+  content: "\ea94";
+}
 .icon-volume-medium:before {
   content: "\ed90";
+}
+.icon-arrow-up:before {
+  content: "\edc7";
 }
 .icon-nav-docs:before {
   content: "\f0f6";
@@ -797,7 +806,4 @@
 }
 .icon-nav-docs-inverted:before {
   content: "\f15c";
-}
-.icon-button-url:before {
-  content: "\e90b";
 }
