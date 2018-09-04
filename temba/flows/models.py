@@ -43,6 +43,7 @@ from temba.locations.models import AdminBoundary
 from temba.msgs.models import Broadcast, Msg, FLOW, INBOX, INCOMING, QUEUED, FAILED, INITIALIZING, HANDLED, Label
 from temba.msgs.models import PENDING, DELIVERED, USSD as MSG_TYPE_USSD, OUTGOING, UnreachableException
 from temba.orgs.models import Org, Language, get_current_export_version
+from temba.nlu.models import BothubConsumer
 from temba.utils import analytics, chunk_list, on_transaction_commit, goflow
 from temba.utils.dates import get_datetime_format, str_to_datetime, datetime_to_str, json_date_to_datetime
 from temba.utils.email import is_valid_address
@@ -391,7 +392,7 @@ class Flow(TembaModel):
                                                 help_text=_("Minutes of inactivity that will cause expiration from flow"))
 
     ignore_triggers = models.BooleanField(default=False,
-                                          help_text=_("Ignore keyword triggers while in this flow"))
+                                          help_text=_("Ignore keyword and NLU triggers while in this flow"))
 
     saved_on = models.DateTimeField(auto_now_add=True,
                                     help_text=_("When this item was saved"))
@@ -3172,6 +3173,9 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
         return run
 
     def build_expressions_context(self, contact_context=None):
+        from temba.utils.expressions import evaluate_template
+        from temba_expressions.evaluator import EvaluationContext, DateStyle
+
         """
         Builds the @flow expression context for this run
         """
@@ -3179,13 +3183,32 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
             """
             Wraps a result, lets us do a nice representation of both @flow.foo and @flow.foo.text
             """
-            return {
+            result = {
                 '__default__': res[FlowRun.RESULT_VALUE],
                 'text': res.get(FlowRun.RESULT_INPUT),
                 'time': res[FlowRun.RESULT_CREATED_ON],
                 'category': res.get(FlowRun.RESULT_CATEGORY_LOCALIZED, res[FlowRun.RESULT_CATEGORY]),
                 'value': res[FlowRun.RESULT_VALUE]
             }
+            try:
+                res_json = json.loads(res[FlowRun.RESULT_VALUE])
+                print(res_json)
+                if "intent" in res_json.keys():
+                    result["intent"] = res_json.get("intent", None)
+                if "entities" in res_json.keys():
+                    return res_json.get("entities", None)
+                    # {   }
+                    # print(a.get('animal'))
+
+                    # # context = EvaluationContext(context, tz, date_style)
+
+                    # b = evaluate_template(a.get('animal'), [], False, False)
+                    # print(b)
+                    # result["entities"] = a
+            except Exception:
+                pass
+
+            return result
 
         context = {}
         default_lines = []
@@ -6584,6 +6607,7 @@ class Test(object):
                 DateTest.TYPE: DateTest,
                 HasDistrictTest.TYPE: HasDistrictTest,
                 HasEmailTest.TYPE: HasEmailTest,
+                HasIntentTest.TYPE: HasIntentTest,
                 HasStateTest.TYPE: HasStateTest,
                 HasWardTest.TYPE: HasWardTest,
                 InGroupTest.TYPE: InGroupTest,
@@ -6978,6 +7002,55 @@ class HasEmailTest(Test):
             word = word.strip(',.;:|()[]"\'<>?&*/\\')
             if is_valid_address(word):
                 return 1, word
+
+        return 0, None
+
+
+class HasIntentTest(Test):
+    """
+    {
+        "op": "has_intent",
+        "test": {
+            "bot": {
+                "bot_id": "bot_1",
+                "bot_name": "bot 1",
+                "id": "id1",
+                "name": "intent 2"
+            }
+        }
+    }
+    """
+
+    TEST = "test"
+    TYPE = "has_intent"
+
+    def __init__(self, test):
+        self.test = test
+
+    @classmethod
+    def from_json(cls, org, json):
+        return cls(json[cls.TEST])
+
+    def as_json(self):
+        return dict(type=HasIntentTest.TYPE, test=self.test)
+
+    def evaluate(self, run, sms, context, text):
+        repositories = sms.org.get_bothub_repositories()
+        if repositories:
+            test = self.as_json().get("test", None)
+            confidence = test.get("confidence", 0)
+            intent_data = test.get("intent", {})
+
+            try:
+                repository_uuid = intent_data.get("bot_id", None)
+                repository = repositories[repository_uuid]
+                bothub = BothubConsumer(repository.get("authorization_key"))
+                predicted_intent, predicted_confidence, entities = bothub.predict(text)
+            except Exception:  # pragma: needs cover
+                return 0, None
+
+            if predicted_intent == intent_data.get("name") and predicted_confidence * 100 >= confidence:
+                return 1, json.dumps(dict(intent=predicted_intent, entities=entities))
 
         return 0, None
 

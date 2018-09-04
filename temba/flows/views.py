@@ -45,6 +45,8 @@ from temba.utils.dates import datetime_to_str
 from temba.utils.expressions import get_function_listing
 from temba.utils.goflow import get_client
 from temba.utils.views import BaseActionForm
+from temba.nlu.models import BothubConsumer
+
 from uuid import uuid4
 from .models import FlowStep, RuleSet, ActionLog, ExportFlowResultsTask, FlowLabel, FlowPathRecentRun
 from .models import FlowUserConflictException, FlowVersionConflictException, FlowInvalidCycleException
@@ -212,7 +214,7 @@ class FlowCRUDL(SmartCRUDL):
     actions = ('list', 'archived', 'copy', 'create', 'delete', 'update', 'simulate', 'export_results',
                'upload_action_recording', 'editor', 'results', 'run_table', 'category_counts', 'json',
                'broadcast', 'activity', 'activity_chart', 'filter', 'campaign', 'completion', 'revisions',
-               'recent_messages', 'assets', 'upload_media_action')
+               'recent_messages', 'assets', 'upload_media_action', 'nlu',)
 
     model = Flow
 
@@ -686,6 +688,20 @@ class FlowCRUDL(SmartCRUDL):
 
             return qs
 
+    class Nlu(OrgPermsMixin, SmartListView):
+        def render_to_response(self, context, **response_kwargs):
+            repositories = self.request.user.get_org().get_bothub_repositories()
+            intents = []
+            if repositories:
+                repositories = repositories.values()
+                for repository in repositories:
+                    bothub = BothubConsumer(repository.get("authorization_key"))
+                    intents += [
+                        dict(name=intent, bot_id=repository.get("uuid"), bot_name=repository.get("name"))
+                        for intent in bothub.get_intents()
+                    ]
+            return JsonResponse(dict(bots_intents=intents))
+
     class Completion(OrgPermsMixin, SmartListView):
         def render_to_response(self, context, **response_kwargs):
 
@@ -747,6 +763,13 @@ class FlowCRUDL(SmartCRUDL):
                     flow_variables.append(dict(name='flow.%s.category' % key, display='%s Category' % rule_set.label))
                     flow_variables.append(dict(name='flow.%s.text' % key, display='%s Text' % rule_set.label))
                     flow_variables.append(dict(name='flow.%s.time' % key, display='%s Time' % rule_set.label))
+
+                    repositories = org.get_bothub_repositories()
+                    if repositories is not None:
+                        flow_variables.append(dict(name="flow.%s.intent" % key, display="%s Intent" % rule_set.label))
+                        flow_variables.append(
+                            dict(name="flow.%s.entities" % key, display="%s Entities" % rule_set.label)
+                        )
 
             function_completions = get_function_listing()
             messages_completions = contact_variables + date_variables + flow_variables

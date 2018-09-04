@@ -73,7 +73,6 @@
         %input#start-datetime{ name:'start_datetime', value:'{% trans "Select a date" %}'}
         %input#start-datetime-value{ hidden:'true', name:'start_datetime_value', value:''}
         %input#later-option{name:'start',type:'hidden',value:'later'}
-
     #recurrence{class:'{% if object.schedule.status != "S" %}hide{%endif%}'}
       .repeat-period
         %p.instructions
@@ -94,39 +93,29 @@
             -trans "Sat"
           #sun.btn{value:128, class:'{% if 6 in days %}active{% endif %}'}
             -trans "Sun"
-
         %input#repeat-days-value{name:'repeat_days', type:'hidden'}
-
     -else
       {{block.super}}
-
-
 -block extra-style
   {{block.super}}
   :css
     #id_action_join_group {
       width: 100%;
     }
-
     #schedule-options {
       margin-top: 10px;
     }
-
 -block modal-script
   {{block.super}}
   %script{src:"{{ STATIC_URL }}js/schedules-ui.js"}
-
   :javascript
     var user_tz = "{{ user_tz }}";
     var user_tz_offset = {{ user_tz_offset }};
-
     $(document).ready(function() {
-
       {% if object.trigger_type == 'C' %}
         select2div("#id_catchall_flow", "520px", '{% trans "Flow to start" %}');
         $("#id_groups").select2({ containerCssClass: "select2-temba-field" })
       {% endif %}
-
       {% if object.trigger_type == 'U' %}
         select2div("#id_channel", "520px", '{% trans "USSD channel" %}');
       {% endif %}
@@ -149,6 +138,45 @@
 
       {% if object.trigger_type == 'K' or object.trigger_type == 'V' %}
         $('#id_groups').select2({ containerCssClass: "select2-temba-field" });
+      {% endif %}
+
+      {% if object.trigger_type == 'L' %}
+        $("#id_groups").select2({
+          containerCssClass: "select2-temba-field"
+        });
+        $("#id_bots").select2({
+          containerCssClass: "select2-temba-field"
+        });
+
+        var intentsToSave = {};
+        $('#id_bots').val( {% autoescape off %} {{ intents }} {% endautoescape %}).trigger('change');
+        $('#id_bots option:selected').each(function() {
+          var selectSplited = $(this).val().split('$');
+          intentsToSave[$(this).val()] = {
+            intent: selectSplited[0],
+            repository_uuid: selectSplited[1],
+          };
+        }).promise().done(function() {
+          $('#bothub_trigger_intents').val(JSON.stringify(intentsToSave));
+        });
+
+        $("#id_confidence").select2({
+          containerCssClass: "select2-temba-field"
+        });
+        $('#id_confidence').val({{ confidence }}).trigger('change');
+
+        $('#id_bots').change((event) => {
+          if (event.added) {
+            var selectSplited = event.added.id.split('$');
+            intentsToSave[event.added.id] = {
+              intent: selectSplited[0],
+              repository_uuid: selectSplited[1],
+            };
+          } else if (event.removed) {
+            delete intentsToSave[event.removed.id];
+          }
+          $('#bothub_trigger_intents').val(JSON.stringify(intentsToSave));
+        });
       {% endif %}
 
       new AutoComplete({{completions|safe}}, {{function_completions|safe}}).bind($('#id_response'));
@@ -180,4 +208,3 @@
       setNextFireText({{ object.schedule.next_fire|date:"U" }})
       {% endif %}
     });
-

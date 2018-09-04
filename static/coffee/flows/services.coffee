@@ -532,6 +532,7 @@ app.factory 'Flow', ['$rootScope', '$window', '$http', '$timeout', '$interval', 
         { type: 'true', name: 'Other', verbose_name:'contains anything', operands: 0, filter: NONE }
         { type: 'timeout', name:'Timeout', verbose_name:'timeout', operands:0, filter: NONE }
         { type: 'interrupted_status', name:'Interrupted', verbose_name:'interrupted status', operands:0, filter: NONE }
+        { type: 'has_intent', name:'Has intent', verbose_name:'has an intent', operands:3, filter: ALL_TEXT }
       ]
 
       @opNames =
@@ -1010,6 +1011,10 @@ app.factory 'Flow', ['$rootScope', '$window', '$http', '$timeout', '$interval', 
       Revisions.updateRevisions(flowId)
 
       Flow = @
+
+      $http.get('/flow/nlu/').success (data) ->
+        Flow.nluInformations = data
+
       $http.get('/flow/json/' + flowId + '/').success (data) ->
 
         flow = data.flow
@@ -1364,6 +1369,8 @@ app.factory 'Flow', ['$rootScope', '$window', '$http', '$timeout', '$interval', 
       @checkTerminal(actionset)
       @markDirty()
 
+      getIntentsFromEntity: (token, entity) ->
+        return $http.get('/flow/nlu/?token=' + token + '&entity=' + entity).success (data) ->
 ]
 
 ModalController = ($scope, $modalInstance, type, title, body, hideCancel=false, details=null, ok=null) ->

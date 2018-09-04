@@ -1151,6 +1151,11 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
   flow = Flow.flow
 
   $scope.flowFields = Flow.getFlowFields(ruleset)
+
+  if Flow.nluInformations instanceof Object
+    $scope.listBotsIntents = Flow.nluInformations.bots_intents
+    $scope.confidenceBaseList = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+
   $scope.fieldIndexOptions = [{text:'first', id: 0},
                               {text:'second', id: 1},
                               {text:'third', id: 2},
@@ -1273,8 +1278,11 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
         if rule._config.localized
           rule.test._base = rule.test.test[Flow.flow.base_language]
         else
-          rule.test =
-            _base: rule.test.test
+          type = rule.test.type
+          rule.test = _base: rule.test.test
+          if type == 'has_intent'
+            index = $scope.listBotsIntents.map((x) -> return x.name).indexOf(rule.test._base.intent.name)
+            rule.test._base.intent = $scope.listBotsIntents[index]
 
     # and finally the category name
     rule.category._base = rule.category[Flow.flow.base_language]
@@ -1306,6 +1314,18 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
     scroll:false
     placeholder: "sort-placeholder"
 
+  $scope.initHasIntent = (rule, clearIntents=false) ->
+    if not (rule.test._base instanceof Object)
+      rule.test._base = {}
+    else
+      rule.intentsFromEntityDisabled = true
+
+  $scope.removeHasIntentProp = (rule) ->
+    if rule.test.hasOwnProperty('intent')
+      delete rule.test.intent
+    if rule.test._base instanceof Object
+      delete rule.test._base
+
   $scope.updateCategory = (rule) ->
 
     # only auto name things if our flag is set
@@ -1314,6 +1334,11 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
       return
 
     categoryName = $scope.getDefaultCategory(rule)
+
+    if rule._config.type != 'has_intent'
+      $scope.removeHasIntentProp(rule)
+    else
+      $scope.initHasIntent(rule, true)
 
     if rule.category
       rule.category._base = categoryName
@@ -1341,7 +1366,7 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
   $scope.getDefaultCategory = (rule) ->
 
     categoryName = ''
-    if rule.test and rule.test._base
+    if rule.test and rule.test._base? and typeof(rule.test._base) == "string" and rule._config.type != "has_intent"
       categoryName = rule.test._base.strip()
 
     op = rule._config.type
@@ -1367,6 +1392,11 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
       categoryName = "phone"
     else if op == "has_email"
       categoryName = "email"
+    else if op == "has_intent"
+      categoryName = "intent"
+      if rule.test._base instanceof Object
+        if rule.test._base.hasOwnProperty('intent')
+          categoryName = rule.test._base.intent.name
     else if op == "regex"
       categoryName = "matches"
     else if op == "date"
@@ -1443,6 +1473,26 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
           _autoName: true
           _base: ''
         _config: if window.ivr then Flow.getOperatorConfig('starts') else Flow.getOperatorConfig('contains_any')
+  , true
+
+  modalResize = () ->
+    modal = angular.element(document.querySelector('#modal-dialog'))
+    if modal.context
+      modal.context.style.width = '660px'
+      modal.context.style.marginLeft = '-330px'
+
+      for rule in $scope.ruleset.rules
+        if rule._config.type == 'has_intent'
+          modal.context.style.width = '823px'
+          modal.context.style.marginLeft = '-448px'
+          break
+
+  checkModalHasIntent = $scope.$watch (->$modalInstance.opened), ->
+    modalResize()
+  , true
+
+  checkRulesHasIntent = $scope.$watch (->$scope.ruleset), ->
+    modalResize()
   , true
 
   $scope.updateRules = (ruleset, rulesetConfig, splitEditor) ->

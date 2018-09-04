@@ -460,6 +460,7 @@ PERMISSIONS = {
                    'simulate',
                    'upload_action_recording',
                    'upload_media_action',
+                   'nlu',
                    ),
 
     'msgs.msg': ('api',

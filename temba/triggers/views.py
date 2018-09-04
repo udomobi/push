@@ -412,10 +412,8 @@ class BothubTriggerForm(GroupBasedTriggerForm):
                     repository_name = repository.get("name")
                     if repository_name not in intents_items.keys():
                         intents_items[repository_name] = ()
-
                     if intent:
                         intents_items[repository_name] += (("{}${}".format(intent, repository.get("uuid")), intent),)
-
         return intents_items.items()
 
     class Meta(BaseTriggerForm.Meta):

@@ -36,7 +36,6 @@
               - if org_perms.triggers.trigger_create
                 %a.btn.btn-primary.btn-block.create_trigger.new-trigger{href:"{% url 'triggers.trigger_create' %}"}
                   -trans "Create Trigger"
-
             #sidebar-nav
               %ul.nav.nav-list.level1
                 %li.nav-header
@@ -45,13 +44,11 @@
                   %li{'class':"{% if folder.url == request_url %}active{% endif %}" }
                     %a{'href':'{{folder.url}}'}
                       {{ folder.label }} ({{ folder.count }})
-
           -block trigger-list
             .span9
               - block buttons
                 .pull-right
                   -block buttons-right
-
                 - if org_perms.triggers.trigger_update
                   .list-buttons-container
                     .list-buttons
@@ -60,13 +57,11 @@
                           %a.object-btn-restore{'href':'#'}
                             %button.btn{data-toggle:'tooltip', data-trigger:'hover', data-delay:"800", data-placement:'top', data-original-title:'{% trans "Activate" %}'}
                               .glyph.icon-feed
-
                       -if 'archive' in actions
                         %span.btn-group
                           %a.object-btn-archive{'href':'#'}
                             %button.btn{data-toggle:'tooltip', data-trigger:'hover', data-delay:"800", data-placement:'top', data-original-title:'{% trans "Archive" %}'}
                               .glyph.icon-box
-
               %table.list-table.trigger-list.object-list.table.table-condensed{style: '{% if not org_perms.triggers.trigger_update %}margin-top:10px{% endif %}'}
                 %tbody
                   -for obj in object_list
@@ -159,6 +154,20 @@
                             %span.attn
                               %a{href:'{%url "channels.channel_read" obj.channel.uuid %}'}= obj.channel
 
+                        -elif obj.trigger_type == 'L'
+                          -trans "The intents"
+                          %span.attn{style:"{% if not org_perms.triggers.trigger_update %}font-weight:bold;{% endif %}"}
+                            - if org_perms.triggers.trigger_update
+                              %a.update-trigger{data-object-id:"{{ obj.id }}", href:"#"}= obj.get_nlu_data.intents_replaced
+                            - else
+                              =obj.keyword
+                            -if obj.channel
+                              on
+                              %span.attn
+                                %a{href:'{%url "channels.channel_read" obj.channel.uuid %}'}= obj.channel
+                          -trans "with confidence more than"
+                            {{ obj.get_nlu_data.confidence }}%
+
                         -if obj.schedule
                           -trans "The"
                         -else
@@ -237,4 +246,3 @@
        modal.setRedirectOnSuccess(true);
        modal.show();
     });
-    

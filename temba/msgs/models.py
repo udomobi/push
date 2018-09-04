@@ -1378,6 +1378,10 @@ class Msg(models.Model):
         if topup_id is not None:
             msg_args['topup_id'] = topup_id
 
+        # print('AAAAAAAAA')
+        # print(msg_args)
+        # print('AAAAAAAAA')
+
         msg = Msg.objects.create(**msg_args)
 
         # if this contact is currently stopped, unstop them
@@ -1447,6 +1451,10 @@ class Msg(models.Model):
                         attachments=None, topup_id=None, msg_type=INBOX, connection=None, quick_replies=None,
                         url_buttons=None):
 
+        # print('TEXT')
+        # print(text)
+        # print('TEXT')
+
         if not org or not user:  # pragma: no cover
             raise ValueError("Trying to create outgoing message with no org or user")
 
@@ -1490,6 +1498,9 @@ class Msg(models.Model):
                 expressions_context['channel'] = channel.build_expressions_context()
 
             (text, errors) = Msg.evaluate_template(text, expressions_context, org=org)
+            # print('CCCCC')
+            # print(expressions_context)
+            # print(text)
             if text:
                 text = text[:Msg.MAX_TEXT_LEN]
 
@@ -1589,6 +1600,9 @@ class Msg(models.Model):
 
         if topup_id is not None:
             msg_args['topup_id'] = topup_id
+
+        # print('BBBB')
+        # print(msg_args)
 
         return Msg.objects.create(**msg_args) if insert_object else Msg(**msg_args)
 
