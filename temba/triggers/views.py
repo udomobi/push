@@ -514,6 +514,15 @@ class TriggerCRUDL(SmartCRUDL):
                 context['days'] = self.get_object().schedule.explode_bitmask()
             context['user_tz'] = get_current_timezone_name()
             context['user_tz_offset'] = int(timezone.localtime(timezone.now()).utcoffset().total_seconds() // 60)
+
+            if self.get_object().nlu_data:
+                nlu_data = self.get_object().get_nlu_data()
+                intents_items = [
+                    "{}${}".format(intent["intent"], intent["repository_uuid"]) for intent in nlu_data.get("intents")
+                ]
+
+                context["intents"] = json.dumps(intents_items)
+                context["confidence"] = nlu_data.get("confidence")
             return context
 
         def form_invalid(self, form):
@@ -591,6 +600,14 @@ class TriggerCRUDL(SmartCRUDL):
                 if trigger.schedule.is_expired():
                     from temba.schedules.tasks import check_schedule_task
                     on_transaction_commit(lambda: check_schedule_task.delay(trigger.schedule.pk))
+
+            if trigger_type == Trigger.TYPE_NLU_API:
+                trigger.nlu_data = json.dumps(
+                    {
+                        "intents": list(json.loads(form.cleaned_data["intents"]).values()),
+                        "confidence": form.cleaned_data["confidence"],
+                    }
+                )
 
             response = super(TriggerCRUDL.Update, self).form_valid(form)
             response['REDIRECT'] = self.get_success_url()
