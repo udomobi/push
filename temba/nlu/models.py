@@ -52,7 +52,6 @@ class BothubConsumer(object):
             return None, 0, None
 
         predict = json.loads(response.content)
-        print(predict)
         intent = predict.get("intent", {})
         return intent.get("name", None), intent.get("confidence", 0), predict.get("entities", None)
 
