@@ -3173,9 +3173,6 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
         return run
 
     def build_expressions_context(self, contact_context=None):
-        from temba.utils.expressions import evaluate_template
-        from temba_expressions.evaluator import EvaluationContext, DateStyle
-
         """
         Builds the @flow expression context for this run
         """
@@ -3192,19 +3189,12 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
             }
             try:
                 res_json = json.loads(res[FlowRun.RESULT_VALUE])
-                print(res_json)
                 if "intent" in res_json.keys():
-                    result["intent"] = res_json.get("intent", None)
+                    (normalized, count) = FlowRun.normalize_fields(res_json.get("intent", None), settings.BOTHUB_FIELDS_SIZE * 4)
+                    result["intent"] = normalized
                 if "entities" in res_json.keys():
-                    return res_json.get("entities", None)
-                    # {   }
-                    # print(a.get('animal'))
-
-                    # # context = EvaluationContext(context, tz, date_style)
-
-                    # b = evaluate_template(a.get('animal'), [], False, False)
-                    # print(b)
-                    # result["entities"] = a
+                    (normalized, count) = FlowRun.normalize_fields(res_json.get("entities", None), settings.BOTHUB_FIELDS_SIZE * 4)
+                    result["entities"] = normalized
             except Exception:
                 pass
 

@@ -48,7 +48,6 @@ class BothubConsumer(object):
 
         predict = json.loads(response.content)
         intent = predict.get("intent", {})
-        # entities = self.get_entities(predict.get("entities")) if "entities" in predict else None
         return intent.get("name", None), intent.get("confidence", 0), predict.get("entities", None)
 
     def is_valid_token(self):
@@ -58,12 +57,6 @@ class BothubConsumer(object):
     def get_repository_info(self):
         response = self.request("info")
         return json.loads(response.content)
-
-    # def get_entities(self, entities):
-    #     entities_dict = dict()
-    #     for label in entities:
-    #         entities_dict[label] = label
-    #     return entities_dict
 
     def get_intents(self):
         response = self.get_repository_info()

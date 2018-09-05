@@ -1270,3 +1270,4 @@ TWILIO_VOICE_LANGUAGES = {
 # Bothub and WIT.AI integration url
 # -----------------------------------------------------------------------------------
 BOTHUB_BASE_URL = "http://staging.bothub.it:2657"
+BOTHUB_FIELDS_SIZE = 1024
