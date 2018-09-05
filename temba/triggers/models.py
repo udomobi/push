@@ -519,7 +519,7 @@ class Trigger(SmartModel):
                         return False
 
                     intent, confidence, entities = responses[repository_uuid]
-                    if intent in nlu_bot.get("intent") and confidence * 100 >= nlu_data.get("confidence"):
+                    if intent in nlu_bot.get("intent", None) and confidence * 100 >= nlu_data.get("confidence", 0):
                         contact = msg.contact
                         contact.ensure_unstopped()
 

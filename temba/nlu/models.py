@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import requests
 import json
 import re
+import iso639
 
 from django.conf import settings
 
@@ -39,14 +40,19 @@ class BothubConsumer(object):
     def predict(self, text, language=None):
         payload = {"text": str(text)}
         if language:
+            try:
+                lang = iso639.languages.get(part3=language)
+                language = lang.part1
+            except KeyError:
+                pass
             payload.update({"language": language})
-
         response = self.request("parse", method="POST", payload=payload)
 
         if response.status_code != 200:
             return None, 0, None
 
         predict = json.loads(response.content)
+        print(predict)
         intent = predict.get("intent", {})
         return intent.get("name", None), intent.get("confidence", 0), predict.get("entities", None)
 

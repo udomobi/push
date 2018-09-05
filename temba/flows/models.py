@@ -7039,7 +7039,7 @@ class HasIntentTest(Test):
                 repository_uuid = intent_data.get("bot_id", None)
                 repository = repositories[repository_uuid]
                 bothub = BothubConsumer(repository.get("authorization_key"))
-                predicted_intent, predicted_confidence, entities = bothub.predict(text)
+                predicted_intent, predicted_confidence, entities = bothub.predict(text, run.contact.language)
             except Exception:  # pragma: needs cover
                 return 0, None
 
