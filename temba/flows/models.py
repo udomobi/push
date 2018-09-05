@@ -3190,11 +3190,15 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
             try:
                 res_json = json.loads(res[FlowRun.RESULT_VALUE])
                 if "intent" in res_json.keys():
-                    (normalized, count) = FlowRun.normalize_fields(res_json.get("intent", None), settings.BOTHUB_FIELDS_SIZE * 4)
-                    result["intent"] = normalized
+                    intent = res_json.get("intent", None)
+                    if intent:
+                        (intent, count) = FlowRun.normalize_fields(intent, settings.BOTHUB_FIELDS_SIZE * 4)
+                    result["intent"] = intent
                 if "entities" in res_json.keys():
-                    (normalized, count) = FlowRun.normalize_fields(res_json.get("entities", None), settings.BOTHUB_FIELDS_SIZE * 4)
-                    result["entities"] = normalized
+                    entities = res_json.get("entities", None)
+                    if entities:
+                        (entities, count) = FlowRun.normalize_fields(entities, settings.BOTHUB_FIELDS_SIZE * 4)
+                    result["entities"] = entities
             except Exception:
                 pass
 
