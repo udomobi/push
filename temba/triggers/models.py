@@ -514,7 +514,7 @@ class Trigger(SmartModel):
                     try:
                         if repository_uuid not in responses.keys():
                             bothub = BothubConsumer(repositories[repository_uuid].get("authorization_key"))
-                            responses[repository_uuid] = bothub.predict(msg, msg.contact.language)
+                            responses[repository_uuid] = bothub.predict(msg.text, msg.contact.language)
                     except Exception:  # pragma: needs cover
                         return False
 
