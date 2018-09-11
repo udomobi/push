@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 from django.utils.translation import ugettext_lazy as _
 
-from temba.channels.models import Channel
 from temba.contacts.models import EMAIL_SCHEME
 from .views import ClaimView
 from ...models import ChannelType
@@ -16,11 +15,9 @@ class EmailType(ChannelType):
     code = 'EM'
     category = ChannelType.Category.API
 
-    # courier_url = r'^wa/(?P<uuid>[a-z0-9\-]+)/(?P<action>receive|status)$'
-
     name = "Email"
     icon = 'icon-envelop'
-    show_config_page = True
+    show_config_page = False
 
     claim_blurb = _("""Send and receive messages by email""")
     claim_view = ClaimView
