@@ -38,7 +38,7 @@ class BothubConsumer(object):
         return response
 
     def predict(self, text, language=None):
-        payload = {"text": str(text)}
+        payload = {"text": text.encode('utf-8')}
         if language:
             try:
                 lang = iso639.languages.get(part3=language)
