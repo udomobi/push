@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import urllib
+import time
 
 from smtplib import SMTP
 
@@ -14,12 +15,13 @@ from email.mime.multipart import MIMEMultipart
 
 from django.utils.translation import ugettext_lazy as _
 
-from temba.msgs.models import Attachment
+from temba.msgs.models import Attachment, WIRED
 from temba.orgs.models import Org
 from temba.contacts.models import Contact, EMAIL_SCHEME
+from temba.utils.http import HttpEvent
 
 from .views import ClaimView
-from ...models import ChannelType
+from ...models import ChannelType, Channel
 
 
 class EmailType(ChannelType):
@@ -45,6 +47,8 @@ class EmailType(ChannelType):
 
         if smtp_hostname:
             transport = SMTP
+            start = time.time()
+
             org_obj = Org.objects.get(id=channel.org)
             contact_obj = Contact.objects.get(id=msg.contact)
 
@@ -88,3 +92,9 @@ class EmailType(ChannelType):
             server.login(channel.config['EMAIL_USERNAME'], channel.config['EMAIL_PASSWORD'])
             server.sendmail(channel.config['EMAIL_FROM'], msg.urn_path, message.as_string())
             server.quit()
+
+            event = HttpEvent('POST', '')
+            event.status_code = 200
+            event.response_body = msg.text
+
+            Channel.success(channel, msg, WIRED, start, event=event)
