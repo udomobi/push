@@ -34,8 +34,8 @@ class ClaimView(ClaimViewMixin, SmartFormView):
                 server = transport(self.cleaned_data["pop_hostname"], self.cleaned_data["pop_port"])
                 server.user(self.cleaned_data["username"])
                 server.pass_(self.cleaned_data["password"])
-            except Exception:
-                raise forms.ValidationError(_("Unable to register email, please check username and password"))
+            except Exception as e:
+                raise forms.ValidationError(e.message)
 
     form_class = Form
 
