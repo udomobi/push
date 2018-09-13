@@ -982,7 +982,11 @@ CELERYBEAT_SCHEDULE = {
     "refresh-whatsapp-tokens": {
         'task': 'refresh_whatsapp_tokens',
         'schedule': timedelta(hours=24),
-    }
+    },
+    "mailbox": {
+        'task': 'check_channel_mailbox',
+        'schedule': timedelta(seconds=10),
+    },
 }
 
 # Mapping of task name to task function path, used when CELERY_ALWAYS_EAGER is set to True

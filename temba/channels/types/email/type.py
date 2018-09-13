@@ -57,7 +57,7 @@ class EmailType(ChannelType):
             message['From'] = '{0} <{1}>'.format(org_obj.name, channel.config['EMAIL_FROM'])
             message['To'] = '{0} <{1}>'.format(contact_obj.name, msg.urn_path)
 
-            part = MIMEText(text, 'html')
+            part = MIMEText(text.encode('utf8'), 'html')
             message.attach(part)
 
             attachments = Attachment.parse_all(msg.attachments)
