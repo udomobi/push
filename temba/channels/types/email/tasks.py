@@ -85,24 +85,25 @@ def check_channel_mailbox():
                     message = rfc822.Message(message_payload)
 
                     if isinstance(payload, list) and message['Message-ID'] not in emails_list:
-                        logger.error('ENTROU NO IF')
                         emails_list.append(message['Message-ID'])
                         match_sender = re.search(r'[\w\.-]+@[\w\.-]+', message['From'])
-                        sender = match_sender.group(0)
 
-                        content = payload[0].get_payload()
-                        if isinstance(content, str):
-                            encoding = payload[0].get('Content-Transfer-Encoding')
+                        if match_sender:
+                            sender = match_sender.group(0)
+                            content = payload[0].get_payload()
 
-                            if encoding:
-                                content = content.decode(encoding)
+                            if isinstance(content, str):
+                                encoding = payload[0].get('Content-Transfer-Encoding')
 
-                            body = EmailBodyParse(content).get_body()
-                            urn = URN.from_parts(channel.schemes[0], sender)
-                            sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
+                                if encoding:
+                                    content = content.decode(encoding)
 
-                            logger.info('New Email: {}'.format(body.decode('utf8')))
-                            logger.info('SMS Accepted: {}'.format(sms.id))
+                                body = EmailBodyParse(content).get_body()
+                                urn = URN.from_parts(channel.schemes[0], sender)
+                                sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
+
+                                logger.info('New Email: {}'.format(body.decode('utf8')))
+                                logger.info('SMS Accepted: {}'.format(sms.id))
                 r.set(key, emails_list)
                 server.quit()
             except Exception as e:
