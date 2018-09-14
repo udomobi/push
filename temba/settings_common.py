@@ -985,7 +985,7 @@ CELERYBEAT_SCHEDULE = {
     },
     "mailbox": {
         'task': 'check_channel_mailbox',
-        'schedule': timedelta(seconds=10),
+        'schedule': timedelta(seconds=60),
     },
 }
 
