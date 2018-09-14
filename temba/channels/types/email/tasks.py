@@ -96,8 +96,6 @@ def check_channel_mailbox():
                     message_payload = StringIO.StringIO(raw_email)
                     message = rfc822.Message(message_payload)
 
-                    logger.error(datetime_to_ms(parse(message['Date'])))
-
                     email_created_on = datetime_to_ms(parse(message['Date']))
 
                     if isinstance(payload, list) and message['Message-ID'] not in emails_list and email_created_on > channel_created_on:
