@@ -11,6 +11,7 @@ from celery.task import task
 from poplib import POP3_SSL
 from dateutil.parser import parse
 from functools import reduce
+from django_redis import get_redis_connection
 
 from temba.channels.models import Channel
 from temba.contacts.models import URN
@@ -54,10 +55,13 @@ class EmailBodyParse:
 
 @task(track_started=True, name='check_channel_mailbox')
 def check_channel_mailbox():
+    r = get_redis_connection()
     for channel in Channel.objects.filter(is_active=True, channel_type='EM'):
         pop_hostname = channel.config['EMAIL_POP_HOSTNAME']
 
         if pop_hostname:
+            key = 'check_channel_mailbox_%d' % channel.id
+
             try:
                 server = POP3_SSL(pop_hostname, channel.config['EMAIL_POP_PORT'])
                 server.user(channel.config['EMAIL_USERNAME'])
@@ -65,7 +69,12 @@ def check_channel_mailbox():
 
                 logger.info(server.getwelcome())
                 logger.info(server.stat())
+
                 num_messages = len(server.list()[1])
+                emails_list = r.get(key)
+
+                if emails_list is None:
+                    emails_list = []
 
                 for i in range(num_messages):
                     raw_email = b"\n".join(server.retr(i + 1)[1])
@@ -75,22 +84,26 @@ def check_channel_mailbox():
                     message_payload = StringIO.StringIO(raw_email)
                     message = rfc822.Message(message_payload)
 
-                    match_sender = re.search(r'[\w\.-]+@[\w\.-]+', message['From'])
-                    sender = match_sender.group(0)
+                    if isinstance(payload, list) and message['Message-ID'] not in emails_list:
+                        logger.error('ENTROU NO IF')
+                        emails_list.append(message['Message-ID'])
+                        match_sender = re.search(r'[\w\.-]+@[\w\.-]+', message['From'])
+                        sender = match_sender.group(0)
 
-                    content = payload[0].get_payload()
-                    encoding = payload[0].get('Content-Transfer-Encoding')
+                        content = payload[0].get_payload()
+                        if isinstance(content, str):
+                            encoding = payload[0].get('Content-Transfer-Encoding')
 
-                    if encoding:
-                        content = content.decode(encoding)
+                            if encoding:
+                                content = content.decode(encoding)
 
-                    body = EmailBodyParse(content).get_body()
-                    urn = URN.from_parts(channel.schemes[0], sender)
-                    sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
+                            body = EmailBodyParse(content).get_body()
+                            urn = URN.from_parts(channel.schemes[0], sender)
+                            sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
 
-                    logger.info('New Email: {}'.format(body.decode('utf8')))
-                    logger.info('SMS Accepted: {}'.format(sms.id))
-                    server.dele(i + 1)
+                            logger.info('New Email: {}'.format(body.decode('utf8')))
+                            logger.info('SMS Accepted: {}'.format(sms.id))
+                r.set(key, emails_list)
                 server.quit()
             except Exception as e:
                 logger.error(e)

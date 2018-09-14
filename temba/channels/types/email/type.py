@@ -15,8 +15,7 @@ from email.mime.multipart import MIMEMultipart
 
 from django.utils.translation import ugettext_lazy as _
 
-from temba.msgs.models import Attachment, WIRED
-from temba.orgs.models import Org
+from temba.msgs.models import Attachment, WIRED, ERRORED
 from temba.contacts.models import Contact, EMAIL_SCHEME
 from temba.utils.http import HttpEvent
 
@@ -49,12 +48,11 @@ class EmailType(ChannelType):
             transport = SMTP
             start = time.time()
 
-            org_obj = Org.objects.get(id=channel.org)
             contact_obj = Contact.objects.get(id=msg.contact)
 
             message = MIMEMultipart('alternative')
             message['Subject'] = channel.config['EMAIL_SUBJECT']
-            message['From'] = '{0} <{1}>'.format(org_obj.name, channel.config['EMAIL_FROM'])
+            message['From'] = '{0} <{1}>'.format(channel.config['EMAIL_SENDER_NAME'], channel.config['EMAIL_SENDER_FROM'])
             message['To'] = '{0} <{1}>'.format(contact_obj.name, msg.urn_path)
 
             part = MIMEText(text.encode('utf8'), 'html')
@@ -85,16 +83,21 @@ class EmailType(ChannelType):
                     mimefile.add_header('Content-Disposition', 'attachment', filename=filename)
                     message.attach(mimefile)
 
-            server = transport(smtp_hostname, channel.config['EMAIL_SMTP_PORT'])
-            if channel.config['EMAIL_USE_TLS']:
-                server.starttls()
-
-            server.login(channel.config['EMAIL_USERNAME'], channel.config['EMAIL_PASSWORD'])
-            server.sendmail(channel.config['EMAIL_FROM'], msg.urn_path, message.as_string())
-            server.quit()
-
             event = HttpEvent('POST', '')
             event.status_code = 200
             event.response_body = msg.text
+            status = WIRED
 
-            Channel.success(channel, msg, WIRED, start, event=event)
+            try:
+                server = transport(smtp_hostname, channel.config['EMAIL_SMTP_PORT'])
+                if channel.config['EMAIL_USE_TLS']:
+                    server.starttls()
+                server.login(channel.config['EMAIL_USERNAME'], channel.config['EMAIL_PASSWORD'])
+                server.sendmail(channel.config['EMAIL_SENDER_FROM'], msg.urn_path, message.as_string())
+                server.quit()
+            except Exception:
+                status = ERRORED
+                event.status_code = 500
+                event.response_body = 'Please check if your SMTP settings are correctly configured'
+
+            Channel.success(channel, msg, status, start, event=event)

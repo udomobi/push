@@ -24,7 +24,8 @@ class ClaimView(ClaimViewMixin, SmartFormView):
         smtp_port = forms.IntegerField(label=_("SMTP Port"), initial=465)
         username = forms.CharField(max_length=100, label=_("Username"), required=True)
         password = forms.CharField(max_length=100, label=_("Password"), required=True, widget=forms.PasswordInput())
-        email_from = forms.CharField(max_length=255, label=_("Email from"), required=True)
+        sender_from = forms.CharField(max_length=255, label=_("Sender from"), required=True)
+        sender_name = forms.CharField(max_length=255, label=_("Sender name"), required=True)
         email_subject = forms.CharField(max_length=255, label=_("Email Subject"), required=True)
 
         def clean(self):
@@ -51,10 +52,11 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             "EMAIL_SMTP_PORT": data["smtp_port"],
             "EMAIL_USERNAME": data["username"],
             "EMAIL_PASSWORD": data["password"],
-            "EMAIL_FROM": data["email_from"],
+            "EMAIL_SENDER_FROM": data["sender_from"],
+            "EMAIL_SENDER_NAME": data["sender_name"],
             "EMAIL_SUBJECT": data["email_subject"],
         }
 
-        self.object = Channel.create(org, self.request.user, None, self.channel_type, name=data["email_from"], address=None, config=config, schemes=[EMAIL_SCHEME])
+        self.object = Channel.create(org, self.request.user, None, self.channel_type, name=data["sender_from"], address=None, config=config, schemes=[EMAIL_SCHEME])
 
         return super(ClaimView, self).form_valid(form)
