@@ -75,6 +75,7 @@ def check_channel_mailbox():
 
                 if emails_list is None:
                     emails_list = []
+                    r.set(key, emails_list)
 
                 for i in range(num_messages):
                     raw_email = b"\n".join(server.retr(i + 1)[1])
