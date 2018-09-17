@@ -16,6 +16,15 @@ app = celery.Celery('temba')
 
 app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
+app.autodiscover_tasks(
+    (
+        "temba.channels.types.jiochat",
+        "temba.channels.types.twitter_activity",
+        "temba.channels.types.wechat",
+        "temba.channels.types.whatsapp",
+        "temba.channels.types.email",
+    )
+)
 
 # register raven if configured
 raven_config = getattr(settings, 'RAVEN_CONFIG', None)

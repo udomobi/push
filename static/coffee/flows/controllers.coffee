@@ -204,9 +204,9 @@ app.controller 'FlowController', [ '$scope', '$rootScope', '$timeout', '$log', '
     media_encoding = parts[1]
 
     if action.type in ['reply', 'send']
-      if media_type not in ['audio', 'video', 'image']
-        showDialog('Invalid Attachment', 'Attachments must be either video, audio, or an image.')
-        return
+      # if media_type not in ['audio', 'video', 'image']
+      #   showDialog('Invalid Attachment', 'Attachments must be either video, audio, or an image.')
+      #   return
 
       if media_type == 'audio' and media_encoding != 'mp3'
         showDialog('Invalid Format', 'Audio attachments must be encoded as mp3 files.')

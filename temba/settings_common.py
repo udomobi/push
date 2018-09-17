@@ -982,7 +982,11 @@ CELERYBEAT_SCHEDULE = {
     "refresh-whatsapp-tokens": {
         'task': 'refresh_whatsapp_tokens',
         'schedule': timedelta(hours=24),
-    }
+    },
+    "mailbox": {
+        'task': 'check_channel_mailbox',
+        'schedule': timedelta(seconds=60),
+    },
 }
 
 # Mapping of task name to task function path, used when CELERY_ALWAYS_EAGER is set to True
@@ -1172,6 +1176,7 @@ CHANNEL_TYPES = [
     'temba.channels.types.yo.YoType',
     'temba.channels.types.zenvia.ZenviaType',
     'temba.channels.types.ws.WsType',
+    'temba.channels.types.email.EmailType',
 ]
 
 # -----------------------------------------------------------------------------------
