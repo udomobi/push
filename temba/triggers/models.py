@@ -488,8 +488,6 @@ class Trigger(SmartModel):
     def nlu_find_and_handle(cls, msg):
         words = tokenize(msg.text)
 
-        print(words)
-
         # skip if message doesn't have any words
         if not words:
             return False
