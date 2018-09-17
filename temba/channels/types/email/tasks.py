@@ -27,14 +27,14 @@ class EmailBodyParse:
     REGEX_OUTLOOK = r'(.*)(________________________________)'
     REGEX_OUTLOOK_2 = r'(.*)(------------------------------)'
     REGEX_ZOHO = r'(.*)(---- (On|Em)(.*)(wrote|escreveu) ----)'
-    SIG_REGEX = r'(.*)((--|__|-\w)|(^Sent from my (\w+\s*){1,3}))'
+    # SIG_REGEX = r'(.*)((--|__|-\w)|(^Sent from my (\w+\s*){1,3}))'
 
     REGEX_LIST = [
         REGEX_GMAIL,
         REGEX_OUTLOOK,
         REGEX_OUTLOOK_2,
         REGEX_ZOHO,
-        SIG_REGEX,
+        # SIG_REGEX,
     ]
 
     def __init__(self, text):
