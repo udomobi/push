@@ -27,6 +27,8 @@ class EmailBodyParse:
     REGEX_OUTLOOK = r'(.*)(________________________________)'
     REGEX_OUTLOOK_2 = r'(.*)(------------------------------)'
     REGEX_ZOHO = r'(.*)(---- (On|Em)(.*)(wrote|escreveu) ----)'
+    REGEX_GMAIL_2 = r'(.*)(---------- Forwarded message ---------)'
+    REGEX_GMAIL_3 = r'(.*)(---------- Mensagem enviada ---------)'
     # SIG_REGEX = r'(.*)((--|__|-\w)|(^Sent from my (\w+\s*){1,3}))'
 
     REGEX_LIST = [
@@ -34,6 +36,8 @@ class EmailBodyParse:
         REGEX_OUTLOOK,
         REGEX_OUTLOOK_2,
         REGEX_ZOHO,
+        REGEX_GMAIL_2,
+        REGEX_GMAIL_3
         # SIG_REGEX,
     ]
 
