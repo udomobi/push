@@ -11,8 +11,8 @@ import json
 from celery.task import task
 from poplib import POP3_SSL
 from dateutil.parser import parse
-from functools import reduce
 from django_redis import get_redis_connection
+from email_reply_parser import EmailMessage
 
 from temba.channels.models import Channel
 from temba.contacts.models import URN
@@ -22,41 +22,15 @@ from temba.utils.dates import datetime_to_ms
 logger = logging.getLogger(__name__)
 
 
-class EmailBodyParse:
-    REGEX_GMAIL = r'(.*)((On|Em)(.*)(wrote|escreveu):)'
-    REGEX_OUTLOOK = r'(.*)(________________________________)'
-    REGEX_OUTLOOK_2 = r'(.*)(------------------------------)'
-    REGEX_ZOHO = r'(.*)(---- (On|Em)(.*)(wrote|escreveu) ----)'
-    REGEX_GMAIL_2 = r'(.*)(---------- Forwarded message ---------)'
-    REGEX_GMAIL_3 = r'(.*)(---------- Mensagem enviada ---------)'
-    # SIG_REGEX = r'(.*)((--|__|-\w)|(^Sent from my (\w+\s*){1,3}))'
+class EmaiBodyParser(EmailMessage):
+    SIG_REGEX = re.compile(r'(--|__|-\w)|(^(Sent from my|Enviado do meu) (\w+\s*){1,3})')
+    QUOTE_HDR_REGEX = re.compile('(On|Em).*(wrote|escreveu):$')
+    QUOTED_REGEX = re.compile(r'(>+)')
+    HEADER_REGEX = re.compile(r'^(From|Sent|To|Subject|De|Enviado|Para|Assunto): .+')
 
-    REGEX_LIST = [
-        REGEX_GMAIL,
-        REGEX_OUTLOOK,
-        REGEX_OUTLOOK_2,
-        REGEX_ZOHO,
-        REGEX_GMAIL_2,
-        REGEX_GMAIL_3
-        # SIG_REGEX,
-    ]
-
-    def __init__(self, text):
-        self.text = text
-
-    def get_body(self):
-        def reduce_fn(current, REGEX):
-            match = re.search(REGEX, self.text, re.DOTALL | re.MULTILINE)
-            if match:
-                result = match.group(1)
-                if len(result) < len(current):
-                    return result
-            return current
-        return reduce(reduce_fn, self.REGEX_LIST, self.text)
-
-    @property
-    def body(self):
-        return self.get_body().strip()
+    _MULTI_QUOTE_HDR_REGEX = r'((?!Em.*Em\s.+?escreveu:)(Em\s(.+?)escreveu:))|((?!On.*On\s.+?wrote:)(On\s(.+?)wrote:))'
+    MULTI_QUOTE_HDR_REGEX = re.compile(_MULTI_QUOTE_HDR_REGEX, re.DOTALL | re.MULTILINE)
+    MULTI_QUOTE_HDR_REGEX_MULTILINE = re.compile(_MULTI_QUOTE_HDR_REGEX, re.DOTALL)
 
 
 @task(track_started=True, name='check_channel_mailbox')
@@ -116,7 +90,7 @@ def check_channel_mailbox():
                                 if encoding:
                                     content = content.decode(encoding)
 
-                                body = EmailBodyParse(content).get_body()
+                                body = EmaiBodyParser(content).read().reply
                                 urn = URN.from_parts(channel.schemes[0], sender)
                                 sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
 
