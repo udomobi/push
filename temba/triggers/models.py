@@ -502,6 +502,8 @@ class Trigger(SmartModel):
             return False
 
         triggers = Trigger.get_triggers_of_type(msg.org, Trigger.TYPE_NLU_API)
+        if msg.contact.user_groups.all():
+            triggers = triggers.filter(Q(groups__in=msg.contact.user_groups.all()) | Q(groups=None))
 
         for trigger in triggers:
             nlu_data = trigger.get_nlu_data()
