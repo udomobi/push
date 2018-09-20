@@ -10,6 +10,7 @@ import six
 import time
 import traceback
 import uuid
+import ast
 
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -1436,13 +1437,65 @@ class Msg(models.Model):
             'yesterday': datetime_to_str(timezone.now() - timedelta(days=1), format=format_date, tz=tz)
         }
 
-        context['org'] = json.loads(org.get_org_constants())
+        org_constants = org.get_org_constants()
+        if org_constants:
+            (result, count) = Msg.normalize_fields(json.loads(ast.literal_eval(org.get_org_constants())), settings.ORGANIZATION_FIELDS_SIZE * 4)
+            context['org'] = result
 
         date_style = DateStyle.DAY_FIRST if dayfirst else DateStyle.MONTH_FIRST
         context = EvaluationContext(context, tz, date_style)
 
         # returns tuple of output and errors
         return evaluate_template(text, context, url_encode, partial_vars)
+
+    @classmethod
+    def normalize_field_key(cls, key):
+        return regex.compile(r'[^a-zA-Z0-9_]').sub('_', key)[:255]
+
+    @classmethod
+    def normalize_fields(cls, fields, max_values=None, count=-1):
+        import numbers
+        from temba.values.models import Value
+        from collections import OrderedDict
+
+        """
+        Turns an arbitrary dictionary into a dictionary containing only string keys and values
+        """
+        if max_values is None:
+            max_values = settings.FLOWRUN_FIELDS_SIZE
+
+        if isinstance(fields, six.string_types):
+            return fields[:Value.MAX_VALUE_LEN], count + 1
+
+        elif isinstance(fields, numbers.Number) or isinstance(fields, bool):
+            return fields, count + 1
+
+        elif isinstance(fields, dict):
+            count += 1
+            field_dict = OrderedDict()
+            for (k, v) in fields.items():
+                (field_dict[Msg.normalize_field_key(k)], count) = Msg.normalize_fields(v, max_values, count)
+
+                if count >= max_values:
+                    break
+
+            return field_dict, count
+
+        elif isinstance(fields, list):
+            count += 1
+            list_dict = OrderedDict()
+            for (i, v) in enumerate(fields):
+                (list_dict[str(i)], count) = Msg.normalize_fields(v, max_values, count)
+
+                if count >= max_values:  # pragma: needs cover
+                    break
+
+            return list_dict, count
+
+        elif fields is None:
+            return "", count + 1
+        else:  # pragma: no cover
+            raise ValueError("Unsupported type %s in extra" % six.text_type(type(fields)))
 
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, high_priority=False,

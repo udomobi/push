@@ -14,7 +14,6 @@ import six
 import stripe
 import traceback
 import json
-import ast
 
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -984,7 +983,7 @@ class Org(SmartModel):
         return None
 
     def get_org_constants(self):
-        return json.loads(self.org_constants) if self.org_constants else None
+        return self.org_constants if self.org_constants else None
 
     def save_org_constants(self, user, constants):
         self.org_constants = json.dumps(constants) if constants else None

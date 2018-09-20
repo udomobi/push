@@ -2152,7 +2152,9 @@ class OrgCRUDL(SmartCRUDL):
 
         def derive_initial(self):
             initial = super(OrgCRUDL.Constants, self).derive_initial()
-            initial["org_constants"] = self.get_object().get_org_constants()
+            org_constants = self.get_object().get_org_constants()
+            if org_constants:
+                initial["org_constants"] = json.loads(org_constants)
             return initial
 
         def form_valid(self, form):
