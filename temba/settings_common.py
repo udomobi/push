@@ -380,6 +380,7 @@ PERMISSIONS = {
                  'smtp_server',
                  'api',
                  'bothub',
+                 'constants',
                  'country',
                  'chatbase',
                  'clear_cache',
@@ -597,6 +598,7 @@ GROUP_PERMISSIONS = {
 
         'orgs.org_accounts',
         'orgs.org_bothub',
+        'orgs.org_constants',
         'orgs.org_smtp_server',
         'orgs.org_api',
         'orgs.org_dashboard',
