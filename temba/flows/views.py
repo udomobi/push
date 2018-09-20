@@ -741,7 +741,8 @@ class FlowCRUDL(SmartCRUDL):
                 dict(name='channel.tel', display=six.text_type(_('Sent to'))),
                 dict(name='channel.tel_e164', display=six.text_type(_('Sent to'))),
                 dict(name='step', display=six.text_type(_('Sent to'))),
-                dict(name='step.value', display=six.text_type(_('Sent to')))
+                dict(name='step.value', display=six.text_type(_('Sent to'))),
+                dict(name='org', display=six.text_type(_('Organization constants')))
             ]
 
             parent_variables = [dict(name='parent.%s' % v['name'], display=v['display']) for v in contact_variables]

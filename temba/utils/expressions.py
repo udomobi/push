@@ -8,7 +8,7 @@ import six
 from temba_expressions.evaluator import Evaluator, EvaluationContext, EvaluationStrategy, DEFAULT_FUNCTION_MANAGER
 from temba.contacts.models import ContactField
 
-ALLOWED_TOP_LEVELS = ('channel', 'contact', 'date', 'extra', 'flow', 'step', 'parent', 'child')
+ALLOWED_TOP_LEVELS = ('channel', 'contact', 'date', 'extra', 'flow', 'step', 'parent', 'child', 'org')
 
 evaluator = Evaluator(allowed_top_levels=ALLOWED_TOP_LEVELS)
 

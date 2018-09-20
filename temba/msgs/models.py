@@ -23,6 +23,7 @@ from django.utils import timezone
 from django.utils.html import escape
 from django.utils.translation import ugettext, ugettext_lazy as _
 from django_redis import get_redis_connection
+
 from temba_expressions.evaluator import EvaluationContext, DateStyle
 from temba.channels.courier import push_courier_msgs
 from temba.assets.models import register_asset_store
@@ -1434,6 +1435,8 @@ class Msg(models.Model):
             'tomorrow': datetime_to_str(timezone.now() + timedelta(days=1), format=format_date, tz=tz),
             'yesterday': datetime_to_str(timezone.now() - timedelta(days=1), format=format_date, tz=tz)
         }
+
+        context['org'] = json.loads(org.get_org_constants())
 
         date_style = DateStyle.DAY_FIRST if dayfirst else DateStyle.MONTH_FIRST
         context = EvaluationContext(context, tz, date_style)
