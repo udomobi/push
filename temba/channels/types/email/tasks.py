@@ -91,11 +91,11 @@ def check_channel_mailbox():
                                     if encoding:
                                         content = content.decode(encoding)
 
-                                    body = EmaiBodyParser(content).read().reply
+                                    body = EmaiBodyParser(content).read().reply.decode('utf8')
                                     urn = URN.from_parts(channel.schemes[0], sender)
                                     sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
 
-                                    logger.info('New Email: {}'.format(body.decode('utf8')))
+                                    logger.info('New Email: {}'.format(body))
                                     logger.info('SMS Accepted: {}'.format(sms.id))
                         else:
                             logger.info('Email já salvo: {}'.format(message['Message-ID']))
