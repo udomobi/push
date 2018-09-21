@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import iso8601
 import json
 import six
+import ast
 
 from rest_framework import serializers
 from temba.api.models import Resthook, ResthookSubscriber, WebHookEvent
@@ -15,6 +16,7 @@ from temba.locations.models import AdminBoundary
 from temba.msgs.models import Broadcast, Msg, Label, STATUS_CONFIG, INCOMING, OUTGOING, INBOX, FLOW, IVR, PENDING
 from temba.msgs.models import QUEUED
 from temba.msgs.tasks import send_broadcast_task
+from temba.orgs.models import Org
 from temba.utils import on_transaction_commit
 from temba.utils.dates import datetime_to_json_date
 from temba.values.models import Value
@@ -1009,3 +1011,31 @@ class WebHookEventReadSerializer(ReadSerializer):
     class Meta:
         model = WebHookEvent
         fields = ('resthook', 'data', 'created_on')
+
+
+class OrgReadSerializer(ReadSerializer):
+    org_constants = serializers.SerializerMethodField()
+
+    def get_org_constants(self, obj):
+        return json.loads(ast.literal_eval(obj.org_constants))
+
+    class Meta:
+        model = Org
+        fields = ('org_constants',)
+
+
+class OrgWriteSerializer(WriteSerializer):
+    org_constants = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_org_constants(self, value):
+        if value:
+            try:
+                json.loads(value)
+            except ValueError:
+                raise serializers.ValidationError("Invalid JSON format.")
+
+        return value
+
+    def save(self):
+        self.context['org'].save_org_constants(self.context['user'], self.validated_data['org_constants'])
+        return self.context['org']
