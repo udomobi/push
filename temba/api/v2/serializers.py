@@ -1025,17 +1025,8 @@ class OrgReadSerializer(ReadSerializer):
 
 
 class OrgWriteSerializer(WriteSerializer):
-    org_constants = serializers.CharField(required=False, allow_blank=True)
-
-    def validate_org_constants(self, value):
-        if value:
-            try:
-                json.loads(value)
-            except ValueError:
-                raise serializers.ValidationError("Invalid JSON format.")
-
-        return value
+    org_constants = serializers.JSONField(required=False)
 
     def save(self):
-        self.context['org'].save_org_constants(self.context['user'], self.validated_data['org_constants'])
+        self.context['org'].save_org_constants(self.context['user'], json.dumps(self.validated_data['org_constants']))
         return self.context['org']
