@@ -296,3 +296,54 @@ class ContactFieldCollector(EvaluationContext):
         if contact_field:
             self.contact_fields.add(contact_field)
         return ""
+
+
+class NormalizeFields():
+    @classmethod
+    def normalize_field_key(cls, key):
+        return regex.compile(r'[^a-zA-Z0-9_]').sub('_', key)[:255]
+
+    @classmethod
+    def normalize_fields(cls, fields, max_values=None, count=-1):
+        import numbers
+        from temba.values.models import Value
+        from collections import OrderedDict
+
+        """
+        Turns an arbitrary dictionary into a dictionary containing only string keys and values
+        """
+        if max_values is None:
+            max_values = 1024
+
+        if isinstance(fields, six.string_types):
+            return fields[:Value.MAX_VALUE_LEN], count + 1
+
+        elif isinstance(fields, numbers.Number) or isinstance(fields, bool):
+            return fields, count + 1
+
+        elif isinstance(fields, dict):
+            count += 1
+            field_dict = OrderedDict()
+            for (k, v) in fields.items():
+                (field_dict[NormalizeFields.normalize_field_key(k)], count) = NormalizeFields.normalize_fields(v, max_values, count)
+
+                if count >= max_values:
+                    break
+
+            return field_dict, count
+
+        elif isinstance(fields, list):
+            count += 1
+            list_dict = OrderedDict()
+            for (i, v) in enumerate(fields):
+                (list_dict[str(i)], count) = NormalizeFields.normalize_fields(v, max_values, count)
+
+                if count >= max_values:  # pragma: needs cover
+                    break
+
+            return list_dict, count
+
+        elif fields is None:
+            return "", count + 1
+        else:  # pragma: no cover
+            raise ValueError("Unsupported type %s in extra" % six.text_type(type(fields)))

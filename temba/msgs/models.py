@@ -35,7 +35,7 @@ from temba.schedules.models import Schedule
 from temba.utils import analytics, chunk_list, on_transaction_commit, dict_to_json, get_anonymous_user
 from temba.utils.dates import get_datetime_format, datetime_to_str, datetime_to_s
 from temba.utils.export import BaseExportTask, BaseExportAssetStore
-from temba.utils.expressions import evaluate_template
+from temba.utils.expressions import evaluate_template, NormalizeFields
 from temba.utils.http import http_headers
 from temba.utils.models import SquashableModel, TembaModel, TranslatableField, JSONAsTextField
 from temba.utils.queues import DEFAULT_PRIORITY, push_task, LOW_PRIORITY, HIGH_PRIORITY
@@ -1439,7 +1439,7 @@ class Msg(models.Model):
 
         org_constants = org.get_org_constants()
         if org_constants:
-            (result, count) = Msg.normalize_fields(json.loads(ast.literal_eval(org.get_org_constants())), settings.ORGANIZATION_FIELDS_SIZE * 4)
+            (result, count) = NormalizeFields.normalize_fields(json.loads(ast.literal_eval(org_constants)), settings.ORGANIZATION_FIELDS_SIZE * 4)
             context['org'] = result
 
         date_style = DateStyle.DAY_FIRST if dayfirst else DateStyle.MONTH_FIRST
@@ -1447,55 +1447,6 @@ class Msg(models.Model):
 
         # returns tuple of output and errors
         return evaluate_template(text, context, url_encode, partial_vars)
-
-    @classmethod
-    def normalize_field_key(cls, key):
-        return regex.compile(r'[^a-zA-Z0-9_]').sub('_', key)[:255]
-
-    @classmethod
-    def normalize_fields(cls, fields, max_values=None, count=-1):
-        import numbers
-        from temba.values.models import Value
-        from collections import OrderedDict
-
-        """
-        Turns an arbitrary dictionary into a dictionary containing only string keys and values
-        """
-        if max_values is None:
-            max_values = settings.FLOWRUN_FIELDS_SIZE
-
-        if isinstance(fields, six.string_types):
-            return fields[:Value.MAX_VALUE_LEN], count + 1
-
-        elif isinstance(fields, numbers.Number) or isinstance(fields, bool):
-            return fields, count + 1
-
-        elif isinstance(fields, dict):
-            count += 1
-            field_dict = OrderedDict()
-            for (k, v) in fields.items():
-                (field_dict[Msg.normalize_field_key(k)], count) = Msg.normalize_fields(v, max_values, count)
-
-                if count >= max_values:
-                    break
-
-            return field_dict, count
-
-        elif isinstance(fields, list):
-            count += 1
-            list_dict = OrderedDict()
-            for (i, v) in enumerate(fields):
-                (list_dict[str(i)], count) = Msg.normalize_fields(v, max_values, count)
-
-                if count >= max_values:  # pragma: needs cover
-                    break
-
-            return list_dict, count
-
-        elif fields is None:
-            return "", count + 1
-        else:  # pragma: no cover
-            raise ValueError("Unsupported type %s in extra" % six.text_type(type(fields)))
 
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, high_priority=False,
