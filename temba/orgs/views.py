@@ -453,7 +453,7 @@ class OrgCRUDL(SmartCRUDL):
                'chatbase', 'choose', 'manage_accounts', 'manage_accounts_sub_org', 'manage', 'update', 'country',
                'languages', 'clear_cache', 'twilio_connect', 'twilio_account', 'nexmo_configuration', 'nexmo_account',
                'nexmo_connect', 'sub_orgs', 'create_sub_org', 'export', 'import', 'plivo_connect', 'resthooks',
-               'service', 'surveyor', 'transfer_credits', 'transfer_to_account', 'smtp_server', 'bothub')
+               'service', 'surveyor', 'transfer_credits', 'transfer_to_account', 'smtp_server', 'bothub', 'constants')
 
     model = Org
 
@@ -2120,6 +2120,49 @@ class OrgCRUDL(SmartCRUDL):
             org.bothub_add_repository(bothub_authorization_key, user)
             return super(OrgCRUDL.Bothub, self).form_valid(form)
 
+    class Constants(InferOrgMixin, OrgPermsMixin, SmartUpdateView):
+
+        class ConstantsForm(forms.ModelForm):
+            org_constants = forms.CharField(
+                label=_('Global Constants'),
+                required=False,
+                help_text=_('Put json config file in textarea.'),
+                widget=forms.Textarea()
+            )
+
+            def clean(self):
+                super(OrgCRUDL.Constants.ConstantsForm, self).clean()
+                org_constants = self.cleaned_data.get("org_constants")
+
+                if org_constants:
+                    try:
+                        json.loads(org_constants)
+                    except ValueError:
+                        raise ValidationError(_("Invalid JSON format."))
+
+                return self.cleaned_data
+
+            class Meta:
+                model = Org
+                fields = ("org_constants",)
+
+        success_message = ""
+        success_url = "@orgs.org_home"
+        form_class = ConstantsForm
+
+        def derive_initial(self):
+            initial = super(OrgCRUDL.Constants, self).derive_initial()
+            org_constants = self.get_object().get_org_constants()
+            if org_constants:
+                initial["org_constants"] = json.loads(org_constants)
+            return initial
+
+        def form_valid(self, form):
+            user = self.request.user
+            org = user.get_org()
+            org.save_org_constants(user, form.cleaned_data.get("org_constants"))
+            return super(OrgCRUDL.Constants, self).form_valid(form)
+
     class Home(FormaxMixin, InferOrgMixin, OrgPermsMixin, SmartReadView):
         title = _("Your Account")
 
@@ -2206,6 +2249,11 @@ class OrgCRUDL(SmartCRUDL):
             if self.has_org_perm("orgs.org_bothub"):
                 formax.add_section(
                     "bothub", reverse("orgs.org_bothub"), icon="icon-bothub", action="redirect", nobutton=True
+                )
+
+            if self.has_org_perm('orgs.org_constants'):
+                formax.add_section(
+                    "constants", reverse("orgs.org_constants"), icon="icon-cog", action="redirect"
                 )
 
             if self.has_org_perm('orgs.org_webhook'):

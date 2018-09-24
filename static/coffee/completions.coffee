@@ -5,7 +5,7 @@ class window.AutoComplete
 
   constructor: (@variables=[], @functions=[]) ->
 
-    @parser = new window.excellent.Parser('@', ['channel', 'contact', 'date', 'extra', 'flow', 'step', 'parent', 'child', 'new_contact']);
+    @parser = new window.excellent.Parser('@', ['channel', 'contact', 'date', 'extra', 'flow', 'step', 'parent', 'child', 'new_contact', 'org']);
     @completions = @variables.concat(@functions)
     @invalidFields = {}
 

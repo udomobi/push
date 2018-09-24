@@ -26,6 +26,7 @@ from temba.contacts.models import Contact, ContactURN, ContactGroup, ContactGrou
 from temba.flows.models import Flow, FlowRun, FlowStart
 from temba.locations.models import AdminBoundary, BoundaryAlias
 from temba.msgs.models import Broadcast, Msg, Label, LabelCount, SystemLabel
+from temba.orgs.models import Org
 from temba.utils import str_to_bool, splitting_getlist
 from temba.utils.dates import json_date_to_datetime
 from uuid import UUID
@@ -37,7 +38,7 @@ from .serializers import ContactFieldReadSerializer, ContactFieldWriteSerializer
 from .serializers import ContactGroupWriteSerializer, FlowReadSerializer, FlowRunReadSerializer, FlowStartReadSerializer
 from .serializers import FlowStartWriteSerializer, LabelReadSerializer, LabelWriteSerializer, MsgReadSerializer
 from .serializers import MsgBulkActionSerializer, ResthookReadSerializer, ResthookSubscriberReadSerializer
-from .serializers import ResthookSubscriberWriteSerializer, WebHookEventReadSerializer
+from .serializers import ResthookSubscriberWriteSerializer, WebHookEventReadSerializer, OrgWriteSerializer, OrgReadSerializer
 from ..models import APIPermission, SSLPermission
 from ..support import InvalidQueryError
 
@@ -63,7 +64,7 @@ class RootView(views.APIView):
      * [/api/v2/labels](/api/v2/labels) - to list, create, update or delete message labels
      * [/api/v2/messages](/api/v2/messages) - to list messages
      * [/api/v2/message_actions](/api/v2/message_actions) - to perform bulk message actions
-     * [/api/v2/org](/api/v2/org) - to view your org
+     * [/api/v2/org](/api/v2/org) - to view, update your org
      * [/api/v2/runs](/api/v2/runs) - to list flow runs
      * [/api/v2/resthooks](/api/v2/resthooks) - to list resthooks
      * [/api/v2/resthook_events](/api/v2/resthook_events) - to list resthook events
@@ -207,6 +208,7 @@ class ExplorerView(SmartTemplateView):
             MessagesEndpoint.get_read_explorer(),
             MessageActionsEndpoint.get_write_explorer(),
             OrgEndpoint.get_read_explorer(),
+            OrgEndpoint.get_write_explorer(),
             ResthooksEndpoint.get_read_explorer(),
             ResthookEventsEndpoint.get_read_explorer(),
             ResthookSubscribersEndpoint.get_read_explorer(),
@@ -2395,7 +2397,7 @@ class MessageActionsEndpoint(BulkWriteAPIMixin, BaseAPIView):
         }
 
 
-class OrgEndpoint(BaseAPIView):
+class OrgEndpoint(WriteAPIMixin, BaseAPIView):
     """
     This endpoint allows you to view details about your account.
 
@@ -2419,8 +2421,15 @@ class OrgEndpoint(BaseAPIView):
             "credits": {"used": 121433, "remaining": 3452},
             "anon": false
         }
+
+    ## Updating Organization Constants
+
+    A **POST** can also be used to update an organizations constants.
     """
     permission = 'orgs.org_api'
+    write_serializer_class = OrgWriteSerializer
+    serializer_class = OrgReadSerializer
+    model = Org
 
     def get(self, request, *args, **kwargs):
         org = request.user.get_org()
@@ -2445,6 +2454,18 @@ class OrgEndpoint(BaseAPIView):
             'title': "View Current Org",
             'url': reverse('api.v2.org'),
             'slug': 'org-read'
+        }
+
+    @classmethod
+    def get_write_explorer(cls):
+        return {
+            'method': "POST",
+            'title': "Update Organization Constants",
+            'url': reverse('api.v2.org'),
+            'slug': 'org-write',
+            'fields': [
+                {'name': "org_constants", 'required': False, 'help': "JSON file"}
+            ]
         }
 
 

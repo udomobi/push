@@ -10,6 +10,7 @@ import six
 import time
 import traceback
 import uuid
+import ast
 
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -23,6 +24,7 @@ from django.utils import timezone
 from django.utils.html import escape
 from django.utils.translation import ugettext, ugettext_lazy as _
 from django_redis import get_redis_connection
+
 from temba_expressions.evaluator import EvaluationContext, DateStyle
 from temba.channels.courier import push_courier_msgs
 from temba.assets.models import register_asset_store
@@ -33,7 +35,7 @@ from temba.schedules.models import Schedule
 from temba.utils import analytics, chunk_list, on_transaction_commit, dict_to_json, get_anonymous_user
 from temba.utils.dates import get_datetime_format, datetime_to_str, datetime_to_s
 from temba.utils.export import BaseExportTask, BaseExportAssetStore
-from temba.utils.expressions import evaluate_template
+from temba.utils.expressions import evaluate_template, NormalizeFields
 from temba.utils.http import http_headers
 from temba.utils.models import SquashableModel, TembaModel, TranslatableField, JSONAsTextField
 from temba.utils.queues import DEFAULT_PRIORITY, push_task, LOW_PRIORITY, HIGH_PRIORITY
@@ -1434,6 +1436,11 @@ class Msg(models.Model):
             'tomorrow': datetime_to_str(timezone.now() + timedelta(days=1), format=format_date, tz=tz),
             'yesterday': datetime_to_str(timezone.now() - timedelta(days=1), format=format_date, tz=tz)
         }
+
+        org_constants = org.get_org_constants()
+        if org_constants:
+            (result, count) = NormalizeFields.normalize_fields(json.loads(ast.literal_eval(org_constants)), settings.ORGANIZATION_FIELDS_SIZE * 4)
+            context['org'] = result
 
         date_style = DateStyle.DAY_FIRST if dayfirst else DateStyle.MONTH_FIRST
         context = EvaluationContext(context, tz, date_style)

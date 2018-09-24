@@ -53,7 +53,7 @@ class EmailType(ChannelType):
             message = MIMEMultipart('alternative')
             message['Subject'] = channel.config['EMAIL_SUBJECT']
             message['From'] = '{0} <{1}>'.format(channel.config['EMAIL_SENDER_NAME'], channel.config['EMAIL_SENDER_FROM'])
-            message['To'] = '{0} <{1}>'.format(contact_obj.name, msg.urn_path)
+            message['To'] = '{0} <{1}>'.format(contact_obj.name if contact_obj.name else '', msg.urn_path)
 
             part = MIMEText(text.encode('utf8'), 'html')
             message.attach(part)
