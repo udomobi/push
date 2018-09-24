@@ -57,6 +57,6 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             "EMAIL_SUBJECT": data["email_subject"],
         }
 
-        self.object = Channel.create(org, self.request.user, None, self.channel_type, name=data["sender_from"], address=None, config=config, schemes=[EMAIL_SCHEME])
+        self.object = Channel.create(org, self.request.user, None, self.channel_type, name=data["sender_from"], address=data["sender_from"], config=config, schemes=[EMAIL_SCHEME])
 
         return super(ClaimView, self).form_valid(form)
