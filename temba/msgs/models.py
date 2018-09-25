@@ -1437,10 +1437,11 @@ class Msg(models.Model):
             'yesterday': datetime_to_str(timezone.now() - timedelta(days=1), format=format_date, tz=tz)
         }
 
-        org_constants = org.get_org_constants()
-        if org_constants:
-            (result, count) = NormalizeFields.normalize_fields(json.loads(ast.literal_eval(org_constants)), settings.ORGANIZATION_FIELDS_SIZE * 4)
-            context['org'] = result
+        if org:
+            org_constants = org.get_org_constants()
+            if org_constants:
+                (result, count) = NormalizeFields.normalize_fields(json.loads(ast.literal_eval(org_constants)), settings.ORGANIZATION_FIELDS_SIZE * 4)
+                context['org'] = result
 
         date_style = DateStyle.DAY_FIRST if dayfirst else DateStyle.MONTH_FIRST
         context = EvaluationContext(context, tz, date_style)
