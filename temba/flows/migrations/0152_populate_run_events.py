@@ -313,7 +313,7 @@ def clear_migration(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('flows', '0149_update_path_trigger'),
+        ('flows', '0151_update_path_trigger'),
     ]
 
     operations = [

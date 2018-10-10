@@ -140,7 +140,7 @@ $$ LANGUAGE plpgsql;"""
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('flows', '0148_flowrun_events'),
+        ('flows', '0150_flowrun_events'),
     ]
 
     operations = [
