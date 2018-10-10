@@ -144,14 +144,10 @@ def history_class(item):
     if item['type'] in ('msg', 'broadcast'):
         classes.append('msg')
         if obj.status in (ERRORED, FAILED):
-,
-    GCM_SCHEME: 'icon-fcm'
-,
-    GCM_SCHEME: 'icon-fcm'
-,
-    GCM_SCHEME: 'icon-fcm'
-,
-    GCM_SCHEME: 'icon-fcm'
+            classes.append('warning')
+    else:
+        classes.append('non-msg')
+
         if item['type'] == 'webhook-result' and not obj.is_success:
             classes.append('warning')
 
