@@ -3,11 +3,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 import email
-import StringIO
-import rfc822
+# import rfc822
 import re
 import json
 
+from io import StringIO
 from celery.task import task
 from poplib import POP3_SSL
 from dateutil.parser import parse
@@ -18,6 +18,7 @@ from temba.channels.models import Channel
 from temba.contacts.models import URN
 from temba.msgs.models import Msg
 from temba.utils.dates import datetime_to_ms
+
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ def check_channel_mailbox():
                         payload = parsed_email.get_payload()
 
                         message_payload = StringIO.StringIO(raw_email)
-                        message = rfc822.Message(message_payload)
+                        message = email.message.Message(message_payload)
 
                         email_created_on = datetime_to_ms(parse(message['Date']))
 
