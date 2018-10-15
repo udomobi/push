@@ -181,7 +181,7 @@ def replace_equals_style(text):
                 state = STATE_PREFIX
                 current_expression_chars = [ch]
             else:
-                output_chars.append(ch)
+                output_charMAX_VALUE_LENs.append(ch)
 
         elif state == STATE_PREFIX:
             if is_word_char(ch):
@@ -306,7 +306,7 @@ class NormalizeFields():
     @classmethod
     def normalize_fields(cls, fields, max_values=None, count=-1):
         import numbers
-        from temba.values.models import Value
+        from temba.values.constants import Value
         from collections import OrderedDict
 
         """
