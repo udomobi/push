@@ -723,7 +723,9 @@ class Flow(TembaModel):
 
             # recordings have to be tacked on last
             if destination.ruleset_type == RuleSet.TYPE_WAIT_RECORDING:
-                voice_response.record(action=callback)
+                from temba.channels.types.twilio import TwilioType
+                voice_response.record(action=callback,
+                                      maxLength=call.channel.config.get(TwilioType.CONFIG_RECORDING_MAX_LENGTH, None))
 
             elif destination.ruleset_type == RuleSet.TYPE_SUBFLOW:
                 voice_response.redirect(url=callback)
