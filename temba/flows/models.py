@@ -3631,7 +3631,11 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
                 self.voice_response.play(url=recording_url)
             else:
                 language = self.get_voice_language()
-                self.voice_response.say(text, voice='alice', language=language)
+
+                from temba.channels.types.twilio import TwilioType
+                self.voice_response.say(text,
+                                        voice=connection.channel.config.get(TwilioType.CONFIG_VOICE, 'alice'),
+                                        language=language)
 
         return msg
 

@@ -28,14 +28,17 @@ class UpdateTwilioForm(UpdateChannelForm):
                                               max_value=600,
                                               required=False)
 
+    voice = forms.CharField(label=_("Voice"), help_text=_("Voice used for Say actions"), required=False)
+
     def add_config_fields(self):
         from temba.channels.types.twilio import TwilioType
         self.fields[TwilioType.CONFIG_RECORDING_MAX_LENGTH].initial = self.object.config.get("recording_max_length")
+        self.fields[TwilioType.CONFIG_VOICE].initial = self.object.config.get("voice")
 
     class Meta(UpdateChannelForm.Meta):
-        fields = ("name", "alert_email", "address", "country", "recording_max_length")
+        fields = ("name", "alert_email", "address", "country", "recording_max_length", "voice")
         readonly = []
-        config_fields = ["recording_max_length"]
+        config_fields = ["recording_max_length", "voice"]
 
 
 class ClaimView(BaseClaimNumberMixin, SmartFormView):
