@@ -7,9 +7,14 @@ import re
 import iso639
 
 from django.conf import settings
+from django.utils.translation import ugettext_lazy as _
 
 
-class BothubConsumer(object):
+class BotHubException(Exception):
+    pass
+
+
+class BotHubConsumer(object):
     """
     Bothub consumer
     This consumer will call Bothub api.
@@ -29,13 +34,17 @@ class BothubConsumer(object):
         return self.bothub_authorization_key
 
     def request(self, url, method="GET", payload=None):
-        response = requests.request(
-            method=method,
-            url="{}/{}/".format(self.BASE_URL, url),
-            headers={"Authorization": "{} {}".format(self.AUTH_PREFIX, self.bothub_authorization_key)},
-            data=payload,
-        )
-        return response
+        try:
+            session = requests.Session()
+            prepped = requests.Request(
+                method=method,
+                url="{}/{}/".format(self.BASE_URL, url),
+                headers={"Authorization": "{} {}".format(self.AUTH_PREFIX, self.bothub_authorization_key)},
+                data=payload
+            ).prepare()
+            return session.send(prepped, timeout=settings.BOTHUB_TIMEOUT)
+        except requests.RequestException:
+            raise BotHubException(_("Bothub has offline. Try again."))
 
     def predict(self, text, language=None):
         payload = {"text": text.encode('utf-8')}
@@ -48,7 +57,7 @@ class BothubConsumer(object):
             payload.update({"language": language})
         response = self.request("parse", method="POST", payload=payload)
 
-        if response.status_code != 200:
+        if response and response.status_code != 200:
             return None, 0, None
 
         predict = json.loads(response.content)
@@ -57,7 +66,7 @@ class BothubConsumer(object):
 
     def is_valid_token(self):
         response = self.request("info")
-        return True if response.status_code == 200 else False
+        return True if response and response.status_code == 200 else False
 
     def get_repository_info(self):
         response = self.request("info")
