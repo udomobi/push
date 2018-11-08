@@ -45,7 +45,7 @@ from temba.utils.dates import datetime_to_str
 from temba.utils.expressions import get_function_listing
 from temba.utils.goflow import get_client
 from temba.utils.views import BaseActionForm
-from temba.nlu.models import BothubConsumer
+from temba.nlu.models import BotHubConsumer, BotHubException
 
 from uuid import uuid4
 from .models import FlowStep, RuleSet, ActionLog, ExportFlowResultsTask, FlowLabel, FlowPathRecentRun
@@ -695,11 +695,14 @@ class FlowCRUDL(SmartCRUDL):
             if repositories:
                 repositories = repositories.values()
                 for repository in repositories:
-                    bothub = BothubConsumer(repository.get("authorization_key"))
-                    intents += [
-                        dict(name=intent, bot_id=repository.get("uuid"), bot_name=repository.get("name"))
-                        for intent in bothub.get_intents()
-                    ]
+                    try:
+                        bothub = BotHubConsumer(repository.get("authorization_key"))
+                        intents += [
+                            dict(name=intent, bot_id=repository.get("uuid"), bot_name=repository.get("name"))
+                            for intent in bothub.get_intents()
+                        ]
+                    except BotHubException:
+                        break
             return JsonResponse(dict(bots_intents=intents))
 
     class Completion(OrgPermsMixin, SmartListView):

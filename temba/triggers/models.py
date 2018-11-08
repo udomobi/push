@@ -17,7 +17,7 @@ from temba.flows.models import Flow, FlowRun, FlowStart
 from temba.ivr.models import IVRCall
 from temba.msgs.models import Msg
 from temba.orgs.models import Org
-from temba.nlu.models import BothubConsumer
+from temba.nlu.models import BotHubConsumer, BotHubException
 from temba_expressions.utils import tokenize
 
 
@@ -515,9 +515,9 @@ class Trigger(SmartModel):
                     repository_uuid = nlu_bot.get("repository_uuid")
                     try:
                         if repository_uuid not in responses.keys():
-                            bothub = BothubConsumer(repositories[repository_uuid].get("authorization_key"))
+                            bothub = BotHubConsumer(repositories[repository_uuid].get("authorization_key"))
                             responses[repository_uuid] = bothub.predict(msg.text, msg.contact.language)
-                    except Exception:  # pragma: needs cover
+                    except BotHubException:  # pragma: needs cover
                         return False
 
                     intent, confidence, entities = responses[repository_uuid]

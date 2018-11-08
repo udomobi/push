@@ -25,7 +25,7 @@ from temba.flows.models import Flow
 from temba.msgs.views import ModalMixin
 from temba.utils import analytics, on_transaction_commit
 from temba.utils.views import BaseActionForm
-from temba.nlu.models import BothubConsumer
+from temba.nlu.models import BotHubConsumer, BotHubException
 from .models import Trigger
 
 
@@ -405,15 +405,18 @@ class BothubTriggerForm(GroupBasedTriggerForm):
             repositories = repositories.values()
 
             for repository in repositories:
-                bothub = BothubConsumer(repository.get("authorization_key"))
-                intents = bothub.get_intents()
+                try:
+                    bothub = BotHubConsumer(repository.get("authorization_key"))
+                    intents = bothub.get_intents()
 
-                for intent in intents:
-                    repository_name = repository.get("name")
-                    if repository_name not in intents_items.keys():
-                        intents_items[repository_name] = ()
-                    if intent:
-                        intents_items[repository_name] += (("{}${}".format(intent, repository.get("uuid")), intent),)
+                    for intent in intents:
+                        repository_name = repository.get("name")
+                        if repository_name not in intents_items.keys():
+                            intents_items[repository_name] = ()
+                        if intent:
+                            intents_items[repository_name] += (("{}${}".format(intent, repository.get("uuid")), intent),)
+                except BotHubException:
+                    break
         return intents_items.items()
 
     class Meta(BaseTriggerForm.Meta):

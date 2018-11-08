@@ -43,7 +43,7 @@ from temba.locations.models import AdminBoundary
 from temba.msgs.models import Broadcast, Msg, FLOW, INBOX, INCOMING, QUEUED, FAILED, INITIALIZING, HANDLED, Label
 from temba.msgs.models import PENDING, DELIVERED, USSD as MSG_TYPE_USSD, OUTGOING, UnreachableException
 from temba.orgs.models import Org, Language, get_current_export_version
-from temba.nlu.models import BothubConsumer
+from temba.nlu.models import BotHubConsumer, BotHubException
 from temba.utils import analytics, chunk_list, on_transaction_commit, goflow
 from temba.utils.dates import get_datetime_format, str_to_datetime, datetime_to_str, json_date_to_datetime
 from temba.utils.email import is_valid_address
@@ -7044,9 +7044,9 @@ class HasIntentTest(Test):
             try:
                 repository_uuid = intent_data.get("bot_id", None)
                 repository = repositories[repository_uuid]
-                bothub = BothubConsumer(repository.get("authorization_key"))
+                bothub = BotHubConsumer(repository.get("authorization_key"))
                 predicted_intent, predicted_confidence, entities = bothub.predict(text, run.contact.language)
-            except Exception:  # pragma: needs cover
+            except BotHubException:  # pragma: needs cover
                 return 0, None
 
             if predicted_intent == intent_data.get("name") and predicted_confidence * 100 >= confidence:
