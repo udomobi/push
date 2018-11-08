@@ -1480,7 +1480,7 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
 
       for rule in $scope.ruleset.rules
         if rule._config.type == 'has_intent'
-          modal.context.style.width = '823px'
+          modal.context.style.width = '840px'
           modal.context.style.marginLeft = '-448px'
           break
 
