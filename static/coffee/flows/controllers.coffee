@@ -1880,18 +1880,19 @@ NodeEditorController = ($rootScope, $scope, $modalInstance, $timeout, $log, Flow
   else
     $scope.action._attachType = "image"
 
-  if $scope.options.dragSource? or !($scope.action.quick_replies? and $scope.action.quick_replies != undefined and $scope.action.quick_replies.length > 0)
-    $scope.quickReplies = []
-    $scope.showQuickReplyButton = true
-  else
+  $scope.quickReplies = []
+  $scope.urlButtons = []
+  $scope.showQuickReplyButton = true
+  $scope.showUrlButton = true
+
+  if $scope.action.quick_replies? and $scope.action.quick_replies.length > 0
     $scope.quickReplies = $scope.action.quick_replies
     $scope.showQuickReplyButton = false
+    $scope.showUrlButton = false
 
-  if $scope.options.dragSource? or !($scope.action.url_buttons? and $scope.action.url_buttons != undefined and $scope.action.url_buttons.length > 0)
-    $scope.urlButtons = []
-    $scope.showUrlButton = true
-  else
+  if $scope.action.url_buttons? and $scope.action.url_buttons.length > 0
     $scope.urlButtons = $scope.action.url_buttons
+    $scope.showQuickReplyButton = false
     $scope.showUrlButton = false
 
   formData.isActionWebhookAdditionalOptionsVisible = $scope.action.webhook_headers?.length > 0
