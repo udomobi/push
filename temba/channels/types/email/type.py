@@ -7,6 +7,7 @@ import time
 from smtplib import SMTP
 
 from email import encoders
+from email.utils import make_msgid
 from email.mime.image import MIMEImage
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
@@ -15,7 +16,7 @@ from email.mime.multipart import MIMEMultipart
 
 from django.utils.translation import ugettext_lazy as _
 
-from temba.msgs.models import Attachment, WIRED, ERRORED
+from temba.msgs.models import Attachment, Msg, WIRED, ERRORED, INCOMING
 from temba.contacts.models import Contact, EMAIL_SCHEME
 from temba.utils.http import HttpEvent
 
@@ -55,6 +56,14 @@ class EmailType(ChannelType):
             message['From'] = '{0} <{1}>'.format(channel.config['EMAIL_SENDER_NAME'], channel.config['EMAIL_SENDER_FROM'])
             message['To'] = '{0} <{1}>'.format(contact_obj.name if contact_obj.name else '', msg.urn_path)
 
+            last_message = Msg.objects.filter(contact=msg.contact, channel_id=channel.id, direction=INCOMING, metadata__isnull=False).last()
+
+            if last_message:
+                message['Subject'] = 'Re: {}'.format(last_message.metadata.get('subject'))
+                message["In-Reply-To"] = last_message.external_id
+                message["References"] = last_message.external_id
+
+            message["Message-ID"] = make_msgid()
             part = MIMEText(text.encode('utf8'), 'html')
             message.attach(part)
 

@@ -40,71 +40,76 @@ def check_channel_mailbox():
     if r.get('channel_mailbox_running'):  # pragma: no cover
         return
 
-    r.set('channel_mailbox_running', True, ex=3600)
+    with r.lock('channel_mailbox_running', 1800):
+        for channel in Channel.objects.filter(is_active=True, channel_type='EM'):
+            pop_hostname = channel.config['EMAIL_POP_HOSTNAME']
+            channel_created_on = datetime_to_ms(channel.created_on)
 
-    for channel in Channel.objects.filter(is_active=True, channel_type='EM'):
-        pop_hostname = channel.config['EMAIL_POP_HOSTNAME']
-        channel_created_on = datetime_to_ms(channel.created_on)
+            if pop_hostname:
+                key = 'check_channel_mailbox_%d' % channel.id
 
-        if pop_hostname:
-            key = 'check_channel_mailbox_%d' % channel.id
+                try:
+                    server = POP3_SSL(pop_hostname, channel.config['EMAIL_POP_PORT'])
+                    server.user(channel.config['EMAIL_USERNAME'])
+                    server.pass_(channel.config['EMAIL_PASSWORD'])
 
-            try:
-                server = POP3_SSL(pop_hostname, channel.config['EMAIL_POP_PORT'])
-                server.user(channel.config['EMAIL_USERNAME'])
-                server.pass_(channel.config['EMAIL_PASSWORD'])
+                    logger.info(server.getwelcome())
+                    logger.info(server.stat())
 
-                logger.info(server.getwelcome())
-                logger.info(server.stat())
+                    num_messages = len(server.list()[1])
+                    emails_list = r.get(key)
 
-                num_messages = len(server.list()[1])
-                emails_list = r.get(key)
+                    if emails_list:
+                        emails_list = json.loads(emails_list)
+                    else:
+                        emails_list = {}
+                        r.set(key, emails_list)
 
-                if emails_list:
-                    emails_list = json.loads(emails_list)
-                else:
-                    emails_list = {}
-                    r.set(key, emails_list)
+                    for i in range(num_messages):
+                        try:
+                            raw_email = b"\n".join(server.retr(i + 1)[1])
+                            parsed_email = email.message_from_string(raw_email)
+                            payload = parsed_email.get_payload()
 
-                for i in range(num_messages):
-                    try:
-                        raw_email = b"\n".join(server.retr(i + 1)[1])
-                        parsed_email = email.message_from_string(raw_email)
-                        payload = parsed_email.get_payload()
+                            message_payload = StringIO.StringIO(raw_email)
+                            message = rfc822.Message(message_payload)
 
-                        message_payload = StringIO.StringIO(raw_email)
-                        message = rfc822.Message(message_payload)
+                            email_created_on = datetime_to_ms(parse(message['Date']))
 
-                        email_created_on = datetime_to_ms(parse(message['Date']))
+                            if message['Message-ID'] not in emails_list and email_created_on > channel_created_on:
+                                emails_list[message['Message-ID']] = message['Message-ID']
+                                match_sender = re.search(r'[\w\.-]+@[\w\.-]+', message['From'])
 
-                        if isinstance(payload, list) and message['Message-ID'] not in emails_list and email_created_on > channel_created_on:
-                            emails_list[message['Message-ID']] = message['Message-ID']
-                            match_sender = re.search(r'[\w\.-]+@[\w\.-]+', message['From'])
+                                if match_sender:
+                                    sender = match_sender.group(0)
+                                    content = payload
+                                    encoding = None
 
-                            if match_sender:
-                                sender = match_sender.group(0)
-                                content = payload[0].get_payload()
+                                    if parsed_email.is_multipart():
+                                        content = payload[0].get_payload()
+                                        encoding = payload[0].get('Content-Transfer-Encoding')
 
-                                if isinstance(content, str) and content is not None:
-                                    encoding = payload[0].get('Content-Transfer-Encoding')
+                                    elif message.get('Content-Transfer-Encoding') in ('base64',):
+                                        encoding = message.get('Content-Transfer-Encoding')
 
                                     if encoding:
                                         content = content.decode(encoding)
 
-                                    body = EmaiBodyParser(content).read().reply.decode('utf8')
-                                    urn = URN.from_parts(channel.schemes[0], sender)
-                                    sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']))
+                                    if isinstance(content, str) and content:
+                                        body = EmaiBodyParser(content).read().reply.decode('utf8')
+                                        urn = URN.from_parts(channel.schemes[0], sender)
+                                        sms = Msg.create_incoming(channel, urn, body, date=parse(message['Date']), external_id=message['Message-ID'])
+                                        sms.metadata = {'subject': message['Subject']}
+                                        sms.save()
 
-                                    logger.info('New Email: {}'.format(body))
-                                    logger.info('SMS Accepted: {}'.format(sms.id))
-                        else:
-                            logger.info('Email já salvo: {}'.format(message['Message-ID']))
-                    except Exception as e:
-                        logger.error(e)
-                        continue
-                r.set(key, json.dumps(emails_list))
-                server.quit()
-            except Exception as e:
-                logger.error(e)
-
-    r.delete('channel_mailbox_running')
+                                        logger.info('New Email: {}'.format(body))
+                                        logger.info('SMS Accepted: {}'.format(sms.id))
+                            else:
+                                logger.info('Email já salvo: {}'.format(message['Message-ID']))
+                        except Exception as e:
+                            logger.error(e)
+                            continue
+                    r.set(key, json.dumps(emails_list))
+                    server.quit()
+                except Exception as e:
+                    logger.error(e)
