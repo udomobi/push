@@ -64,7 +64,7 @@ class EmailType(ChannelType):
                 message['References'] = last_message.external_id
 
             message['Message-ID'] = make_msgid()
-            part = MIMEText(text.encode('utf8'), 'html')
+            part = MIMEText(text.encode('utf8'), 'html', 'utf8')
             message.attach(part)
 
             attachments = Attachment.parse_all(msg.attachments)
