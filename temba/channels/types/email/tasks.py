@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 import email
-import StringIO
-import rfc822
 import re
 import json
 import six
@@ -15,6 +13,7 @@ from dateutil.parser import parse
 from django_redis import get_redis_connection
 from email_reply_parser import EmailMessage
 from email.message import Message
+from bs4 import BeautifulSoup
 
 from temba.channels.models import Channel
 from temba.contacts.models import URN
@@ -196,22 +195,28 @@ class EmailPop3Transport():
 
         try:
             body = message.as_string()
-        except KeyError as exc:
+        except KeyError:
             return None
 
-        body_parser = EmaiBodyParser(self.get_text(body)).read().reply
+        body_parser = self.get_html(body)
         if not body_parser:
-            body_parser = self.get_html(body)
-        
+            body_parser = EmaiBodyParser(self.get_text(body)).read().reply
+
         msg['body'] = body_parser
         return msg
+
+    def clean_body(self, body):
+        soup = BeautifulSoup(body, 'html.parser')
+        for div in soup.find_all('div', {'class': 'gmail_quote'}):
+            div.decompose()
+        return soup.text
 
 
 @task(track_started=True, name='check_channel_mailbox')
 def check_channel_mailbox():
     r = get_redis_connection()
 
-    if r.get('channel_mailbox_running'):  # pragma: no cover
+    if r.get('channel_mailbox_running'):
         return
 
     with r.lock('channel_mailbox_running', 3600):
@@ -243,13 +248,18 @@ def check_channel_mailbox():
 
                             if match_sender:
                                 sender = match_sender.group(0)
-
+                                body = transport.clean_body(message['body'])
                                 urn = URN.from_parts(channel.schemes[0], sender)
-                                sms = Msg.create_incoming(channel, urn, message['body'], date=parse(message['date']), external_id=message['message_id'])
-                                sms.metadata = {'subject': message['subject']}
-                                sms.save()
+                                sms = Msg.create_incoming(
+                                    channel,
+                                    urn,
+                                    body,
+                                    date=parse(message['date']),
+                                    external_id=message['message_id'],
+                                    metadata={'subject': message['subject']}
+                                )
 
-                                logger.info('New E-mail: {}'.format(message['body']))
+                                logger.info('New E-mail: {}'.format(body))
                                 logger.info('SMS Accepted: {}'.format(sms.id))
 
                     r.set(key, json.dumps(emails_list))

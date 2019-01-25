@@ -60,10 +60,10 @@ class EmailType(ChannelType):
 
             if last_message:
                 message['Subject'] = 'Re: {}'.format(last_message.metadata.get('subject'))
-                message["In-Reply-To"] = last_message.external_id
-                message["References"] = last_message.external_id
+                message['In-Reply-To'] = last_message.external_id
+                message['References'] = last_message.external_id
 
-            message["Message-ID"] = make_msgid()
+            message['Message-ID'] = make_msgid()
             part = MIMEText(text.encode('utf8'), 'html')
             message.attach(part)
 
@@ -109,4 +109,4 @@ class EmailType(ChannelType):
                 event.status_code = 500
                 event.response_body = 'Please check if your SMTP settings are correctly configured'
 
-            Channel.success(channel, msg, status, start, event=event)
+            Channel.success(channel, msg, status, start, event=event, external_id=message['Message-ID'])
