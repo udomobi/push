@@ -17,8 +17,28 @@ from temba.orgs.models import ACCOUNT_SID, ACCOUNT_TOKEN
 from temba.utils import analytics
 from temba.utils.timezones import timezone_to_country_code
 from ...models import Channel
-from ...views import ClaimViewMixin, TWILIO_SUPPORTED_COUNTRIES, BaseClaimNumberMixin, ALL_COUNTRIES
+from ...views import ClaimViewMixin, TWILIO_SUPPORTED_COUNTRIES, BaseClaimNumberMixin, ALL_COUNTRIES, UpdateChannelForm
 from ...views import TWILIO_SEARCH_COUNTRIES
+
+
+class UpdateTwilioForm(UpdateChannelForm):
+    recording_max_length = forms.IntegerField(label=_("Max Length"),
+                                              help_text=_("Max length of recordings in seconds"),
+                                              min_value=1,
+                                              max_value=600,
+                                              required=False)
+
+    voice = forms.CharField(label=_("Voice"), help_text=_("Voice used for Say actions"), required=False)
+
+    def add_config_fields(self):
+        from temba.channels.types.twilio import TwilioType
+        self.fields[TwilioType.CONFIG_RECORDING_MAX_LENGTH].initial = self.object.config.get("recording_max_length")
+        self.fields[TwilioType.CONFIG_VOICE].initial = self.object.config.get("voice")
+
+    class Meta(UpdateChannelForm.Meta):
+        fields = ("name", "alert_email", "address", "country", "recording_max_length", "voice")
+        readonly = []
+        config_fields = ["recording_max_length", "voice"]
 
 
 class ClaimView(BaseClaimNumberMixin, SmartFormView):

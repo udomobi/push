@@ -1369,7 +1369,7 @@ class ChannelCRUDL(SmartCRUDL):
         def pre_save(self, obj):
             if obj.config:
                 for field in self.form.Meta.config_fields:  # pragma: needs cover
-                    obj.config[field] = bool(self.form.cleaned_data[field])
+                    obj.config[field] = self.form.cleaned_data[field]
             return obj
 
         def post_save(self, obj):

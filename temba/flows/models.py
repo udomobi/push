@@ -44,7 +44,7 @@ from temba.msgs.models import Broadcast, Msg, FLOW, INBOX, INCOMING, QUEUED, FAI
 from temba.msgs.models import PENDING, DELIVERED, USSD as MSG_TYPE_USSD, OUTGOING
 from temba.msgs.tasks import send_broadcast_task
 from temba.orgs.models import Org, Language, get_current_export_version
-from temba.nlu.models import BothubConsumer
+from temba.nlu.models import BotHubConsumer, BotHubException
 from temba.utils import analytics, chunk_list, on_transaction_commit, goflow
 from temba.utils.dates import get_datetime_format, str_to_datetime, datetime_to_str, json_date_to_datetime
 from temba.utils.email import is_valid_address
@@ -736,7 +736,9 @@ class Flow(TembaModel):
 
             # recordings have to be tacked on last
             if destination.ruleset_type == RuleSet.TYPE_WAIT_RECORDING:
-                voice_response.record(action=callback)
+                from temba.channels.types.twilio import TwilioType
+                voice_response.record(action=callback,
+                                      maxLength=call.channel.config.get(TwilioType.CONFIG_RECORDING_MAX_LENGTH, None))
 
             elif destination.ruleset_type == RuleSet.TYPE_SUBFLOW:
                 voice_response.redirect(url=callback)
@@ -3736,7 +3738,11 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
                 self.voice_response.play(url=recording_url)
             else:
                 language = self.get_voice_language()
-                self.voice_response.say(text, voice='alice', language=language)
+
+                from temba.channels.types.twilio import TwilioType
+                self.voice_response.say(text,
+                                        voice=connection.channel.config.get(TwilioType.CONFIG_VOICE, 'alice'),
+                                        language=language)
 
         return msg
 
@@ -7175,9 +7181,9 @@ class HasIntentTest(Test):
             try:
                 repository_uuid = intent_data.get("bot_id", None)
                 repository = repositories[repository_uuid]
-                bothub = BothubConsumer(repository.get("authorization_key"))
+                bothub = BotHubConsumer(repository.get("authorization_key"))
                 predicted_intent, predicted_confidence, entities = bothub.predict(text, run.contact.language)
-            except Exception:  # pragma: needs cover
+            except BotHubException:  # pragma: needs cover
                 return 0, None
 
             if predicted_intent == intent_data.get("name") and predicted_confidence * 100 >= confidence:
@@ -7517,22 +7523,14 @@ class NumericTest(Test):
 
     @classmethod
     def convert_to_decimal(cls, word):
-        # common substitutions
-        original_word = word
-        word = word.replace('l', '1').replace('o', '0').replace('O', '0')
-
         try:
             return (word, Decimal(word))
         except Exception as e:
-            # we only try this hard if we haven't already substituted characters
-            if original_word == word:
-                # does this start with a number?  just use that part if so
-                match = regex.match(r"^[$£€]?([\d,][\d,\.]*([\.,]\d+)?)\D*$", word, regex.UNICODE | regex.V0)
+            # does this start with a number?  just use that part if so
+            match = regex.match(r"^[$£€]?([\d,][\d,\.]*([\.,]\d+)?)\D*$", word, regex.UNICODE | regex.V0)
 
-                if match:
-                    return (match.group(1), Decimal(match.group(1)))
-                else:
-                    raise e
+            if match:
+                return (match.group(1), Decimal(match.group(1)))
             else:
                 raise e
 

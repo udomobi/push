@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from django.utils.translation import ugettext_lazy as _
 from twilio import TwilioRestException
 
-from temba.channels.types.twilio.views import ClaimView
+from temba.channels.types.twilio.views import ClaimView, UpdateTwilioForm
 from temba.channels.views import TWILIO_SUPPORTED_COUNTRIES_CONFIG
 from temba.contacts.models import TEL_SCHEME
 from temba.utils.timezones import timezone_to_country_code
@@ -30,6 +30,11 @@ class TwilioType(ChannelType):
     max_length = 1600
 
     ivr_protocol = ChannelType.IVRProtocol.IVR_PROTOCOL_TWIML
+
+    CONFIG_RECORDING_MAX_LENGTH = 'recording_max_length'
+    CONFIG_VOICE = 'voice'
+
+    update_form = UpdateTwilioForm
 
     def is_recommended_to(self, user):
         org = user.get_org()

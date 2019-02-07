@@ -38,7 +38,7 @@ from requests import Session
 from smartmin.models import SmartModel
 from temba.bundles import get_brand_bundles, get_bundle_map
 from temba.locations.models import AdminBoundary, BoundaryAlias
-from temba.nlu.models import BothubConsumer
+from temba.nlu.models import BotHubConsumer
 from temba.utils import analytics, languages
 from temba.utils.cache import get_cacheable_result, get_cacheable_attr, incrby_existing
 from temba.utils.currencies import currency_for_country
@@ -945,7 +945,7 @@ class Org(SmartModel):
         if "repositories" not in bothub_config.keys():
             bothub_config.update({"repositories": dict()})
 
-        bothub = BothubConsumer(authorization_key)
+        bothub = BotHubConsumer(authorization_key)
         if bothub.is_valid_token():
             repository = bothub.get_repository_info()
 

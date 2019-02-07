@@ -1304,10 +1304,11 @@ TWILIO_VOICE_LANGUAGES = {
 }
 
 # -----------------------------------------------------------------------------------
-# Bothub and WIT.AI integration url
+# Bothub integration url
 # -----------------------------------------------------------------------------------
 BOTHUB_BASE_URL = "https://nlp.bothub.it"
 BOTHUB_FIELDS_SIZE = 1024
+BOTHUB_TIMEOUT = 10
 
 # -----------------------------------------------------------------------------------
 # Organization Constants
