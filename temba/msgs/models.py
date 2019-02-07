@@ -1289,7 +1289,8 @@ class Msg(models.Model):
 
     @classmethod
     def create_incoming(cls, channel, urn, text, user=None, date=None, org=None, contact=None,
-                        status=PENDING, attachments=None, msg_type=None, topup=None, external_id=None, connection=None):
+                        status=PENDING, attachments=None, msg_type=None, topup=None, external_id=None,
+                        connection=None, metadata=None):
 
         from temba.api.models import WebHookEvent
         if not org and channel:
@@ -1348,7 +1349,8 @@ class Msg(models.Model):
                         attachments=attachments,
                         status=status,
                         external_id=external_id,
-                        connection=connection)
+                        connection=connection,
+                        metadata=metadata)
 
         if topup_id is not None:
             msg_args['topup_id'] = topup_id
