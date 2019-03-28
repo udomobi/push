@@ -120,10 +120,7 @@ window.updateResultsLegacy = (data) ->
   $(".simulator-content textarea").focus()
 
   $(".btn.quick-reply").on "click", (event) ->
-
-    if window.session and window.session.contact
-      window.sendUpdate({"new_message": event.target.innerText})
-    else
-      window.sendUpdateLegacy({"new_message": event.target.innerText})
+    payload = event.target.innerText
+    window.sendSimulationMessage(payload)
 
   window.updateActivity(data)
