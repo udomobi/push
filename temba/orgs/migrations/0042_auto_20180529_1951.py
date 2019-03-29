@@ -13,7 +13,7 @@ def delete_purge_debits(apps, schema_editor):
 class Migration(migrations.Migration):
     atomic = False
 
-    dependencies = [("orgs", "0039_auto_20180202_1234")]
+    dependencies = [("orgs", "0041_org_org_constants")]
 
     operations = [
         migrations.RemoveField(model_name="debit", name="is_squashed"),

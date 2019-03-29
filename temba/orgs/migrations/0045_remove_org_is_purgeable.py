@@ -7,6 +7,6 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [("orgs", "0042_auto_20180615_2040")]
+    dependencies = [("orgs", "0044_auto_20180615_2040")]
 
     operations = [migrations.RemoveField(model_name="org", name="is_purgeable")]

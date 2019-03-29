@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 
 import pytz
+import iso8601
 from twilio import twiml
 
 from django.conf import settings
@@ -23,7 +24,6 @@ from temba.ussd.models import USSDSession
 from temba.utils import on_transaction_commit
 from temba.utils.http import HttpEvent
 from temba.utils.queues import push_task
-from temba.utils.dates import json_date_to_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -589,7 +589,7 @@ class WsHandler(BaseChannelHandler):
 
             date = self.get_param('date', self.get_param('time'))
             if date:
-                date = json_date_to_datetime(date)
+                date = iso8601.parse_date(date)
 
             urn = URN.from_parts(channel.schemes[0], sender)
             sms = Msg.create_incoming(channel, urn, text, date=date)
