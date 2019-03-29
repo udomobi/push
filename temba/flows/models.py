@@ -5830,7 +5830,7 @@ class SayAction(Action):
 
         # localize the text for our message, need this either way for logging
         message = run.flow.get_localized_text(self.msg, run.contact)
-        (message, errors) = Msg.evaluate_template(message, context)
+        (message, errors) = Msg.evaluate_template(message, context, org=run.flow.org)
 
         msg = run.create_outgoing_ivr(message, media_url, run.connection)
 
