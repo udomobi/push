@@ -8,9 +8,10 @@ from django.db import migrations
 from django.utils import timezone
 
 
-def remove_never_expirations(apps, schema_editor):
+def remove_never_expirations():
     # do nothing for a clean database - don't even try to load the model class
-    FlowRun = apps.get_model("flows", "FlowRun")
+    # FlowRun = apps.get_model("flows", "FlowRun")
+    from temba.flows.models import FlowRun
     if not FlowRun.objects.exists():
         return
 
@@ -34,8 +35,12 @@ def remove_never_expirations(apps, schema_editor):
     FlowRun.bulk_exit(runs, FlowRun.EXIT_TYPE_EXPIRED)
 
 
+def apply_manual():
+    remove_never_expirations()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [("flows", "0161_auto_20180522_1851")]
 
-    operations = [migrations.RunPython(remove_never_expirations)]
+    # operations = [migrations.RunPython(remove_never_expirations)]

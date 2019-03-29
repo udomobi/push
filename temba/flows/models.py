@@ -3795,7 +3795,7 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
             """
             Wraps a result, lets us do a nice representation of both @flow.foo and @flow.foo.text
             """
-            return {
+            result = {
                 "__default__": res[FlowRun.RESULT_VALUE],
                 "text": res.get(FlowRun.RESULT_INPUT),
                 "time": res[FlowRun.RESULT_CREATED_ON],
