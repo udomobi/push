@@ -4186,8 +4186,8 @@ class RuleSet(models.Model):
                 if RuleSet.CONFIG_WEBHOOK_HEADERS in self.config:
                     headers = self.config[RuleSet.CONFIG_WEBHOOK_HEADERS]
                     for item in headers:
-                        header[item.get('name')] = item.get('value')
-
+                        (value, errors) = Msg.evaluate_template(item.get('value'), context, org=run.flow.org)
+                        header[item.get('name')] = value
             elif self.ruleset_type == RuleSet.TYPE_RESTHOOK:
                 from temba.api.models import Resthook
 
@@ -5830,7 +5830,7 @@ class SayAction(Action):
 
         # localize the text for our message, need this either way for logging
         message = run.flow.get_localized_text(self.msg, run.contact)
-        (message, errors) = Msg.evaluate_template(message, context)
+        (message, errors) = Msg.evaluate_template(message, context, org=run.flow.org)
 
         msg = run.create_outgoing_ivr(message, media_url, run.connection)
 
