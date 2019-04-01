@@ -261,7 +261,7 @@ class OrgGrantForm(forms.ModelForm):
     name = forms.CharField(label=_("Organization"),
                            help_text=_("The name of the new organization"))
     credits = forms.ChoiceField([], help_text=_("The initial number of credits granted to this organization."))
-    template = forms.ChoiceField([], help_text=_("Import templates from AWS S3 to this organization."), required=False)
+    template = forms.ChoiceField([], help_text=_("Import templates from AWS S3 to this organization."), initial='common')
 
     def __init__(self, *args, **kwargs):
         branding = kwargs['branding']
@@ -277,7 +277,9 @@ class OrgGrantForm(forms.ModelForm):
 
         self.fields['credits'].choices = choices
 
-        choices = []
+        choices = [
+            ('common', _("Comum")),
+        ]
         for template in settings.ORGS_TEMPLATES:
             choices.append((str(template[0]), template[1]))
 
