@@ -261,6 +261,7 @@ class OrgGrantForm(forms.ModelForm):
     name = forms.CharField(label=_("Organization"),
                            help_text=_("The name of the new organization"))
     credits = forms.ChoiceField([], help_text=_("The initial number of credits granted to this organization."))
+    template = forms.ChoiceField([], help_text=_("Import templates from AWS S3 to this organization."), initial='common')
 
     def __init__(self, *args, **kwargs):
         branding = kwargs['branding']
@@ -275,6 +276,14 @@ class OrgGrantForm(forms.ModelForm):
             choices.append((str(pack['size']), "%d - %s" % (pack['size'], pack['name'])))
 
         self.fields['credits'].choices = choices
+
+        choices = [
+            ('common', _("Comum")),
+        ]
+        for template in settings.ORGS_TEMPLATES:
+            choices.append((str(template[0]), template[1]))
+
+        self.fields['template'].choices = choices
 
     def clean(self):
         data = self.cleaned_data
@@ -1756,7 +1765,7 @@ class OrgCRUDL(SmartCRUDL):
     class Grant(SmartCreateView):
         title = _("Create Organization Account")
         form_class = OrgGrantForm
-        fields = ('first_name', 'last_name', 'email', 'password', 'name', 'timezone', 'credits')
+        fields = ('first_name', 'last_name', 'email', 'password', 'name', 'timezone', 'credits', 'template',)
         success_message = 'Organization successfully created.'
         submit_button_name = _("Create")
         permission = 'orgs.org_grant'
@@ -1808,7 +1817,11 @@ class OrgCRUDL(SmartCRUDL):
             if not self.request.user.is_anonymous() and self.request.user.has_perm('orgs.org_grant'):  # pragma: needs cover
                 obj.administrators.add(self.request.user.pk)
 
-            obj.initialize(branding=obj.get_branding(), topup_size=self.get_welcome_size())
+            obj.initialize(
+                branding=obj.get_branding(),
+                topup_size=self.get_welcome_size(),
+                template=self.form.cleaned_data['template']
+            )
 
             return obj
 
