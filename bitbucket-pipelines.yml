@@ -14,8 +14,6 @@ pipelines:
     - step:
         image: node
         script:
-          - nvm install 6
-          - nvm use 6
           - npm install
           - npm run build
 
