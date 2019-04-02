@@ -1,4 +1,4 @@
-image: ilha/rapidpro-base:base
+image: edudouglasilha/python3-gdal
 
 pipelines:
   default:
@@ -8,16 +8,11 @@ pipelines:
           - redis
           - postgres
         script:
-          - apt-get install varnish wget python3.6 python3.6-dev python3.6-minimal -y
-          - curl https://bootstrap.pypa.io/get-pip.py | python3.6
           - pip install --upgrade pip
           - pip --version
           - pip install -r pip-freeze.txt --upgrade
           - pip install coveralls
           - pip install flake8
-          
-          - node --version
-          - npm --version
 
           - npm install
           - npm run build
