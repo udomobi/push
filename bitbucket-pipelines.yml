@@ -30,6 +30,39 @@ pipelines:
           - tar -xvf goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
           - wget https://github.com/nyaruka/rp-indexer/releases/download/v${RPINDEXER_VERSION}/rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
           - tar -xvf rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
+    - step:
+        name: 'test'
+        script:
+          # any non-zero error code should be treated as an immediate failure
+          - set -e
+
+          # use dev settings file
+          - ln -s $BITBUCKET_CLONE_DIR/temba/settings.py.dev $BITBUCKET_CLONE_DIR/temba/settings.py
+
+          # test that everything is well formatted
+          - black --line-length=119 temba --check --quiet || (echo 'The source code could use a bit more black.' && exit 1)
+
+          # test PEP8 compliance on both Python 2 and 3
+          - flake8
+
+          # check for model changes not reflected in a migration
+          - python manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
+
+          # run our Javascript tests
+          - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
+
+          # check we can collect and compress all static files
+          - python manage.py collectstatic --noinput --verbosity=0
+          - (! python manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
+
+          # fire up goflow
+          - ./flowserver --log-level=warn &
+          - jobs
+
+          # run our Python tests
+          - coverage run manage.py test --settings=temba.settings_travis --noinput --verbosity=2
+
+          - set +e
 
 definitions: 
   services: 
