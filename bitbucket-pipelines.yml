@@ -12,12 +12,12 @@ pipelines:
           - pip install coveralls
           - pip install flake8
     - step:
-      image: node
-      script:
-        - nvm install 6
-        - nvm use 6
-        - npm install
-        - npm run build
+        image: node
+        script:
+          - nvm install 6
+          - nvm use 6
+          - npm install
+          - npm run build
 
 definitions: 
   services: 
