@@ -15,6 +15,9 @@ pipelines:
           - pip install -r pip-freeze.txt --upgrade
           - pip install coveralls
           - pip install flake8
+          
+          - node --version
+          - npm --version
 
           - npm install
           - npm run build
