@@ -29,7 +29,7 @@ pipelines:
           - wget https://github.com/nyaruka/goflow/releases/download/v${GOFLOW_VERSION}/goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
           - tar -xvf goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
           - wget https://github.com/nyaruka/rp-indexer/releases/download/v${RPINDEXER_VERSION}/rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
-          - tar -xvf rp-indexer_${RPINDEXER_VERSION}
+          - tar -xvf rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
 
 definitions: 
   services: 
