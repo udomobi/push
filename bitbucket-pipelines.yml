@@ -5,6 +5,8 @@ pipelines:
     - step:
         name: Python Requirements
         script:
+          - apt-get install varnish wget python3.6 python3.6-dev python3.6-minimal -y
+          - curl https://bootstrap.pypa.io/get-pip.py | python3.6
           - pip install --upgrade pip
           - pip --version
           - pip install -r pip-freeze.txt --upgrade
