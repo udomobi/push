@@ -7,6 +7,7 @@ pipelines:
         services:
           - redis
           - postgres
+          - elasticsearch
         script:
           - apt-get install varnish wget python3.6 python3.6-dev python3.6-minimal -y
           - curl https://bootstrap.pypa.io/get-pip.py | python3.6
@@ -15,6 +16,9 @@ pipelines:
           - pip install -r pip-freeze.txt --upgrade
           - pip install coveralls
           - pip install flake8
+
+          - npm install
+          - npm run build
 
           # goflow and indexer
           - GOFLOW_VERSION=0.10.20
@@ -38,6 +42,9 @@ pipelines:
           # check for model changes not reflected in a migration
           - python3.6 manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
 
+          # run our Javascript tests
+          - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
+
           # check we can collect and compress all static files
           - python3.6 manage.py collectstatic --noinput --verbosity=0
           - (! python3.6 manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
@@ -49,15 +56,7 @@ pipelines:
           # run our Python tests
           - coverage run manage.py test --settings=temba.settings_travis --noinput --verbosity=2
 
-          - set +e    
-    - step:
-        name: Node Requirements
-        image: node
-        script:
-          - npm install
-          - npm run build
-          # run our Javascript tests
-          - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
+          - set +e
 
 definitions: 
   services: 
