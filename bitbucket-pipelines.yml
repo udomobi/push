@@ -33,11 +33,11 @@ pipelines:
           - flake8
 
           # check for model changes not reflected in a migration
-          - python manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
+          - python3.6 manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
 
           # check we can collect and compress all static files
-          - python manage.py collectstatic --noinput --verbosity=0
-          - (! python manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
+          - python3.6 manage.py collectstatic --noinput --verbosity=0
+          - (! python3.6 manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
 
           # fire up goflow
           - ./flowserver --log-level=warn &
