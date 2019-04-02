@@ -4,8 +4,6 @@ pipelines:
   default:
     - step:
         name: Python Requirements
-        caches:
-          - pip
         script:
           - pip install --upgrade pip
           - pip --version
@@ -50,8 +48,6 @@ pipelines:
     - step:
         name: Node Requirements
         image: node
-        caches:
-          - node
         script:
           - npm install
           - npm run build
