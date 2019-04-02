@@ -94,9 +94,7 @@ CREATE TRIGGER temba_flowrun_update_flowstartcount
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('flows', '0154_auto_20180502_1603'),
-    ]
+    dependencies = [("flows", "0154_auto_20180502_1603")]
 
     operations = [
         migrations.CreateModel(

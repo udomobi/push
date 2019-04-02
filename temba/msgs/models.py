@@ -311,11 +311,16 @@ class Broadcast(models.Model):
         if quick_replies:
             for quick_reply in quick_replies:
                 if base_language not in quick_reply:
-                    raise ValueError("Base language '%s' doesn't exist for one or more of the provided quick replies" % base_language)
+                    raise ValueError(
+                        "Base language '%s' doesn't exist for one or more of the provided quick replies"
+                        % base_language
+                    )
         if url_buttons:
             for url_button in url_buttons:
                 if base_language not in url_button:
-                    raise ValueError("Base language '%s' doesn't exist for one or more of the provided url button" % base_language)
+                    raise ValueError(
+                        "Base language '%s' doesn't exist for one or more of the provided url button" % base_language
+                    )
 
         metadata = {}
         if quick_replies:
@@ -1677,8 +1682,10 @@ class Msg(models.Model):
         if org:
             org_constants = org.get_org_constants()
             if org_constants:
-                (result, count) = NormalizeFields.normalize_fields(json.loads(ast.literal_eval(org_constants)), settings.ORGANIZATION_FIELDS_SIZE * 4)
-                context['org'] = result
+                (result, count) = NormalizeFields.normalize_fields(
+                    json.loads(ast.literal_eval(org_constants)), settings.ORGANIZATION_FIELDS_SIZE * 4
+                )
+                context["org"] = result
 
         date_style = DateStyle.DAY_FIRST if dayfirst else DateStyle.MONTH_FIRST
         context = EvaluationContext(context, tz, date_style)

@@ -465,7 +465,9 @@ class Flow(TembaModel):
         default=FLOW_DEFAULT_EXPIRES_AFTER, help_text=_("Minutes of inactivity that will cause expiration from flow")
     )
 
-    ignore_triggers = models.BooleanField(default=False, help_text=_("Ignore keyword and NLU triggers while in this flow"))
+    ignore_triggers = models.BooleanField(
+        default=False, help_text=_("Ignore keyword and NLU triggers while in this flow")
+    )
 
     saved_on = models.DateTimeField(auto_now_add=True, help_text=_("When this item was saved"))
 
@@ -840,8 +842,10 @@ class Flow(TembaModel):
             # recordings have to be tacked on last
             if destination.ruleset_type == RuleSet.TYPE_WAIT_RECORDING:
                 from temba.channels.types.twilio import TwilioType
-                voice_response.record(action=callback,
-                                      maxLength=call.channel.config.get(TwilioType.CONFIG_RECORDING_MAX_LENGTH, None))
+
+                voice_response.record(
+                    action=callback, maxLength=call.channel.config.get(TwilioType.CONFIG_RECORDING_MAX_LENGTH, None)
+                )
 
             elif destination.ruleset_type == RuleSet.TYPE_SUBFLOW:
                 voice_response.redirect(url=callback)
@@ -4360,14 +4364,15 @@ class FlowRun(RequireUpdateFieldsMixin, models.Model):
                 language = self.get_voice_language()
 
                 from temba.channels.types.twilio import TwilioType
-                self.voice_response.say(text,
-                                        voice=connection.channel.config.get(TwilioType.CONFIG_VOICE, 'alice'),
-                                        language=language)
+
+                self.voice_response.say(
+                    text, voice=connection.channel.config.get(TwilioType.CONFIG_VOICE, "alice"), language=language
+                )
 
         return msg
 
     def get_voice_language(self):
-        language = 'en-US'
+        language = "en-US"
         if self.org.primary_language:
             try:
                 return settings.TWILIO_VOICE_LANGUAGES[self.org.primary_language.iso_code]
@@ -6623,11 +6628,11 @@ class ReplyAction(Action):
         for item in metadata:
             text = Language.get_localized_text(text_translations=item, preferred_languages=preferred_languages)
 
-            if not text.get('title', None):
-                text['title'] = item.get(run.flow.base_language).get('title')
+            if not text.get("title", None):
+                text["title"] = item.get(run.flow.base_language).get("title")
 
-            if not text.get('url', None):
-                text['url'] = item.get(run.flow.base_language).get('url')
+            if not text.get("url", None):
+                text["url"] = item.get(run.flow.base_language).get("url")
 
             language_metadata.append(text)
 

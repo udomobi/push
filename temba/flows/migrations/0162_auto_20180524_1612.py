@@ -12,6 +12,7 @@ def remove_never_expirations():
     # do nothing for a clean database - don't even try to load the model class
     # FlowRun = apps.get_model("flows", "FlowRun")
     from temba.flows.models import FlowRun
+
     if not FlowRun.objects.exists():
         return
 

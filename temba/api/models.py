@@ -270,34 +270,37 @@ class WebHookEvent(SmartModel):
 
         for key in results.keys():
             value = results[key]
-            values.append({
-                'category': {"base": value['category']},
-                'node': value['node_uuid'],
-                'time': value['created_on'],
-                'text': value['input'],
-                'rule_value': value['value'],
-                'value': six.text_type(value['value']),
-                'label': value['name']
-            })
+            values.append(
+                {
+                    "category": {"base": value["category"]},
+                    "node": value["node_uuid"],
+                    "time": value["created_on"],
+                    "text": value["input"],
+                    "rule_value": value["value"],
+                    "value": six.text_type(value["value"]),
+                    "label": value["name"],
+                }
+            )
 
-        post_data = dict(channel=channel.id if channel else -1,
-                         channel_uuid=channel.uuid if channel else None,
-                         relayer=channel.id if channel else -1,
-                         flow=flow.id,
-                         flow_uuid=flow.uuid,
-                         flow_name=flow.name,
-                         flow_base_language=flow.base_language,
-                         run=run.id,
-                         text=text,
-                         step=six.text_type(node_uuid),
-                         phone=contact.get_urn_display(org=org, scheme=TEL_SCHEME, formatted=False),
-                         contact=contact.uuid,
-                         contact_name=contact.name,
-                         urn=six.text_type(contact_urn),
-                         values=json.dumps(values),
-                         time=json_time,
-                         header=headers
-                         )
+        post_data = dict(
+            channel=channel.id if channel else -1,
+            channel_uuid=channel.uuid if channel else None,
+            relayer=channel.id if channel else -1,
+            flow=flow.id,
+            flow_uuid=flow.uuid,
+            flow_name=flow.name,
+            flow_base_language=flow.base_language,
+            run=run.id,
+            text=text,
+            step=six.text_type(node_uuid),
+            phone=contact.get_urn_display(org=org, scheme=TEL_SCHEME, formatted=False),
+            contact=contact.uuid,
+            contact_name=contact.name,
+            urn=six.text_type(contact_urn),
+            values=json.dumps(values),
+            time=json_time,
+            header=headers,
+        )
 
         if msg and msg.id > 0:
             post_data["input"] = dict(
@@ -343,12 +346,16 @@ class WebHookEvent(SmartModel):
                 requests_headers = http_headers(extra=headers)
 
                 # some hosts deny generic user agents, use Temba as our user agent
-                if action == 'GET':
+                if action == "GET":
                     response = requests.get(webhook_url, headers=requests_headers, timeout=settings.WEBHOOK_TIMEOUT)
                 else:
                     # requests_headers['Content-type'] = 'application/json'
-                    response = requests.post(webhook_url, data=urlencode(post_data, doseq=True), headers=requests_headers,
-                                             timeout=settings.WEBHOOK_TIMEOUT)
+                    response = requests.post(
+                        webhook_url,
+                        data=urlencode(post_data, doseq=True),
+                        headers=requests_headers,
+                        timeout=settings.WEBHOOK_TIMEOUT,
+                    )
                 body = response.text
                 if body:
                     body = body.strip()

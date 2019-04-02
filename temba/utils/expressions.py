@@ -6,7 +6,7 @@ from temba_expressions.evaluator import DEFAULT_FUNCTION_MANAGER, EvaluationCont
 
 from temba.contacts.models import ContactField
 
-ALLOWED_TOP_LEVELS = ("channel", "contact", "date", "extra", "flow", "step", "parent", "child", "org",)
+ALLOWED_TOP_LEVELS = ("channel", "contact", "date", "extra", "flow", "step", "parent", "child", "org")
 
 evaluator = Evaluator(allowed_top_levels=ALLOWED_TOP_LEVELS)
 
@@ -304,10 +304,10 @@ class ContactFieldCollector(EvaluationContext):
         return ""
 
 
-class NormalizeFields():
+class NormalizeFields:
     @classmethod
     def normalize_field_key(cls, key):
-        return regex.compile(r'[^a-zA-Z0-9_]').sub('_', key)[:255]
+        return regex.compile(r"[^a-zA-Z0-9_]").sub("_", key)[:255]
 
     @classmethod
     def normalize_fields(cls, fields, max_values=None, count=-1):
@@ -322,7 +322,7 @@ class NormalizeFields():
             max_values = 1024
 
         if isinstance(fields, six.string_types):
-            return fields[:Value.MAX_VALUE_LEN], count + 1
+            return fields[: Value.MAX_VALUE_LEN], count + 1
 
         elif isinstance(fields, numbers.Number) or isinstance(fields, bool):
             return fields, count + 1
@@ -331,7 +331,9 @@ class NormalizeFields():
             count += 1
             field_dict = OrderedDict()
             for (k, v) in fields.items():
-                (field_dict[NormalizeFields.normalize_field_key(k)], count) = NormalizeFields.normalize_fields(v, max_values, count)
+                (field_dict[NormalizeFields.normalize_field_key(k)], count) = NormalizeFields.normalize_fields(
+                    v, max_values, count
+                )
 
                 if count >= max_values:
                     break

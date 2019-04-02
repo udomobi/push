@@ -7,14 +7,14 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('orgs', '0040_org_nlu'),
-    ]
+    dependencies = [("orgs", "0040_org_nlu")]
 
     operations = [
         migrations.AddField(
-            model_name='org',
-            name='org_constants',
-            field=models.TextField(default=dict, help_text='Organization Constants', null=True, verbose_name='Organization Constants'),
-        ),
+            model_name="org",
+            name="org_constants",
+            field=models.TextField(
+                default=dict, help_text="Organization Constants", null=True, verbose_name="Organization Constants"
+            ),
+        )
     ]

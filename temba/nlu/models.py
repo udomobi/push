@@ -19,6 +19,7 @@ class BotHubConsumer(object):
     Bothub consumer
     This consumer will call Bothub api.
     """
+
     BASE_URL = settings.BOTHUB_BASE_URL
     AUTH_PREFIX = "Bearer"
 
@@ -40,14 +41,14 @@ class BotHubConsumer(object):
                 method=method,
                 url="{}/{}/".format(self.BASE_URL, url),
                 headers={"Authorization": "{} {}".format(self.AUTH_PREFIX, self.bothub_authorization_key)},
-                data=payload
+                data=payload,
             ).prepare()
             return session.send(prepped, timeout=settings.BOTHUB_TIMEOUT)
         except requests.RequestException:
             raise BotHubException(_("Bothub has offline. Try again."))
 
     def predict(self, text, language=None):
-        payload = {"text": text.encode('utf-8')}
+        payload = {"text": text.encode("utf-8")}
         if language:
             try:
                 lang = iso639.languages.get(part3=language)

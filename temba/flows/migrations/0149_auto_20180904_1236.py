@@ -7,14 +7,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('flows', '0148_change_quick_replies_format'),
-    ]
+    dependencies = [("flows", "0148_change_quick_replies_format")]
 
     operations = [
         migrations.AlterField(
-            model_name='flow',
-            name='ignore_triggers',
-            field=models.BooleanField(default=False, help_text='Ignore keyword and NLU triggers while in this flow'),
-        ),
+            model_name="flow",
+            name="ignore_triggers",
+            field=models.BooleanField(default=False, help_text="Ignore keyword and NLU triggers while in this flow"),
+        )
     ]

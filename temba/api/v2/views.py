@@ -2561,7 +2561,7 @@ class MessagesEndpoint(ListAPIMixin, BaseAPIView):
                 {
                     "name": "count",
                     "required": False,
-                    "help": "Number of items returned in the query, paging the rest."
+                    "help": "Number of items returned in the query, paging the rest.",
                 },
             ],
             "example": {"query": "folder=incoming&after=2014-01-01T00:00:00.000"},
@@ -2680,13 +2680,11 @@ class OrgEndpoint(WriteAPIMixin, BaseAPIView):
     @classmethod
     def get_write_explorer(cls):
         return {
-            'method': "POST",
-            'title': "Update Organization Constants",
-            'url': reverse('api.v2.org'),
-            'slug': 'org-write',
-            'fields': [
-                {'name': "org_constants", 'required': False, 'help': "JSON file"}
-            ]
+            "method": "POST",
+            "title": "Update Organization Constants",
+            "url": reverse("api.v2.org"),
+            "slug": "org-write",
+            "fields": [{"name": "org_constants", "required": False, "help": "JSON file"}],
         }
 
 

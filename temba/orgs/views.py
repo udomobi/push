@@ -2247,7 +2247,6 @@ class OrgCRUDL(SmartCRUDL):
             return super().form_valid(form)
 
     class Bothub(InferOrgMixin, OrgPermsMixin, SmartUpdateView):
-
         class BothubForm(forms.ModelForm):
             bothub_authorization_key = forms.CharField(
                 max_length=255,
@@ -2323,13 +2322,12 @@ class OrgCRUDL(SmartCRUDL):
             return super(OrgCRUDL.Bothub, self).form_valid(form)
 
     class Constants(InferOrgMixin, OrgPermsMixin, SmartUpdateView):
-
         class ConstantsForm(forms.ModelForm):
             org_constants = forms.CharField(
-                label=_('Global Constants'),
+                label=_("Global Constants"),
                 required=False,
-                help_text=_('Put json config file in textarea.'),
-                widget=forms.Textarea()
+                help_text=_("Put json config file in textarea."),
+                widget=forms.Textarea(),
             )
 
             def clean(self):
@@ -2478,9 +2476,7 @@ class OrgCRUDL(SmartCRUDL):
                 )
 
             if self.has_org_perm("orgs.org_constants"):
-                formax.add_section(
-                    "constants", reverse("orgs.org_constants"), icon="icon-cog", action="redirect"
-                )
+                formax.add_section("constants", reverse("orgs.org_constants"), icon="icon-cog", action="redirect")
 
             if self.has_org_perm("orgs.org_webhook"):
                 formax.add_section("webhook", reverse("orgs.org_webhook"), icon="icon-cloud-upload")

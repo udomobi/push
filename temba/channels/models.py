@@ -41,7 +41,7 @@ from temba.utils.text import random_string
 
 logger = logging.getLogger(__name__)
 
-TEMBA_HEADERS = {'User-agent': 'RapidPro'}
+TEMBA_HEADERS = {"User-agent": "RapidPro"}
 
 # Hub9 is an aggregator in Indonesia, set this to the endpoint for your service
 # and make sure you send from a whitelisted IP Address

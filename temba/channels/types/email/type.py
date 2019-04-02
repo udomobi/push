@@ -28,11 +28,12 @@ class EmailType(ChannelType):
     """
     A Email Channel Type
     """
-    code = 'EM'
+
+    code = "EM"
     category = ChannelType.Category.API
 
     name = "Email"
-    icon = 'icon-envelop'
+    icon = "icon-envelop"
     show_config_page = False
 
     claim_blurb = _("""Send and receive messages by email""")
@@ -43,7 +44,7 @@ class EmailType(ChannelType):
     free_sending = True
 
     def send(self, channel, msg, text):  # pragma: no cover
-        smtp_hostname = channel.config['EMAIL_SMTP_HOSTNAME']
+        smtp_hostname = channel.config["EMAIL_SMTP_HOSTNAME"]
 
         if smtp_hostname:
             transport = SMTP
@@ -51,20 +52,24 @@ class EmailType(ChannelType):
 
             contact_obj = Contact.objects.get(id=msg.contact)
 
-            message = MIMEMultipart('alternative')
-            message['Subject'] = channel.config['EMAIL_SUBJECT']
-            message['From'] = '{0} <{1}>'.format(channel.config['EMAIL_SENDER_NAME'], channel.config['EMAIL_SENDER_FROM'])
-            message['To'] = '{0} <{1}>'.format(contact_obj.name if contact_obj.name else '', msg.urn_path)
+            message = MIMEMultipart("alternative")
+            message["Subject"] = channel.config["EMAIL_SUBJECT"]
+            message["From"] = "{0} <{1}>".format(
+                channel.config["EMAIL_SENDER_NAME"], channel.config["EMAIL_SENDER_FROM"]
+            )
+            message["To"] = "{0} <{1}>".format(contact_obj.name if contact_obj.name else "", msg.urn_path)
 
-            last_message = Msg.objects.filter(contact=msg.contact, channel_id=channel.id, direction=INCOMING, metadata__isnull=False).last()
+            last_message = Msg.objects.filter(
+                contact=msg.contact, channel_id=channel.id, direction=INCOMING, metadata__isnull=False
+            ).last()
 
             if last_message:
-                message['Subject'] = 'Re: {}'.format(last_message.metadata.get('subject'))
-                message['In-Reply-To'] = last_message.external_id
-                message['References'] = last_message.external_id
+                message["Subject"] = "Re: {}".format(last_message.metadata.get("subject"))
+                message["In-Reply-To"] = last_message.external_id
+                message["References"] = last_message.external_id
 
-            message['Message-ID'] = make_msgid()
-            part = MIMEText(text.encode('utf8'), 'html', 'utf8')
+            message["Message-ID"] = make_msgid()
+            part = MIMEText(text.encode("utf8"), "html", "utf8")
             message.attach(part)
 
             attachments = Attachment.parse_all(msg.attachments)
@@ -72,41 +77,41 @@ class EmailType(ChannelType):
 
             if attachment:
                 mimefile = None
-                category = attachment.content_type.split('/')[0]
-                filename = attachment.url.split('/')[-1]
+                category = attachment.content_type.split("/")[0]
+                filename = attachment.url.split("/")[-1]
 
                 webf = urllib.urlopen(attachment.url)
                 content = webf.read()
 
-                if category == 'image':
+                if category == "image":
                     mimefile = MIMEImage(content)
-                elif category == 'audio':
+                elif category == "audio":
                     mimefile = MIMEAudio(content)
                 else:
-                    filename = attachment.url.split('/')[-1]
-                    mimefile = MIMEBase('application', 'octet-stream')
+                    filename = attachment.url.split("/")[-1]
+                    mimefile = MIMEBase("application", "octet-stream")
                     mimefile.set_payload(content)
                     encoders.encode_base64(mimefile)
 
                 if mimefile:
-                    mimefile.add_header('Content-Disposition', 'attachment', filename=filename)
+                    mimefile.add_header("Content-Disposition", "attachment", filename=filename)
                     message.attach(mimefile)
 
-            event = HttpEvent('POST', '')
+            event = HttpEvent("POST", "")
             event.status_code = 200
             event.response_body = msg.text
             status = WIRED
 
             try:
-                server = transport(smtp_hostname, channel.config['EMAIL_SMTP_PORT'])
-                if channel.config['EMAIL_USE_TLS']:
+                server = transport(smtp_hostname, channel.config["EMAIL_SMTP_PORT"])
+                if channel.config["EMAIL_USE_TLS"]:
                     server.starttls()
-                server.login(channel.config['EMAIL_USERNAME'], channel.config['EMAIL_PASSWORD'])
-                server.sendmail(channel.config['EMAIL_SENDER_FROM'], msg.urn_path, message.as_string())
+                server.login(channel.config["EMAIL_USERNAME"], channel.config["EMAIL_PASSWORD"])
+                server.sendmail(channel.config["EMAIL_SENDER_FROM"], msg.urn_path, message.as_string())
                 server.quit()
             except Exception:
                 status = ERRORED
                 event.status_code = 500
-                event.response_body = 'Please check if your SMTP settings are correctly configured'
+                event.response_body = "Please check if your SMTP settings are correctly configured"
 
-            Channel.success(channel, msg, status, start, event=event, external_id=message['Message-ID'])
+            Channel.success(channel, msg, status, start, event=event, external_id=message["Message-ID"])

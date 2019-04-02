@@ -20,7 +20,6 @@ class CatchAllHandler(MessageHandler):
 
 
 class TriggerNluHandler(MessageHandler):
-
     def __init__(self):
         super(TriggerNluHandler, self).__init__("triggers nlu")
 

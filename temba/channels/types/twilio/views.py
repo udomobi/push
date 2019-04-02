@@ -27,16 +27,19 @@ from ...views import (
 
 
 class UpdateTwilioForm(UpdateChannelForm):
-    recording_max_length = forms.IntegerField(label=_("Max Length"),
-                                              help_text=_("Max length of recordings in seconds"),
-                                              min_value=1,
-                                              max_value=600,
-                                              required=False)
+    recording_max_length = forms.IntegerField(
+        label=_("Max Length"),
+        help_text=_("Max length of recordings in seconds"),
+        min_value=1,
+        max_value=600,
+        required=False,
+    )
 
     voice = forms.CharField(label=_("Voice"), help_text=_("Voice used for Say actions"), required=False)
 
     def add_config_fields(self):
         from temba.channels.types.twilio import TwilioType
+
         self.fields[TwilioType.CONFIG_RECORDING_MAX_LENGTH].initial = self.object.config.get("recording_max_length")
         self.fields[TwilioType.CONFIG_VOICE].initial = self.object.config.get("voice")
 

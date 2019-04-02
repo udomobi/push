@@ -324,8 +324,6 @@ def clear_migration(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('flows', '0151_update_path_trigger'),
-    ]
+    dependencies = [("flows", "0151_update_path_trigger")]
 
     operations = [migrations.RunPython(apply_as_migration, clear_migration)]

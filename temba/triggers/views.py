@@ -420,6 +420,7 @@ class BothubTriggerForm(GroupBasedTriggerForm):
     """
     For for catch NLU triggers
     """
+
     confidence_choice = tuple(((n * 10, "{0}%".format(n * 10)) for n in range(1, 10)))
     confidence = forms.ChoiceField(
         confidence_choice,
@@ -464,7 +465,9 @@ class BothubTriggerForm(GroupBasedTriggerForm):
                         if repository_name not in intents_items.keys():
                             intents_items[repository_name] = ()
                         if intent:
-                            intents_items[repository_name] += (("{}${}".format(intent, repository.get("uuid")), intent),)
+                            intents_items[repository_name] += (
+                                ("{}${}".format(intent, repository.get("uuid")), intent),
+                            )
                 except BotHubException:
                     break
         return intents_items.items()

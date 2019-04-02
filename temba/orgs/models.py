@@ -303,16 +303,11 @@ class Org(SmartModel):
     )
 
     nlu_api_config = models.TextField(
-        null=True,
-        verbose_name=_("NLU API Configuration"),
-        help_text=_("Settings for Natural Language Understand API"),
+        null=True, verbose_name=_("NLU API Configuration"), help_text=_("Settings for Natural Language Understand API")
     )
 
     org_constants = models.TextField(
-        null=True,
-        default=dict,
-        verbose_name=_("Organization Constants"),
-        help_text=_("Organization Constants"),
+        null=True, default=dict, verbose_name=_("Organization Constants"), help_text=_("Organization Constants")
     )
 
     @classmethod
@@ -385,8 +380,7 @@ class Org(SmartModel):
         """
         from temba.contacts.models import ContactGroup
 
-        counts = ContactGroup.get_system_group_counts(
-            self, (ContactGroup.TYPE_ALL, ContactGroup.TYPE_BLOCKED))
+        counts = ContactGroup.get_system_group_counts(self, (ContactGroup.TYPE_ALL, ContactGroup.TYPE_BLOCKED))
         return (counts[ContactGroup.TYPE_ALL] + counts[ContactGroup.TYPE_BLOCKED]) > 0
 
     def clear_credit_cache(self):
@@ -559,8 +553,7 @@ class Org(SmartModel):
                 # if URN has a previously used channel that is still active,
                 # use that
                 if contact_urn.channel and contact_urn.channel.is_active:
-                    previous_sender = self.get_channel_delegate(
-                        contact_urn.channel, role)
+                    previous_sender = self.get_channel_delegate(contact_urn.channel, role)
                     if previous_sender:
                         return previous_sender
 
@@ -585,8 +578,7 @@ class Org(SmartModel):
 
                 # no country specific channel, try to find any channel at all
                 if not channels:
-                    channels = [
-                        c for c in self.cached_channels if TEL_SCHEME in c.schemes]
+                    channels = [c for c in self.cached_channels if TEL_SCHEME in c.schemes]
 
                 # filter based on role and activity (we do this in python as
                 # channels can be prefetched so it is quicker in those cases)
@@ -601,8 +593,7 @@ class Org(SmartModel):
                 if len(senders) > 1:
                     for sender in senders:
                         config = sender.config
-                        channel_prefixes = config.get(
-                            Channel.CONFIG_SHORTCODE_MATCHING_PREFIXES, [])
+                        channel_prefixes = config.get(Channel.CONFIG_SHORTCODE_MATCHING_PREFIXES, [])
                         if not channel_prefixes or not isinstance(channel_prefixes, list):
                             channel_prefixes = [sender.address.strip("+")]
 
@@ -720,8 +711,7 @@ class Org(SmartModel):
         # numbers not starting with +
         country_code = self.get_country_code()
         if country_code:
-            urns = ContactURN.objects.filter(
-                org=self, scheme=TEL_SCHEME).exclude(path__startswith="+")
+            urns = ContactURN.objects.filter(org=self, scheme=TEL_SCHEME).exclude(path__startswith="+")
             for urn in urns:
                 urn.ensure_number_normalization(country_code)
 
@@ -897,10 +887,8 @@ class Org(SmartModel):
 
     def is_connected_to_transferto(self):
         if self.config:
-            transferto_account_login = self.config.get(
-                TRANSFERTO_ACCOUNT_LOGIN, None)
-            transferto_airtime_api_token = self.config.get(
-                TRANSFERTO_AIRTIME_API_TOKEN, None)
+            transferto_account_login = self.config.get(TRANSFERTO_ACCOUNT_LOGIN, None)
+            transferto_airtime_api_token = self.config.get(TRANSFERTO_AIRTIME_API_TOKEN, None)
 
             return transferto_account_login and transferto_airtime_api_token
         else:
@@ -918,10 +906,8 @@ class Org(SmartModel):
         from nexmo import Client as NexmoClient
 
         nexmo_uuid = str(uuid4())
-        nexmo_config = {NEXMO_KEY: api_key.strip(
-        ), NEXMO_SECRET: api_secret.strip(), NEXMO_UUID: nexmo_uuid}
-        client = NexmoClient(
-            key=nexmo_config[NEXMO_KEY], secret=nexmo_config[NEXMO_SECRET])
+        nexmo_config = {NEXMO_KEY: api_key.strip(), NEXMO_SECRET: api_secret.strip(), NEXMO_UUID: nexmo_uuid}
+        client = NexmoClient(key=nexmo_config[NEXMO_KEY], secret=nexmo_config[NEXMO_SECRET])
         domain = self.get_brand_domain()
 
         app_name = "%s/%s" % (domain, nexmo_uuid)
@@ -960,8 +946,7 @@ class Org(SmartModel):
         return config.get(NEXMO_UUID, None)
 
     def connect_twilio(self, account_sid, account_token, user):
-        twilio_config = {ACCOUNT_SID: account_sid,
-                         ACCOUNT_TOKEN: account_token}
+        twilio_config = {ACCOUNT_SID: account_sid, ACCOUNT_TOKEN: account_token}
 
         config = self.config
         config.update(twilio_config)
@@ -1096,7 +1081,7 @@ class Org(SmartModel):
         return None
 
     def get_org_constants(self):
-        return self.org_constants if self.org_constants and self.org_constants != '{}' else None
+        return self.org_constants if self.org_constants and self.org_constants != "{}" else None
 
     def save_org_constants(self, user, constants):
         self.org_constants = json.dumps(constants) if constants else None
@@ -1182,8 +1167,7 @@ class Org(SmartModel):
 
             # if it's valid and doesn't exist yet, create it
             if name and not language:
-                language = self.languages.create(
-                    iso_code=iso_code, name=name, created_by=user, modified_by=user)
+                language = self.languages.create(iso_code=iso_code, name=name, created_by=user, modified_by=user)
 
             if iso_code == primary:
                 self.primary_language = language
@@ -1309,8 +1293,7 @@ class Org(SmartModel):
 
         # if we didn't find it, tokenize it
         if not boundary:
-            words = regex.split(r"\W+", location_string.lower(),
-                                flags=regex.UNICODE | regex.V0)
+            words = regex.split(r"\W+", location_string.lower(), flags=regex.UNICODE | regex.V0)
             if len(words) > 1:
                 for word in words:
                     boundary = self.find_boundary_by_name(word, level, parent)
@@ -1634,8 +1617,7 @@ class Org(SmartModel):
         active_topup_id = self.get_active_topup_id()
         if active_topup_id:
 
-            remaining = r.decr(ORG_ACTIVE_TOPUP_REMAINING %
-                               (self.id, active_topup_id), amount)
+            remaining = r.decr(ORG_ACTIVE_TOPUP_REMAINING % (self.id, active_topup_id), amount)
 
             # near the edge, clear out our cache and calculate from the db
             if not remaining or int(remaining) < 100:
@@ -1650,8 +1632,7 @@ class Org(SmartModel):
                 remaining = active_topup.get_remaining()
                 if amount > remaining:
                     amount = remaining
-                r.decr(ORG_ACTIVE_TOPUP_REMAINING %
-                       (self.id, active_topup.id), amount)
+                r.decr(ORG_ACTIVE_TOPUP_REMAINING % (self.id, active_topup.id), amount)
 
         if active_topup_id:
             return (active_topup_id, amount)
@@ -1704,8 +1685,7 @@ class Org(SmartModel):
             # initialize our active topup metrics
             r = get_redis_connection()
             ttl = self.get_topup_ttl(topup)
-            r.set(ORG_ACTIVE_TOPUP_REMAINING %
-                  (self.id, topup.id), topup.get_remaining(), ttl)
+            r.set(ORG_ACTIVE_TOPUP_REMAINING % (self.id, topup.id), topup.get_remaining(), ttl)
             return topup.id, ttl
 
         return 0, 0
@@ -1769,8 +1749,7 @@ class Org(SmartModel):
 
         # move it to the same day our plan started (taking into account short
         # months)
-        plan_start = today.replace(
-            day=min(self.plan_start.day, calendar.monthrange(today.year, today.month)[1]))
+        plan_start = today.replace(day=min(self.plan_start.day, calendar.monthrange(today.year, today.month)[1]))
 
         if plan_start > today:  # pragma: needs cover
             plan_start -= relativedelta(months=1)
@@ -1834,8 +1813,7 @@ class Org(SmartModel):
         # look up our bundle
         bundle_map = get_bundle_map(self.get_bundles())
         if bundle not in bundle_map:
-            raise ValidationError(
-                _("Invalid bundle: %s, cannot upgrade.") % bundle)
+            raise ValidationError(_("Invalid bundle: %s, cannot upgrade.") % bundle)
         bundle = bundle_map[bundle]
 
         # adds credits to this org
@@ -1977,16 +1955,14 @@ class Org(SmartModel):
                 analytics.track(user.username, "temba.plan_cancelled", dict(cancelledPlan=self.plan))
 
                 try:
-                    subscription = customer.cancel_subscription(
-                        at_period_end=True)
+                    subscription = customer.cancel_subscription(at_period_end=True)
                 except Exception:
                     traceback.print_exc()
                     raise ValidationError(
                         _("Sorry, we are unable to cancel your plan at this time.  Please contact us.")
                     )
             else:
-                raise ValidationError(
-                    _("Sorry, we are unable to cancel your plan at this time.  Please contact us."))
+                raise ValidationError(_("Sorry, we are unable to cancel your plan at this time.  Please contact us."))
 
         else:
             # we have a customer, try to upgrade them
@@ -2073,8 +2049,7 @@ class Org(SmartModel):
         for flow in all_flows:
             dependencies[flow] = flow.get_dependencies(all_flow_map)
         for campaign in all_campaigns:
-            dependencies[campaign] = set(
-                [e.flow for e in campaign.flow_events])
+            dependencies[campaign] = set([e.flow for e in campaign.flow_events])
 
         # replace any dependency on a group with that group's associated campaigns - we're not actually interested
         # in flow-group-flow relationships - only relationships that go through
@@ -2327,8 +2302,7 @@ class Org(SmartModel):
 
     @classmethod
     def create_user(cls, email, password):
-        user = User.objects.create_user(
-            username=email, email=email, password=password)
+        user = User.objects.create_user(username=email, email=email, password=password)
         return user
 
     @classmethod
@@ -2898,8 +2872,7 @@ class CreditAlert(SmartModel):
         if CreditAlert.objects.filter(is_active=True, org=org, alert_type=alert_type):  # pragma: needs cover
             return None
 
-        print("triggering %s credits alert type for %s" %
-              (alert_type, org.name))
+        print("triggering %s credits alert type for %s" % (alert_type, org.name))
 
         admin = org.get_org_admins().first()
 

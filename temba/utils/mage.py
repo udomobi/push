@@ -25,10 +25,10 @@ class MageClient(object):  # pragma: needs cover
         self.client = requests.Session()
 
     def activate_whatsapp_stream(self, channel_uuid):
-        return self._request('POST', 'whatsapp', {'uuid': channel_uuid})
+        return self._request("POST", "whatsapp", {"uuid": channel_uuid})
 
     def deactivate_whatsapp_stream(self, channel_uuid):
-        return self._request('DELETE', 'whatsapp/%s' % channel_uuid)
+        return self._request("DELETE", "whatsapp/%s" % channel_uuid)
 
     def get_twitter_streams(self):
         return self._request("GET", "twitter", {})

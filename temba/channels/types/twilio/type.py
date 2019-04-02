@@ -32,8 +32,8 @@ class TwilioType(ChannelType):
 
     ivr_protocol = ChannelType.IVRProtocol.IVR_PROTOCOL_TWIML
 
-    CONFIG_RECORDING_MAX_LENGTH = 'recording_max_length'
-    CONFIG_VOICE = 'voice'
+    CONFIG_RECORDING_MAX_LENGTH = "recording_max_length"
+    CONFIG_VOICE = "voice"
 
     update_form = UpdateTwilioForm
 

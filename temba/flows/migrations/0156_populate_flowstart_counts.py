@@ -26,8 +26,6 @@ def apply_as_migration(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('flows', '0155_flowstartcount'),
-    ]
+    dependencies = [("flows", "0155_flowstartcount")]
 
     operations = [migrations.RunPython(apply_as_migration)]

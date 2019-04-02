@@ -15,10 +15,20 @@ from ...views import ClaimViewMixin
 
 class ClaimView(ClaimViewMixin, SmartFormView):
     class Form(ClaimViewMixin.Form):
-        pop_hostname = forms.CharField(max_length=500, min_length=1, label=_("POP3"), required=True,
-                                       help_text=_("Hostname to receive email, like: pop.gmail.com"))
-        smtp_hostname = forms.CharField(max_length=500, min_length=1, label=_("SMTP"), required=True,
-                                        help_text=_("Hostname to send email, like: smtp.gmail.com"))
+        pop_hostname = forms.CharField(
+            max_length=500,
+            min_length=1,
+            label=_("POP3"),
+            required=True,
+            help_text=_("Hostname to receive email, like: pop.gmail.com"),
+        )
+        smtp_hostname = forms.CharField(
+            max_length=500,
+            min_length=1,
+            label=_("SMTP"),
+            required=True,
+            help_text=_("Hostname to send email, like: smtp.gmail.com"),
+        )
         use_tls = forms.BooleanField(label=_("Use TLS"), initial=False, required=False)
         use_ssl = forms.BooleanField(label=_("Use SSL"), initial=False, required=False)
         pop_port = forms.IntegerField(label=_("POP Port"), initial=995)
@@ -61,6 +71,15 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             "EMAIL_SUBJECT": data["email_subject"],
         }
 
-        self.object = Channel.create(org, self.request.user, None, self.channel_type, name=data["sender_from"], address=data["sender_from"], config=config, schemes=[EMAIL_SCHEME])
+        self.object = Channel.create(
+            org,
+            self.request.user,
+            None,
+            self.channel_type,
+            name=data["sender_from"],
+            address=data["sender_from"],
+            config=config,
+            schemes=[EMAIL_SCHEME],
+        )
 
         return super(ClaimView, self).form_valid(form)
