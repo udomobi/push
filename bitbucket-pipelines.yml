@@ -1,0 +1,31 @@
+image: python:3.6.4
+
+pipelines:
+  default:
+    - step:
+        caches:
+          - pip
+        script:
+          - pip install --upgrade pip
+          - pip --version
+          - pip install -r pip-freeze.txt --upgrade
+          - pip install coveralls
+          - pip install flake8
+    - step:
+      image: node
+      script:
+        - nvm install 6
+        - nvm use 6
+        - npm install
+        - npm run build
+
+definitions: 
+  services: 
+    postgres: 
+      image: mdillon/postgis
+      environment: 
+        POSTGRES_DB: temba 
+        POSTGRES_USER: temba 
+        POSTGRES_PASSWORD: temba
+    redis:
+      image: redis
