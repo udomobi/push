@@ -7,7 +7,6 @@ pipelines:
         services:
           - redis
           - postgres
-          - elasticsearch
         script:
           - apt-get install varnish wget python3.6 python3.6-dev python3.6-minimal -y
           - curl https://bootstrap.pypa.io/get-pip.py | python3.6
