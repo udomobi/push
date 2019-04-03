@@ -274,34 +274,17 @@ class WebHookTest(TembaTest):
         prepared_request = args[0]
         self.assertIn(self.channel.org.get_webhook_url(), prepared_request.url)
 
-        data = json.loads(prepared_request.body)
+        data = parse_qs(prepared_request.body)
 
-        self.assertEqual(data["channel"], {"uuid": str(self.channel.uuid), "name": self.channel.name})
-        self.assertEqual(
-            data["contact"], {"uuid": str(self.joe.uuid), "name": self.joe.name, "urn": str(self.joe.get_urn("tel"))}
-        )
-        self.assertEqual(data["flow"], {"uuid": str(flow.uuid), "name": flow.name, "revision": 1})
-        self.assertEqual(
-            data["input"],
-            {
-                "urn": "tel:+250788123123",
-                "text": "Mauve",
-                "attachments": ["image/jpeg:http://s3.com/text.jpg", "audio/mp4:http://s3.com/text.mp4"],
-            },
-        )
-        self.assertEqual(
-            data["results"],
-            {
-                "color": {
-                    "category": "Other",
-                    "node_uuid": matchers.UUID4String(),
-                    "name": "color",
-                    "value": "Mauve\nhttp://s3.com/text.jpg\nhttp://s3.com/text.mp4",
-                    "created_on": matchers.ISODate(),
-                    "input": "Mauve\nhttp://s3.com/text.jpg\nhttp://s3.com/text.mp4",
-                }
-            },
-        )
+        self.assertEqual(data["channel_uuid"][0], str(self.channel.uuid))
+        self.assertEqual("+250788123123", data["phone"][0])
+        self.assertEqual(str(self.joe.get_urn(TEL_SCHEME)), data["urn"][0])
+        self.assertEqual(self.joe.uuid, data["contact"][0])
+        self.assertEqual(self.joe.name, data["contact_name"][0])
+
+        self.assertEqual(flow.id, int(data["flow"][0]))
+        self.assertEqual(flow.name, data["flow_name"][0])
+
 
     @patch("requests.Session.send")
     def test_webhook_first(self, mock_send):
