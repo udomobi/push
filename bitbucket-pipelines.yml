@@ -7,6 +7,7 @@ pipelines:
         services:
           - redis
           - postgres
+          - elasticsearch
         script:
           - pip install --upgrade pip
           - pip --version
@@ -67,4 +68,4 @@ definitions:
       image: redis
     elasticsearch:
       image: elastic/elasticsearch:6.3.1
-      memory: 512
+      memory: 1024
