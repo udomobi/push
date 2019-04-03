@@ -77,7 +77,10 @@ def calculate_step_uuids(recent_run):
         if not segment_step_pair:
             segment_step_pair = segment_step_pairs[-1]
 
-    return segment_step_pair[0][PATH_STEP_UUID], segment_step_pair[1][PATH_STEP_UUID]
+    # return segment_step_pair[0][PATH_STEP_UUID], segment_step_pair[1][PATH_STEP_UUID]
+    if segment_step_pair[0].get(PATH_STEP_UUID) and segment_step_pair[1].get(PATH_STEP_UUID):
+        return segment_step_pair[0][PATH_STEP_UUID], segment_step_pair[1][PATH_STEP_UUID]
+    return None
 
 
 def apply_manual():
