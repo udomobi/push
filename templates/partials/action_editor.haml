@@ -280,7 +280,7 @@
           .modal-webhook-header.modal-webhook-header-name
             %input{type:"text",name:"webhook-name",ng-model:"header.name"}
           .modal-webhook-header.modal-webhook-header-value
-            %input{type:"text",name:"webhook-value",ng-model:"header.value"}
+            %input{type:"text",name:"webhook-value",ng-model:"header.value",auto-complete:"",autocomplete:"off"}
           .modal-webhook-header.modal-webhook-header-remove
             .icon.icon-close{ng-click:"removeActionWebhookHeader($index)"}
 
