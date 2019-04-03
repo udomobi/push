@@ -67,5 +67,4 @@ definitions:
     redis:
       image: redis
     elasticsearch:
-      image: elastic/elasticsearch
-
+      image: elastic/elasticsearch:6.3.1
