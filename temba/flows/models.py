@@ -4684,8 +4684,8 @@ class RuleSet(models.Model):
                 if RuleSet.CONFIG_WEBHOOK_HEADERS in self.config:
                     headers = self.config[RuleSet.CONFIG_WEBHOOK_HEADERS]
                     for item in headers:
-                        (value, errors) = Msg.evaluate_template(item.get('value'), context, org=run.flow.org)
-                        header[item.get('name')] = value
+                        (value, errors) = Msg.evaluate_template(item.get("value"), context, org=run.flow.org)
+                        header[item.get("name")] = value
             elif self.ruleset_type == RuleSet.TYPE_RESTHOOK:
                 from temba.api.models import Resthook
 

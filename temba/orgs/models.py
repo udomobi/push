@@ -2126,26 +2126,26 @@ class Org(SmartModel):
         if template:
             user = self.get_user()
             client = boto3.client(
-                's3',
+                "s3",
                 aws_access_key_id=settings.AWS_TEMPLATES_KEY_ID,
-                aws_secret_access_key=settings.AWS_TEMPLATES_SECRET_ACCESS_KEY
+                aws_secret_access_key=settings.AWS_TEMPLATES_SECRET_ACCESS_KEY,
             )
             bucket = settings.AWS_TEMPLATES_BUCKET_NAME
 
-            files = client.list_objects_v2(Bucket=bucket, Prefix='{}/'.format(template))
-            for file in files.get('Contents'):
-                s3_object = client.get_object(Bucket=bucket, Key=file.get('Key'))
-                content = s3_object.get('Body').read()
+            files = client.list_objects_v2(Bucket=bucket, Prefix="{}/".format(template))
+            for file in files.get("Contents"):
+                s3_object = client.get_object(Bucket=bucket, Key=file.get("Key"))
+                content = s3_object.get("Body").read()
 
                 if user and content:
                     try:
                         self.import_app(json.loads(content), user)
                     except Exception:  # pragma: needs cover
                         import traceback
+
                         logger = logging.getLogger(__name__)
-                        msg = 'Failed creating template flows'
-                        logger.error(msg, exc_info=True, extra=dict(
-                            definition=json.loads(content)))
+                        msg = "Failed creating template flows"
+                        logger.error(msg, exc_info=True, extra=dict(definition=json.loads(content)))
                         traceback.print_exc()
 
     def download_and_save_media(self, request, extension=None):  # pragma: needs cover
