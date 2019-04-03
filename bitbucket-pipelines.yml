@@ -1,4 +1,4 @@
-image: edudouglasilha/python3-gdal
+image: ilha/python3-base
 
 pipelines:
   default:
