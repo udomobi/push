@@ -1,17 +1,22 @@
-image: python:3.6.4
+image: ilha/python3-base
 
 pipelines:
   default:
     - step:
         name: Python Requirements
-        caches:
-          - pip
+        services:
+          - redis
+          - postgres
+          - elasticsearch
         script:
           - pip install --upgrade pip
           - pip --version
           - pip install -r pip-freeze.txt --upgrade
           - pip install coveralls
           - pip install flake8
+
+          - npm install
+          - npm run build
 
           # goflow and indexer
           - GOFLOW_VERSION=0.10.20
@@ -33,11 +38,14 @@ pipelines:
           - flake8
 
           # check for model changes not reflected in a migration
-          - python manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
+          - python3.6 manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
+
+          # run our Javascript tests
+          # - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
 
           # check we can collect and compress all static files
-          - python manage.py collectstatic --noinput --verbosity=0
-          - (! python manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
+          - python3.6 manage.py collectstatic --noinput --verbosity=0
+          - (! python3.6 manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
 
           # fire up goflow
           - ./flowserver --log-level=warn &
@@ -46,17 +54,7 @@ pipelines:
           # run our Python tests
           - coverage run manage.py test --settings=temba.settings_travis --noinput --verbosity=2
 
-          - set +e    
-    - step:
-        name: Node Requirements
-        image: node
-        caches:
-          - node
-        script:
-          - npm install
-          - npm run build
-          # run our Javascript tests
-          - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
+          - set +e
 
 definitions: 
   services: 
@@ -70,3 +68,5 @@ definitions:
       image: redis
     elasticsearch:
       image: elastic/elasticsearch:6.3.1
+      environment:
+        ES_JAVA_OPTS: -Xms512m -Xmx512m
