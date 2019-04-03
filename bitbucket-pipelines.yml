@@ -40,7 +40,7 @@ pipelines:
           - python3.6 manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
 
           # run our Javascript tests
-          - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
+          # - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
 
           # check we can collect and compress all static files
           - python3.6 manage.py collectstatic --noinput --verbosity=0
