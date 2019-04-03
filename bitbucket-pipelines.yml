@@ -68,3 +68,5 @@ definitions:
       image: redis
     elasticsearch:
       image: elastic/elasticsearch:6.3.1
+      environment:
+        ES_JAVA_OPTS: -Xms512m -Xmx512m
