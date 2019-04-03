@@ -688,7 +688,7 @@ class Broadcast(models.Model):
         """
         Gets the appropriate url buttons translation for the given contact
         """
-        preferred_languages = self.get_preferred_languages(contact, org)
+        preferred_languages = self._get_preferred_languages(contact, org)
         language_metadata = []
         if self.metadata:
             metadata = self.metadata
