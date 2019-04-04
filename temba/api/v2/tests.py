@@ -2362,6 +2362,7 @@ class APITest(TembaTest):
                 "sent_on": format_datetime(msg.sent_on),
                 "modified_on": format_datetime(msg.modified_on),
                 "media": msg.attachments[0] if msg.attachments else None,
+                "metadata": {}
             },
         )
 

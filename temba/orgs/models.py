@@ -2123,7 +2123,7 @@ class Org(SmartModel):
         self.create_welcome_topup(topup_size)
 
     def create_template_flows(self, template=None):
-        if template:
+        if template and settings.AWS_TEMPLATES_BUCKET_NAME:
             user = self.get_user()
             client = boto3.client(
                 "s3",

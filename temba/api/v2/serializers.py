@@ -974,6 +974,7 @@ class MsgReadSerializer(ReadSerializer):
             "sent_on",
             "modified_on",
             "media",
+            "metadata"
         )
 
 

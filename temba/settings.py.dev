@@ -84,4 +84,10 @@ warnings.filterwarnings(
 # -----------------------------------------------------------------------------------
 STATIC_URL = "/sitestatic/"
 
+# Flows Templates Import
 ORGS_TEMPLATES = ()
+
+AWS_TEMPLATES_KEY_ID = ""
+AWS_TEMPLATES_SECRET_ACCESS_KEY = ""
+AWS_TEMPLATES_BUCKET_NAME = ""
+

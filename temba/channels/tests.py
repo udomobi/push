@@ -696,13 +696,6 @@ class ChannelTest(TembaTest):
         self.assertEqual(channel.name, "Test Channel Update1")
         self.assertEqual(channel.address, "+250785551313")
 
-        # if we change the channel to a twilio type, shouldn't be able to edit our address
-        channel.channel_type = "T"
-        channel.save()
-
-        response = self.client.get(update_url)
-        self.assertNotIn("address", response.context["form"].fields)
-
         # bring it back to android
         channel.channel_type = Channel.TYPE_ANDROID
         channel.save()
@@ -3473,6 +3466,7 @@ class TwitterTest(TembaTest):
             )
 
             args, kwargs = mock.call_args
+            print(data)
             self.assertCountEqual(data, kwargs.get("data"))
 
             msg.refresh_from_db()

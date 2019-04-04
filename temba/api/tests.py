@@ -300,10 +300,9 @@ class WebHookTest(TembaTest):
         event = WebHookEvent.objects.get()
 
         # make sure our contact still has a URN
-        self.assertEqual(
-            event.data["contact"],
-            {"uuid": str(self.joe.uuid), "name": self.joe.name, "urn": str(self.joe.get_urn("tel"))},
-        )
+        self.assertEqual(event.data["contact"], str(self.joe.uuid))
+        self.assertEqual(event.data["contact_name"], str(self.joe.name))
+        self.assertEqual(event.data["urn"], str(self.joe.get_urn("tel")))
 
         # make sure we don't have an input
         self.assertNotIn("input", event.data)
