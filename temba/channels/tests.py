@@ -3450,10 +3450,7 @@ class TwitterTest(TembaTest):
                 dict(
                     event=dict(
                         message_create=dict(
-                            message_data=dict(
-                                text="Hello, world!",
-                                quick_reply=[dict(label="Yes"), dict(label="No")],
-                            ),
+                            message_data=dict(text="Hello, world!", quick_reply=[dict(label="Yes"), dict(label="No")]),
                             target=dict(recipient_id="10002"),
                         ),
                         type="message_create",

@@ -974,7 +974,7 @@ class MsgReadSerializer(ReadSerializer):
             "sent_on",
             "modified_on",
             "media",
-            "metadata"
+            "metadata",
         )
 
 
@@ -1127,5 +1127,7 @@ class OrgWriteSerializer(WriteSerializer):
     org_constants = serializers.JSONField(required=False)
 
     def save(self):
-        self.context["org"].save_org_constants(self.context["user"], json.dumps(self.validated_data["org_constants"], ensure_ascii=False))
+        self.context["org"].save_org_constants(
+            self.context["user"], json.dumps(self.validated_data["org_constants"], ensure_ascii=False)
+        )
         return self.context["org"]
