@@ -2576,6 +2576,7 @@ class OrgCRUDLTest(TembaTest):
             timezone="Africa/Kigali",
             credits="100000",
             password="dukenukem",
+            template="common",
         )
         response = self.client.post(grant_url, post_data, follow=True)
 
@@ -2621,6 +2622,7 @@ class OrgCRUDLTest(TembaTest):
             password="HeyThere",
             name="AlexCom",
             timezone="Africa/Kigali",
+            template="common",
         )
 
         response = self.client.post(signup_url, post_data)
@@ -2667,6 +2669,7 @@ class OrgCRUDLTest(TembaTest):
             password="badpass",
             name="Your Face",
             timezone="Africa/Kigali",
+            template="common",
         )
         response = self.client.post(signup_url, post_data)
         self.assertFormError(response, "form", "email", "Enter a valid email address.")
@@ -2680,6 +2683,7 @@ class OrgCRUDLTest(TembaTest):
             password="HelloWorld1",
             name="Relieves World",
             timezone="Africa/Kigali",
+            template="common",
         )
         response = self.client.post(signup_url, post_data)
         self.assertEqual(response.status_code, 302)

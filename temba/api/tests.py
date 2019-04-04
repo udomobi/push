@@ -285,7 +285,6 @@ class WebHookTest(TembaTest):
         self.assertEqual(flow.id, int(data["flow"][0]))
         self.assertEqual(flow.name, data["flow_name"][0])
 
-
     @patch("requests.Session.send")
     def test_webhook_first(self, mock_send):
         mock_send.return_value = MockResponse(200, "{}")

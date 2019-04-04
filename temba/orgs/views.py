@@ -260,12 +260,17 @@ class OrgSignupForm(forms.ModelForm):
     timezone = TimeZoneFormField(help_text=_("The timezone your organization is in"))
     password = forms.CharField(widget=forms.PasswordInput, help_text=_("Your password, at least eight letters please"))
     name = forms.CharField(label=_("Organization"), help_text=_("The name of your organization"))
+    template = forms.ChoiceField(
+        [], help_text=_("Import templates from AWS S3 to this organization."), initial="common"
+    )
 
     def __init__(self, *args, **kwargs):
         if "branding" in kwargs:
             del kwargs["branding"]
 
         super().__init__(*args, **kwargs)
+
+        self.fields["template"].choices = [("common", _("Comum"))]
 
     def clean_email(self):
         email = self.cleaned_data["email"]
@@ -1661,7 +1666,7 @@ class OrgCRUDL(SmartCRUDL):
     class CreateLogin(SmartUpdateView):
         title = ""
         form_class = OrgSignupForm
-        fields = ("first_name", "last_name", "email", "password")
+        fields = ("first_name", "last_name", "email", "password", "template")
         success_message = ""
         success_url = "@msgs.msg_inbox"
         submit_button_name = _("Create")
