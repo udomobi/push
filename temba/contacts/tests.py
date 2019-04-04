@@ -5893,7 +5893,7 @@ class ContactTest(TembaTest):
             created_on=timezone.now(),
         )
 
-        with self.assertNumQueries(13):
+        with self.assertNumQueries(16):
             process_message_task(dict(id=msg.id, from_mage=True, new_contact=False))
 
         # twitter should be preferred outgoing again
@@ -5909,7 +5909,7 @@ class ContactTest(TembaTest):
             created_on=timezone.now(),
         )
 
-        with self.assertNumQueries(19):
+        with self.assertNumQueries(22):
             process_message_task(dict(id=msg.id, from_mage=True, new_contact=True))
 
         self.assertCountEqual(
@@ -6134,7 +6134,7 @@ class ContactFieldTest(TembaTest):
             return workbook.worksheets
 
         # no group specified, so will default to 'All Contacts'
-        with self.assertNumQueries(48):
+        with self.assertNumQueries(49):
             export = request_export()
             self.assertExcelSheet(
                 export[0],
@@ -6185,7 +6185,7 @@ class ContactFieldTest(TembaTest):
         # change the order of the fields
         self.contactfield_2.priority = 15
         self.contactfield_2.save()
-        with self.assertNumQueries(48):
+        with self.assertNumQueries(49):
             export = request_export()
             self.assertExcelSheet(
                 export[0],
@@ -6242,7 +6242,7 @@ class ContactFieldTest(TembaTest):
         ContactURN.create(self.org, contact, "tel:+12062233445")
 
         # but should have additional Twitter and phone columns
-        with self.assertNumQueries(48):
+        with self.assertNumQueries(49):
             export = request_export()
             self.assertExcelSheet(
                 export[0],
@@ -6326,7 +6326,7 @@ class ContactFieldTest(TembaTest):
             )
 
         # export a specified group of contacts (only Ben and Adam are in the group)
-        with self.assertNumQueries(49):
+        with self.assertNumQueries(50):
             self.assertExcelSheet(
                 request_export("?g=%s" % group.uuid)[0],
                 [
@@ -6382,7 +6382,7 @@ class ContactFieldTest(TembaTest):
             {"_type": "_doc", "_index": "dummy_index", "_source": {"id": contact3.id}},
         ]
         with ESMockWithScroll(data=mock_es_data):
-            with self.assertNumQueries(47):
+            with self.assertNumQueries(48):
                 self.assertExcelSheet(
                     request_export("?s=name+has+adam+or+name+has+deng")[0],
                     [
@@ -6435,7 +6435,7 @@ class ContactFieldTest(TembaTest):
         # export a search within a specified group of contacts
         mock_es_data = [{"_type": "_doc", "_index": "dummy_index", "_source": {"id": contact.id}}]
         with ESMockWithScroll(data=mock_es_data):
-            with self.assertNumQueries(48):
+            with self.assertNumQueries(49):
                 self.assertExcelSheet(
                     request_export("?g=%s&s=Hagg" % group.uuid)[0],
                     [
@@ -6866,7 +6866,7 @@ class ContactFieldTest(TembaTest):
 
         response_json = response.json()
 
-        self.assertEqual(len(response_json), 47)
+        self.assertEqual(len(response_json), 48)
         self.assertEqual(response_json[0]["label"], "Full name")
         self.assertEqual(response_json[0]["key"], "name")
         self.assertEqual(response_json[1]["label"], "Phone number")
@@ -6895,22 +6895,24 @@ class ContactFieldTest(TembaTest):
         self.assertEqual(response_json[12]["key"], "fcm")
         self.assertEqual(response_json[13]["label"], "WhatsApp identifier")
         self.assertEqual(response_json[13]["key"], "whatsapp")
-        self.assertEqual(response_json[14]["label"], "Groups")
-        self.assertEqual(response_json[14]["key"], "groups")
-        self.assertEqual(response_json[15]["label"], "First")
-        self.assertEqual(response_json[15]["key"], "first")
-        self.assertEqual(response_json[16]["label"], "label0")
-        self.assertEqual(response_json[16]["key"], "key0")
+        self.assertEqual(response_json[14]["label"], "WebSocket identifier")
+        self.assertEqual(response_json[14]["key"], "ws")
+        self.assertEqual(response_json[15]["label"], "Groups")
+        self.assertEqual(response_json[15]["key"], "groups")
+        self.assertEqual(response_json[16]["label"], "First")
+        self.assertEqual(response_json[16]["key"], "first")
+        self.assertEqual(response_json[17]["label"], "label0")
+        self.assertEqual(response_json[17]["key"], "key0")
 
         ContactField.objects.filter(org=self.org, key="key0").update(label="AAAA")
 
         response = self.client.get(contact_field_json_url)
         response_json = response.json()
 
-        self.assertEqual(response_json[15]["label"], "AAAA")
-        self.assertEqual(response_json[15]["key"], "key0")
-        self.assertEqual(response_json[16]["label"], "First")
-        self.assertEqual(response_json[16]["key"], "first")
+        self.assertEqual(response_json[16]["label"], "AAAA")
+        self.assertEqual(response_json[16]["key"], "key0")
+        self.assertEqual(response_json[17]["label"], "First")
+        self.assertEqual(response_json[17]["key"], "first")
 
 
 class URNTest(TembaTest):

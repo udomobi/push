@@ -3432,7 +3432,7 @@ class TwitterTest(TembaTest):
                     "message_create": {
                         "message_data": {
                             "text": "Hello, choose\u200b an option, please.",
-                            "quick_reply": {"type": "options", "options": [{"label": "Yes"}, {"label": "No"}]},
+                            "quick_reply": [{"label": "Yes"}, {"label": "No"}],
                             "entities": {"symbols": [], "user_mentions": [], "hashtags": [], "urls": []},
                         },
                         "sender_id": "000000",
@@ -3452,7 +3452,7 @@ class TwitterTest(TembaTest):
                         message_create=dict(
                             message_data=dict(
                                 text="Hello, world!",
-                                quick_reply=dict(type="options", options=[dict(label="Yes"), dict(label="No")]),
+                                quick_reply=[dict(label="Yes"), dict(label="No")],
                             ),
                             target=dict(recipient_id="10002"),
                         ),
@@ -3466,7 +3466,6 @@ class TwitterTest(TembaTest):
             )
 
             args, kwargs = mock.call_args
-            print(data)
             self.assertCountEqual(data, kwargs.get("data"))
 
             msg.refresh_from_db()
@@ -3476,8 +3475,8 @@ class TwitterTest(TembaTest):
             self.assertEqual(msg.metadata, dict(quick_replies=quick_replies))
             data_args = json.loads(mock.call_args[1]["data"])
             message_data = data_args["event"]["message_create"]["message_data"]
-            self.assertEqual(message_data["quick_reply"]["options"][0]["label"], "Yes")
-            self.assertEqual(message_data["quick_reply"]["options"][1]["label"], "No")
+            self.assertEqual(message_data["quick_reply"][0]["label"], "Yes")
+            self.assertEqual(message_data["quick_reply"][1]["label"], "No")
             self.clear_cache()
 
 
