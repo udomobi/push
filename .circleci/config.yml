@@ -17,7 +17,7 @@ jobs:
             sudo apt install postgresql-9.6 postgresql-9.6-postgis-2.3 python3.6 redis-server -y
 
             # database user
-            sudo /usr/lib/postgresql/9.6/bin/pg_ctl -D /var/lib/postgresql/9.6/main -l logfile start
+            /usr/lib/postgresql/9.6/bin/pg_ctl -D /var/lib/postgresql/9.6/main -l logfile start
             psql -U postgres -c "CREATE USER temba WITH PASSWORD 'temba';"
             psql -U postgres -c "ALTER ROLE temba WITH SUPERUSER;"
             psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis;"
