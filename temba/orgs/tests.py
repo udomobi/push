@@ -1104,7 +1104,9 @@ class OrgTest(TembaTest):
         admin_create_login_url = reverse("orgs.org_create_login", args=[surveyor_invite.secret])
         self.client.logout()
 
-        post_data = dict(first_name="Surveyor", last_name="User", email="surveyor@gmail.com", password="password", template="common")
+        post_data = dict(
+            first_name="Surveyor", last_name="User", email="surveyor@gmail.com", password="password", template="common"
+        )
         response = self.client.post(admin_create_login_url, post_data, follow=True)
         self.assertEqual(200, response.status_code)
 
