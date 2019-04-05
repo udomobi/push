@@ -1,0 +1,44 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: ilha/python3-base
+
+      - image: mdillon/postgis
+        environment:
+          POSTGRES_DB: temba 
+          POSTGRES_USER: temba 
+          POSTGRES_PASSWORD: temba
+
+      - image: redis
+
+      - image: elastic/elasticsearch:6.3.1
+        environment:
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+
+    working_directory: ~/push
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - pip-dependencies-{{ checksum "pip-freeze.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - pip-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m env
+            . env/bin/activate
+            pip --version
+            pip install -r pip-freeze.txt
+            pip install coveralls
+            pip install flake8
+
+      - save_cache:
+          paths:
+            - ./env
+          key: pip-dependencies-{{ checksum "pip-freeze.txt" }}
