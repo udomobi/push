@@ -7,8 +7,6 @@ jobs:
       image: circleci/classic:201708-01
 
     steps:
-      - checkout
-
       - run:
           name: install dependencies
           command: |
