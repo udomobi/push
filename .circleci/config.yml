@@ -1,6 +1,8 @@
 version: 2
 jobs:
   build:
+    working_directory: ~/push
+
     docker:
       - image: ilha/python3-base
 
@@ -16,8 +18,6 @@ jobs:
         environment:
           ES_JAVA_OPTS: -Xms512m -Xmx512m
 
-    working_directory: ~/push
-
     steps:
       - checkout
 
@@ -31,10 +31,9 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            python3 -m env
-            . env/bin/activate
+            pip install --upgrade pip
             pip --version
-            pip install -r pip-freeze.txt
+            pip install -r pip-freeze.txt --upgrade
             pip install coveralls
             pip install flake8
             python --version
