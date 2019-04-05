@@ -1075,8 +1075,8 @@ class OrgTest(TembaTest):
 
         self.assertEqual(self.org.pk, response.context["org"].pk)
 
-        # we have a form with 4 fields and one hidden 'loc'
-        self.assertEqual(5, len(response.context["form"].fields))
+        # we have a form with 5 fields and one hidden 'loc'
+        self.assertEqual(6, len(response.context["form"].fields))
         self.assertIn("first_name", response.context["form"].fields)
         self.assertIn("last_name", response.context["form"].fields)
         self.assertIn("email", response.context["form"].fields)
@@ -1087,6 +1087,7 @@ class OrgTest(TembaTest):
         post_data["last_name"] = "Kwizera"
         post_data["email"] = "norkans7@gmail.com"
         post_data["password"] = "norbertkwizeranorbert"
+        post_data["template"] = "common"
 
         response = self.client.post(admin_create_login_url, post_data, follow=True)
         self.assertEqual(200, response.status_code)
@@ -1103,7 +1104,7 @@ class OrgTest(TembaTest):
         admin_create_login_url = reverse("orgs.org_create_login", args=[surveyor_invite.secret])
         self.client.logout()
 
-        post_data = dict(first_name="Surveyor", last_name="User", email="surveyor@gmail.com", password="password")
+        post_data = dict(first_name="Surveyor", last_name="User", email="surveyor@gmail.com", password="password", template="common")
         response = self.client.post(admin_create_login_url, post_data, follow=True)
         self.assertEqual(200, response.status_code)
 

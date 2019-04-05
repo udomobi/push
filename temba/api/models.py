@@ -349,7 +349,7 @@ class WebHookEvent(SmartModel):
                 if action == "GET":
                     response = requests.get(webhook_url, headers=requests_headers, timeout=settings.WEBHOOK_TIMEOUT)
                 else:
-                    # requests_headers['Content-type'] = 'application/json'
+                    requests_headers['Content-type'] = 'application/json'
                     response = requests.post(
                         webhook_url,
                         data=urlencode(post_data, doseq=True),
