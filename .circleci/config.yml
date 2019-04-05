@@ -37,6 +37,7 @@ jobs:
             pip install -r pip-freeze.txt
             pip install coveralls
             pip install flake8
+            python --version
 
       - save_cache:
           paths:
