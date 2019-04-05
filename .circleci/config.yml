@@ -3,20 +3,21 @@ jobs:
   build:
     machine:
       image: circleci/classic:201708-01
+      enabled: true
 
     steps:
       - run:
           name: install dependencies
           command: |
             # postgresql, python and redis
-            add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main"
-            wget -q -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-            add-apt-repository ppa:jonathonf/python-3.6
-            apt update
-            apt install postgresql-9.6 postgresql-9.6-postgis-2.3 python3.6 redis-server -y
+            sudo add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main"
+            sudo wget -q -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+            sudo add-apt-repository ppa:jonathonf/python-3.6
+            sudo apt update
+            sudo apt install postgresql-9.6 postgresql-9.6-postgis-2.3 python3.6 redis-server -y
 
             # database user
-            service postgresql start
+            sudo service postgresql start
             psql -U postgres -c "CREATE USER temba WITH PASSWORD 'temba';"
             psql -U postgres -c "ALTER ROLE temba WITH SUPERUSER;"
             psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis;"
