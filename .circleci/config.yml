@@ -14,9 +14,7 @@ jobs:
 
       - image: redis
 
-      # - image: elastic/elasticsearch:6.3.1
-      #   environment:
-      #     ES_JAVA_OPTS: -Xms512m -Xmx512m
+      - image: elastic/elasticsearch:6.3.1
 
     steps:
       - checkout
@@ -30,19 +28,12 @@ jobs:
 
       - run:
           name: install dependencies
-          environment:
-            ES_VERSION: "6.3.1"
-            ES_DOWNLOAD_URL: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.3.1.tar.gz
           command: |
-            wget ${ES_DOWNLOAD_URL}
-            tar -xzf elasticsearch-${ES_VERSION}.tar.gz
-            ./elasticsearch-${ES_VERSION}/bin/elasticsearch &
             pip install --upgrade pip
             pip --version
             pip install -r pip-freeze.txt --upgrade
             pip install coveralls
             pip install flake8
-            python --version
 
       - run:
           name: install npm dependencies
