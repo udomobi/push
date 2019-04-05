@@ -1,7 +1,7 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/push
+    working_directory: /app
 
     docker:
       - image: ilha/python3-base
@@ -31,7 +31,7 @@ jobs:
           command: |
             pip install --upgrade pip
             pip --version
-            pip install -r pip-freeze.txt --upgrade
+            pip install -r pip-freeze.txt
             pip install coveralls
             pip install flake8
 
