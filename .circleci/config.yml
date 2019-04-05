@@ -18,12 +18,12 @@ jobs:
 
             # database user
             /usr/lib/postgresql/9.6/bin/pg_ctl -D /var/lib/postgresql/9.6/main -l logfile start
-            psql -U postgres -c "CREATE USER temba WITH PASSWORD 'temba';"
-            psql -U postgres -c "ALTER ROLE temba WITH SUPERUSER;"
-            psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis;"
-            psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis_topology;"
-            psql -d 'template1' -U postgres -c "CREATE EXTENSION hstore;"
-            psql -U temba postgres -c "CREATE DATABASE temba;"
+            sudo -u postgres psql postgres -c "CREATE USER temba WITH PASSWORD 'temba';"
+            sudo -u postgres psql postgres -c "ALTER ROLE temba WITH SUPERUSER;"
+            sudo -u postgres psql postgres -d 'template1' -c "CREATE EXTENSION postgis;"
+            sudo -u postgres psql postgres -d 'template1' -c "CREATE EXTENSION postgis_topology;"
+            sudo -u postgres psql postgres -d 'template1' -c "CREATE EXTENSION hstore;"
+            sudo -u postgres psql postgres -c "CREATE DATABASE temba;"
 
             # elastic search
             wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.3.1.tar.gz
