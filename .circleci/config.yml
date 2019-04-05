@@ -24,11 +24,14 @@ jobs:
       RPINDEXER_VERSION=1.0.22
 
     steps:
+      - checkout
+
       - restore_cache:
           keys:
             - pip-dependencies-{{ checksum "pip-freeze.txt" }}
             # fallback to using the latest cache if no exact match is found
             - pip-dependencies-
+            - npm-dependencies{{ checksum "package-lock.json" }}
 
       - run:
           name: install dependencies
@@ -64,3 +67,8 @@ jobs:
           paths:
             - ./env
           key: pip-dependencies-{{ checksum "pip-freeze.txt" }}
+
+      - save_cache:
+          paths:
+            - ./node_modules
+          key: npm-dependencies{{ checksum "package-lock.json" }}
