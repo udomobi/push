@@ -7,7 +7,14 @@ from django.utils.translation import ugettext_lazy as _
 from smartmin.views import SmartFormView
 from temba.contacts.models import WS_SCHEME
 from ...models import Channel
-from ...views import ClaimViewMixin
+from ...views import ClaimViewMixin, UpdateChannelForm
+
+
+class UpdateWsForm(UpdateChannelForm):
+
+    class Meta(UpdateChannelForm.Meta):
+        fields = ("name", "alert_email", "address", "country")
+        readonly = ["country"]
 
 
 class ClaimView(ClaimViewMixin, SmartFormView):

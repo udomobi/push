@@ -12,7 +12,7 @@ from temba.contacts.models import WS_SCHEME
 from temba.msgs.models import WIRED
 from temba.utils.http import HttpEvent
 from temba.channels.models import TEMBA_HEADERS
-from .views import ClaimView
+from .views import ClaimView, UpdateWsForm
 from ...models import Channel, ChannelType, SendException
 
 
@@ -33,6 +33,8 @@ class WsType(ChannelType):
     schemes = [WS_SCHEME]
     attachment_support = False
     free_sending = True
+
+    update_form = UpdateWsForm
 
     def send(self, channel, msg, text):
         data = {
@@ -59,7 +61,7 @@ class WsType(ChannelType):
         elif url_buttons:
             data['metadata'] = dict(url_buttons=formatted_replies)
 
-        url = settings.WEBSOCKET_ADDRESS
+        url = channel.address
         start = time.time()
 
         headers = {'Content-Type': 'application/json'}
