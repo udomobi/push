@@ -19,13 +19,13 @@ class BotHubConsumer(object):
     Bothub consumer
     This consumer will call Bothub api.
     """
-    BASE_URL = settings.BOTHUB_BASE_URL
     AUTH_PREFIX = "Bearer"
 
-    def __init__(self, authorization_key):
+    def __init__(self, authorization_key, base_url=settings.BOTHUB_BASE_URL):
         if authorization_key.startswith("Bearer"):
             authorization_key = re.sub("^Bearer", "", authorization_key).strip()
         self.bothub_authorization_key = authorization_key
+        self.base_url = base_url
 
     def __str__(self):  # pragma: needs cover
         return self.bothub_authorization_key
@@ -38,7 +38,7 @@ class BotHubConsumer(object):
             session = requests.Session()
             prepped = requests.Request(
                 method=method,
-                url="{}/{}/".format(self.BASE_URL, url),
+                url="{}/{}/".format(self.base_url, url),
                 headers={"Authorization": "{} {}".format(self.AUTH_PREFIX, self.bothub_authorization_key)},
                 data=payload
             ).prepare()

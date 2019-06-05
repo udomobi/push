@@ -709,7 +709,8 @@ class FlowCRUDL(SmartCRUDL):
                 repositories = repositories.values()
                 for repository in repositories:
                     try:
-                        bothub = BotHubConsumer(repository.get("authorization_key"))
+                        bothub = BotHubConsumer(repository.get("authorization_key"),
+                                                self.request.user.get_org().bothub_nlp())
                         intents += [
                             dict(name=intent, bot_id=repository.get("uuid"), bot_name=repository.get("name"))
                             for intent in bothub.get_intents()
