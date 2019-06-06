@@ -2116,6 +2116,11 @@ class OrgCRUDL(SmartCRUDL):
             initial["repositories"] = config.get("repositories", None)
             return initial
 
+        def get_form_kwargs(self):
+            kwargs = super(OrgCRUDL.Bothub, self).get_form_kwargs()
+            kwargs['org'] = self.request.user.get_org()
+            return kwargs
+
         def get_context_data(self, **kwargs):
             context = super(OrgCRUDL.Bothub, self).get_context_data(**kwargs)
             repositories = self.object.get_bothub_repositories()
