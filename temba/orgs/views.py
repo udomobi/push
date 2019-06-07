@@ -2074,6 +2074,11 @@ class OrgCRUDL(SmartCRUDL):
                 help_text=_('You can get it inside the bot page on the "Analyze text" tab;'),
             )
 
+            def __init__(self, *args, **kwargs):
+                self.org = kwargs['org']
+                del kwargs['org']
+                super(OrgCRUDL.Bothub.BothubForm, self).__init__(*args, **kwargs)
+
             def clean(self):
                 super(OrgCRUDL.Bothub.BothubForm, self).clean()
                 bothub_authorization_key = self.cleaned_data.get("bothub_authorization_key")
@@ -2084,7 +2089,7 @@ class OrgCRUDL(SmartCRUDL):
                     )
                 else:
                     try:
-                        bothub = BotHubConsumer(bothub_authorization_key)
+                        bothub = BotHubConsumer(bothub_authorization_key, self.org.bothub_url())
                         if not bothub.is_valid_token():
                             raise ValidationError(_("Incorrect data. Please check Bothub Authorization Key."))
                         else:
@@ -2110,6 +2115,11 @@ class OrgCRUDL(SmartCRUDL):
             config = org.bothub_config_json()
             initial["repositories"] = config.get("repositories", None)
             return initial
+
+        def get_form_kwargs(self):
+            kwargs = super(OrgCRUDL.Bothub, self).get_form_kwargs()
+            kwargs['org'] = self.request.user.get_org()
+            return kwargs
 
         def get_context_data(self, **kwargs):
             context = super(OrgCRUDL.Bothub, self).get_context_data(**kwargs)

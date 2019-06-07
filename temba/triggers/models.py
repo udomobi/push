@@ -515,7 +515,8 @@ class Trigger(SmartModel):
                     repository_uuid = nlu_bot.get("repository_uuid")
                     try:
                         if repository_uuid not in responses.keys():
-                            bothub = BotHubConsumer(repositories[repository_uuid].get("authorization_key"))
+                            bothub = BotHubConsumer(repositories[repository_uuid].get("authorization_key"),
+                                                    msg.org.bothub_url())
                             responses[repository_uuid] = bothub.predict(msg.text, msg.contact.language)
                     except BotHubException:  # pragma: needs cover
                         return False

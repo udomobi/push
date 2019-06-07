@@ -406,7 +406,7 @@ class BothubTriggerForm(GroupBasedTriggerForm):
 
             for repository in repositories:
                 try:
-                    bothub = BotHubConsumer(repository.get("authorization_key"))
+                    bothub = BotHubConsumer(repository.get("authorization_key"), org.bothub_url())
                     intents = bothub.get_intents()
 
                     for intent in intents:

@@ -145,6 +145,7 @@ ORG_LOW_CREDIT_THRESHOLD_CACHE_KEY = 'org:%d:cache:low_credits_threshold'
 
 ORG_LOCK_TTL = 60  # 1 minute
 ORG_CREDITS_CACHE_TTL = 7 * 24 * 60 * 60  # 1 week
+ORG_BOTHUB_URL_KEY = 'bothub_url'
 
 
 class OrgLock(Enum):
@@ -403,6 +404,11 @@ class Org(SmartModel):
                     flows=exported_flows,
                     campaigns=exported_campaigns,
                     triggers=exported_triggers)
+
+    def bothub_url(self):
+        if ORG_BOTHUB_URL_KEY in self.config:
+            return self.config.get(ORG_BOTHUB_URL_KEY)
+        return settings.BOTHUB_BASE_URL
 
     def bothub_config_json(self):
         if self.nlu_api_config:
@@ -946,7 +952,7 @@ class Org(SmartModel):
         if "repositories" not in bothub_config.keys():
             bothub_config.update({"repositories": dict()})
 
-        bothub = BotHubConsumer(authorization_key)
+        bothub = BotHubConsumer(authorization_key, self.bothub_url())
         if bothub.is_valid_token():
             repository = bothub.get_repository_info()
 
