@@ -505,9 +505,11 @@ class Trigger(SmartModel):
         if msg.contact.user_groups.all():
             triggers = triggers.filter(Q(groups__in=msg.contact.user_groups.all()) | Q(groups=None))
 
+        repositories = msg.org.get_bothub_repositories()
+        bothub_url = msg.org.bothub_url()
+
         for trigger in triggers:
             nlu_data = trigger.get_nlu_data()
-            repositories = msg.org.get_bothub_repositories()
 
             if repositories and nlu_data and nlu_data.get("intents", None):
                 responses = {}
@@ -516,7 +518,7 @@ class Trigger(SmartModel):
                     try:
                         if repository_uuid not in responses.keys():
                             bothub = BotHubConsumer(repositories[repository_uuid].get("authorization_key"),
-                                                    msg.org.bothub_url())
+                                                    bothub_url)
                             responses[repository_uuid] = bothub.predict(msg.text, msg.contact.language)
                     except BotHubException:  # pragma: needs cover
                         return False
