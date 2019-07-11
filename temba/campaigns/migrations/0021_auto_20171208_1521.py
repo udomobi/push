@@ -31,6 +31,7 @@ def migrate_event_languages(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('orgs', '0041_org_org_constants'),
         ('campaigns', '0020_auto_20171030_1637'),
     ]
 
