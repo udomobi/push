@@ -250,6 +250,7 @@ INSTALLED_APPS = (
     'temba.locations',
     'temba.values',
     'temba.airtime',
+    'temba.templates',
 )
 
 # the last installed app that uses smartmin permissions
