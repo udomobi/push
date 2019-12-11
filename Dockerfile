@@ -6,7 +6,6 @@ COPY varnish.default.vcl /etc/varnish/default.vcl
 
 COPY pip-freeze.txt .
 
-RUN pip install pyOpenSSL --upgrade
 RUN pip install -r pip-freeze.txt
 
 COPY package.json .
